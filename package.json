@@ -1,0 +1,41 @@
+{
+  "name": "patchwork-mapconverter",
+  "version": "0.0.1",
+  "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
+  "main": "build/index.js",
+  "bin": "build/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "compile": "pkg .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "pkg": {
+    "scripts": "build/**/*.js",
+    "outputPath": "bin/",
+    "targets": [
+      "node16"
+    ]
+  },
+  "keywords": [
+    "Warcraft",
+    "World Editor",
+    "Node.js",
+    "JSON",
+    "Warcraft Map",
+    "Patchwork"
+  ],
+  "author": "InsanityAI",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/commander": "^2.12.2",
+    "@types/node": "^20.4.2",
+    "pkg": "^5.8.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "wc3maptranslator": "^4.0.0"
+  }
+}
