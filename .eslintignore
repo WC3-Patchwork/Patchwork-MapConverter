@@ -1,0 +1,5 @@
+.eslintrc.js
+generateProgramMetadata.js
+/bin
+/build
+/node_modules
