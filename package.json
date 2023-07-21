@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "bin": "build/index.js",
   "scripts": {
+    "prebuild": "node generateProgramMetadata.js > src/metadata.ts",
     "build": "tsc --build",
     "clean": "tsc --build --clean",
     "compile": "pkg .",
@@ -28,7 +29,6 @@
   "author": "InsanityAI",
   "license": "ISC",
   "devDependencies": {
-    "@types/commander": "^2.12.2",
     "@types/node": "^20.4.2",
     "pkg": "^5.8.1",
     "ts-node": "^10.9.1",
