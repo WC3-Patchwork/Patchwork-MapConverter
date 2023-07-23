@@ -8,20 +8,15 @@ const LOG_WARN = 4
 const LOG_ERROR = 5
 const LOG_FATAL = 6
 
-let _logLevel = LOG_INFO
-let rootLogger: Logger<ILogObj> | null = null
+let minLogLevel = LOG_DEBUG
 
 const LoggerFactory = {
   setLogLevel: function (logLevel: number) {
-    _logLevel = logLevel
+    minLogLevel = logLevel
   },
 
   createLogger: function (module: string) {
-    if (rootLogger == null) {
-      rootLogger = new Logger({ minLevel: _logLevel })
-    }
-
-    return rootLogger.getSubLogger({ name: module })
+    return new Logger<ILogObj>({ name: module, minLevel: minLogLevel })
   }
 }
 

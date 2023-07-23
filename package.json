@@ -6,8 +6,8 @@
   "bin": "build/index.js",
   "scripts": {
     "prebuild": "node generateProgramMetadata.js > src/metadata.ts",
-    "build": "tsc --build",
     "clean": "tsc --build --clean",
+    "build": "npm run clean && tsc --build",
     "compile": "pkg .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -48,6 +48,6 @@
     "commander": "^11.0.0",
     "source-map-support": "^0.5.21",
     "tslog": "^4.8.2",
-    "wc3maptranslator": "^4.0.0"
+    "wc3maptranslator": "file:E:/Projects/WC3MapTranslator/wc3maptranslator-4.0.1.tgz"
   }
 }

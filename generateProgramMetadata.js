@@ -1,4 +1,4 @@
-const pkg = require('./package.json');
+const pkg = require('./package.json')
 
 console.log(`export const NAME = '${pkg.name}'
 export const DESCRIPTION = '${pkg.description}'

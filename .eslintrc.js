@@ -1,5 +1,6 @@
 module.exports = {
     "env": {
+        "node": true,
         "browser": true,
         "es2021": true
     },
@@ -32,6 +33,6 @@ module.exports = {
         "project":"./tsconfig.eslint.json"
     },
     "rules": {
-        
+        "@typescript-eslint/restrict-template-expressions": "error"
     }
 }

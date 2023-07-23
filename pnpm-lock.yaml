@@ -15,8 +15,8 @@ dependencies:
     specifier: ^4.8.2
     version: 4.8.2
   wc3maptranslator:
-    specifier: ^4.0.0
-    version: 4.0.0
+    specifier: file:E:/Projects/WC3MapTranslator/wc3maptranslator-4.0.1.tgz
+    version: file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz
 
 devDependencies:
   '@commander-js/extra-typings':
@@ -2324,14 +2324,6 @@ packages:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
     dev: true
 
-  /wc3maptranslator@4.0.0:
-    resolution: {integrity: sha512-QJ2XYUa+5wNri/bsIrhcnxl5stLf95Eco2FnEVVJ9rKRL63wX2zEDZ9oRI2CWJZw/WKnEesxOAiFs9e9/uGCGQ==}
-    engines: {node: '>=14', npm: '>=7', tsc: '>3'}
-    dependencies:
-      intn: 1.0.0
-      round-to: 5.0.0
-    dev: false
-
   /webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
     dev: true
@@ -2421,3 +2413,13 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+  file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz:
+    resolution: {integrity: sha512-IpOqA0bXynPYN32BUMxQUPjKpBEYveqUX6gDDtOe/v6ZEI3m9IzluzjuZFqQ0P4BUqIS6sY4w8IGCBzzrB/9fg==, tarball: file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz}
+    name: wc3maptranslator
+    version: 4.0.1
+    engines: {node: '>=14', npm: '>=7', tsc: '>3'}
+    dependencies:
+      intn: 1.0.0
+      round-to: 5.0.0
+    dev: false
