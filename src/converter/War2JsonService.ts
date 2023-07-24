@@ -22,7 +22,7 @@ async function processFile<T> (file: string, translator: Translator<T>, output: 
   log.info(`Starting processing ${file}`)
   const buffer = await readFile(file)
   const result = translator.warToJson(buffer)
-  if (result.errors != null) {
+  if (result.errors != null && result.errors.length > 0) {
     for (const error of result.errors) {
       log.error(error)
     }
