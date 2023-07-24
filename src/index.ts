@@ -18,9 +18,9 @@ program
   .hook('preAction', (thisCommand, actionCommand) => {
     if (thisCommand.opts().debug === true) { LoggerFactory.setLogLevel(LOG_DEBUG) }
     log = LoggerFactory.createLogger('main')
-    log.debug(`About to call action handler for subcommand ${actionCommand.name()}`)
-    log.debug(`arguments: ${actionCommand.args.join(', ')}`)
-    log.debug(`options: ${JSON.stringify(actionCommand.opts())}`)
+    log.debug('command:', actionCommand.name())
+    log.debug('arguments:', actionCommand.args.join(', '))
+    log.debug('options:', JSON.stringify(actionCommand.opts()))
   })
 
 program

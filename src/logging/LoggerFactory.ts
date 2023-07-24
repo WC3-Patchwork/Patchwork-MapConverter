@@ -9,14 +9,18 @@ const LOG_ERROR = 5
 const LOG_FATAL = 6
 
 let minLogLevel = LOG_DEBUG
+const loggerInstances: Record<string, Logger<ILogObj>> = {}
 
 const LoggerFactory = {
   setLogLevel: function (logLevel: number) {
     minLogLevel = logLevel
+    Object.values(loggerInstances).forEach((logger) => { logger.settings.minLevel = logLevel })
   },
 
   createLogger: function (module: string) {
-    return new Logger<ILogObj>({ name: module, minLevel: minLogLevel })
+    const logger = new Logger<ILogObj>({ name: module, minLevel: minLogLevel, hideLogPositionForProduction: true })
+    loggerInstances[module] = logger
+    return logger
   }
 }
 
