@@ -1,10 +1,11 @@
 'use strict'
-import { Argument, program } from 'commander'
+import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
 import { type ILogObj, type Logger } from 'tslog'
 import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
 import War2JsonService from './converter/War2JsonService'
 import Json2WarService from './converter/Json2WarService'
+import EnhancementManager from './enhancements/EnhancementManager'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -15,12 +16,23 @@ program
   .version(VERSION)
   .description(DESCRIPTION)
   .option('-d, --debug', 'output extra debugging')
+  .option('-si, --smart-imports', 'unpack/compile imports using/into .imp file as reference, ignores .json version if enabled')
+  .addOption(new Option('-imp, --importsFolderName', 'map project imports folder name for smart-imports').default('imports'))
   .hook('preAction', (thisCommand, actionCommand) => {
-    if (thisCommand.opts().debug === true) { LoggerFactory.setLogLevel(LOG_DEBUG) }
+    const options = thisCommand.opts()
+    if (options.debug === true) LoggerFactory.setLogLevel(LOG_DEBUG)
+    if (options.smartImports === true) EnhancementManager.smartImport = true
+    if (options.importsFolderName != null) {
+      if (/\\|\//.test(options.importsFolderName as string)) {
+        throw new Error(`Invalid importsFolderName '${options.importsFolderName as string}' must not be a path!`)
+      } else {
+        EnhancementManager.importFolder = options.importsFolderName as string
+      }
+    }
     log = LoggerFactory.createLogger('main')
     log.debug('command:', actionCommand.name())
     log.debug('arguments:', actionCommand.args.join(', '))
-    log.debug('options:', JSON.stringify(actionCommand.opts()))
+    log.debug('options:', JSON.stringify(thisCommand.opts()))
   })
 
 program
@@ -41,9 +53,9 @@ program
   .description('convert JSON to Warcraft III binaries')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .action((input: string, output: string) => {
+  .action(async (input: string, output: string) => {
     try {
-      Json2WarService.convert(input, output)
+      await Json2WarService.convert(input, output)
     } catch (exception) {
       log.fatal(exception)
     }
