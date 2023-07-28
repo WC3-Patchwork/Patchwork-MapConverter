@@ -52,8 +52,10 @@ export class CustomScriptsTranslator implements Translator<string[]> {
     outBufferToJSON.readInt() // 01 00 00 00
 
     try {
-      const script = outBufferToJSON.readString()
-      scripts.push(script)
+      do {
+        const script = outBufferToJSON.readString()
+        scripts.push(script)
+      } while (true)
     } catch (e) {
       // catch EOF
     }
