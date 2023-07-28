@@ -6,6 +6,9 @@ import { translatorRecord } from './TranslatorRecord'
 import { type Data, ImportsTranslator, type Translator } from 'wc3maptranslator'
 import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
+import { type TriggerContainer } from '../translator/data/Trigger'
+import { TriggersTranslator } from '../translator/TriggerTranslator'
+import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -43,15 +46,55 @@ async function processImportsRegistry (importsFile: string): Promise<Data.Import
   }
 }
 
+async function processTriggers (triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer[]> {
+  const triggerTranslator = TriggersTranslator.getInstance()
+  const customScriptTranslator = CustomScriptsTranslator.getInstance()
+  const asyncLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
+
+  asyncLog.info('Reading war3map.wtg file.')
+  const triggerBuffer = await readFile(triggersFile)
+  const triggerResult = triggerTranslator.warToJson(triggerBuffer)
+  if (triggerResult.errors != null && triggerResult.errors.length > 0) {
+    for (const error of triggerResult.errors) {
+      asyncLog.error(error)
+    }
+    throw new Error('Failed reading triggers file.')
+  }
+  const triggerJson = triggerResult.json
+  asyncLog.info('Read war3map.wtg file.')
+
+  if (customScriptsFile != null) {
+    asyncLog.info('Reading war3map.wct file.')
+    const csBuffer = await readFile(customScriptsFile)
+    const csResults = customScriptTranslator.warToJson(csBuffer)
+    if (csResults.errors != null && csResults.errors.length > 0) {
+      for (const error of csResults.errors) {
+        asyncLog.error(error)
+      }
+      throw new Error('Failed reading custom scripts file.')
+    }
+    asyncLog.info('Read war3map.wct file, found', csResults.json.length, 'custom scripts.')
+
+    // Combine custom scripts into trigger JSON
+    for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
+      triggerJson.scriptReferences[i].script = csResults.json[i]
+    }
+  }
+
+  return triggerJson.roots
+}
+
 const War2JsonService = {
   convert: async function (inputPath: string, outputPath: string) {
     log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
 
-    const promises: Array<Promise<void>> = []
+    const promises: Array<Promise<unknown>> = []
     const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
 
     const copyFiles: Record<string, string> = {}
     let importFile: string | null = null
+    let triggerFile: string | null = null
+    let customScriptFile: { input: string, output: string } | null = null
 
     while (fileStack.length > 0) {
       const file = fileStack.pop()
@@ -76,6 +119,11 @@ const War2JsonService = {
         if (translator != null) {
           if (EnhancementManager.smartImport && (translator instanceof ImportsTranslator)) {
             importFile = file.path
+          } else if (translator instanceof TriggersTranslator) {
+            triggerFile = file.path
+          } else if (translator instanceof CustomScriptsTranslator) {
+            const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + '.json'
+            customScriptFile = { input: file.path, output: outputFile }
           } else {
             const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + '.json'
             promises.push(processFile(file.path, translator, outputFile))
@@ -89,6 +137,15 @@ const War2JsonService = {
           }
         }
       }
+    }
+
+    if (triggerFile != null) {
+      promises.push(async function () {
+        const triggerJSON = await processTriggers(triggerFile, customScriptFile?.input)
+        await writeFile(path.join(outputPath, 'triggers.json'), JSON.stringify(triggerJSON), { encoding: 'utf8' })
+      }())
+    } else if (customScriptFile != null) {
+      promises.push(copyFileWithDirCreation(customScriptFile.input, customScriptFile.output))
     }
 
     if (EnhancementManager.smartImport) {

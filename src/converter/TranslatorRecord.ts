@@ -12,6 +12,8 @@ import {
   TerrainTranslator,
   UnitsTranslator
 } from 'wc3maptranslator'
+import { TriggersTranslator } from '../translator/TriggerTranslator'
+import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
 
 export const translatorRecord: Record<string, Translator<unknown>> = {
   // World files
@@ -32,13 +34,15 @@ export const translatorRecord: Record<string, Translator<unknown>> = {
   '.w3h': ObjectsTranslator.getInstance(Data.ObjectType.Buffs) as Translator<unknown>,
 
   // Trigger files
-  // '.lua': MISSING
-  // '.j': MISSING
+  // '.lua': IGNORED
+  // '.j': IGNORED
   '.wts': StringsTranslator.getInstance() as Translator<unknown>,
+  '.wtg': TriggersTranslator.getInstance() as Translator<unknown>,
+  '.wct': CustomScriptsTranslator.getInstance() as Translator<unknown>,
 
   // Map files
   '.w3i': InfoTranslator.getInstance() as Translator<unknown>,
   '.imp': ImportsTranslator.getInstance() as Translator<unknown>
-  // '.wpm': MISSING
-  // '.shd': MISSING
+  // '.wpm': IGNORED
+  // '.shd': IGNORED
 }

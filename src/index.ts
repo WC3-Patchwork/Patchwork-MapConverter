@@ -6,6 +6,7 @@ import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
 import War2JsonService from './converter/War2JsonService'
 import Json2WarService from './converter/Json2WarService'
 import EnhancementManager from './enhancements/EnhancementManager'
+import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -40,8 +41,11 @@ program
   .description('convert Warcraft III binaries to JSON')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .action(async (input: string, output: string) => {
+  .addArgument(new Argument('<trigger-data-filepath>', 'WE\'s trigger data ini file location required for converting WTG file.').default('triggerdata.txt').argOptional())
+  .action(async (input: string, output: string, triggerDataFilepath: string) => {
     try {
+      TriggerDataRegistry.loadTriggerData(triggerDataFilepath)
+
       await War2JsonService.convert(input, output)
     } catch (exception) {
       log.fatal(exception)
