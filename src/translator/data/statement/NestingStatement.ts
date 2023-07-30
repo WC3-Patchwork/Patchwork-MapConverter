@@ -1,14 +1,8 @@
 import { type Statement } from './Statement'
-
-enum NestingStatementKey {
-  CONDITION = 0,
-  THEN_ACTION = 1,
-  ELSE_ACTION = 2,
-  LOOP_ACTION = 3
-}
+import { type TypedStatements } from './TypedStatements'
 
 interface NestingStatement extends Statement {
-  statements: Record<NestingStatementKey, Statement[]>
+  statements: TypedStatements[]
 }
 
-export { NestingStatementKey, type NestingStatement }
+export type { NestingStatement }

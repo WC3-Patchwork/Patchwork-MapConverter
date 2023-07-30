@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import { TriggerActions, TriggerCalls, TriggerConditions, TriggerEvents, type VariadicParameterTriggerDefinition } from './data/TriggerDefinition'
-import { StatementClassifier } from '../translator/data/statement/Statement'
+import { StatementType } from '../translator/data/statement/StatementType'
 
 const log = LoggerFactory.createLogger('TriggerDataLoader')
 
@@ -64,31 +64,31 @@ const TriggerDataRegistry = {
     }
   },
 
-  getParameterCount: function (classification: StatementClassifier | TriggerDataSections, name: string): number | undefined {
+  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number | undefined {
     let sectionRegistry: Record<string, number | undefined> | undefined
     switch (classification) {
-      case StatementClassifier.EVENT:
+      case StatementType.EVENT:
       case TriggerDataSections.TRIGGER_EVENTS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_EVENTS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case StatementClassifier.CONDITION:
+      case StatementType.CONDITION:
       case TriggerDataSections.TRIGGER_CONDITIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CONDITIONS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case StatementClassifier.ACTION:
+      case StatementType.ACTION:
       case TriggerDataSections.TRIGGER_ACTIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_ACTIONS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case StatementClassifier.CALL:
+      case StatementType.CALL:
       case TriggerDataSections.TRIGGER_CALLS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CALLS)
         if (sectionRegistry != null) {

@@ -4,7 +4,6 @@ import { W3Buffer } from 'wc3maptranslator/lib/W3Buffer'
 import { TriggerDataRegistry } from '../enhancements/TriggerDataRegistry'
 import { HexBuffer } from 'wc3maptranslator/lib/HexBuffer'
 import { type FunctionCall } from './data/parameter/FunctionCall'
-import { type Parameter, ParameterType } from './data/parameter/Parameter'
 import { type TriggerContainer } from './data/TriggerContainer'
 import { ContentType, type TriggerContent } from './data/content/TriggerContent'
 import { ContentTypeEnumConverter } from './util/ContentTypeEnumConverter'
@@ -13,12 +12,17 @@ import { type CustomScript } from './data/content/CustomScript'
 import { type GlobalVariable } from './data/content/GlobalVariable'
 import { type GUITrigger } from './data/content/GUITrigger'
 import { type TriggerComment } from './data/content/TriggerComment'
-import { type Statement, StatementClassifier } from './data/statement/Statement'
-import { type NestingStatement, NestingStatementKey } from './data/statement/NestingStatement'
 import { type ArrayVariableParameter } from './data/parameter/ArrayVariableParameter'
 import { type PresetParameter } from './data/parameter/PresetParameter'
 import { type LiteralParameter } from './data/parameter/LiteralParameter'
 import { type VariableParameter } from './data/parameter/VariableParameter'
+import { type Statement } from './data/statement/Statement'
+import { StatementTypeEnumConverter } from './util/StatementTypeEnumConverter'
+import { StatementType } from './data/statement/StatementType'
+import { type NestingStatement } from './data/statement/NestingStatement'
+import { ParameterTypeEnumConverter } from './util/ParameterTypeEnumConverter'
+import { type Parameter } from './data/parameter/Parameter'
+import { ParameterType } from './data/parameter/ParameterType'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
@@ -293,19 +297,19 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(ecaCount)
 
-            const writeStatements = (parent: GUITrigger | Statement, ECAs: Statement[], ecaClassifier: StatementClassifier, nestedClassifier: NestingStatementKey | -1): void => {
+            const writeStatements = (parent: GUITrigger | Statement, ECAs: Statement[], statementType: StatementType, group: number): void => {
               for (const eca of ECAs) {
-                outBufferToWar.addInt(ecaClassifier)
+                outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(statementType))
 
-                if (nestedClassifier !== -1) {
-                  outBufferToWar.addInt(nestedClassifier)
+                if (group !== -1) {
+                  outBufferToWar.addInt(group)
                 }
 
                 outBufferToWar.addString(eca.name)
                 outBufferToWar.addInt(eca.isEnabled ? 1 : 0)
                 const writeParams = (parent: Statement | FunctionCall, parameters: Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>): void => {
                   for (const param of parameters) {
-                    outBufferToWar.addInt(param.type)
+                    outBufferToWar.addInt(ParameterTypeEnumConverter.toIdentifier(param.type))
 
                     switch (param.type) {
                       case ParameterType.INVALID:
@@ -329,14 +333,14 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                       case ParameterType.FUNCTION:
                         outBufferToWar.addString(param.name)
                         outBufferToWar.addInt(1) // has sub params
-                        outBufferToWar.addInt(StatementClassifier.CALL)
+                        outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(StatementType.CALL))
                         outBufferToWar.addString(param.name)
                         outBufferToWar.addInt(1) // begin function
                         writeParams(param, param.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
                         outBufferToWar.addInt(0) // unknown, end function maybe?
                         outBufferToWar.addInt(0) // is not array
                         break
-                      case ParameterType.LITERAL:
+                      case ParameterType.VALUE:
                         outBufferToWar.addString(param.value)
                         outBufferToWar.addInt(0) // no sub params
                         outBufferToWar.addInt(0) // is not array
@@ -349,40 +353,22 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                 if ((eca as NestingStatement).statements != null) {
                   const nestingStatement = (eca as NestingStatement)
                   let ecaCount = 0
-                  if (nestingStatement.statements[NestingStatementKey.CONDITION] != null) {
-                    ecaCount += nestingStatement.statements[NestingStatementKey.CONDITION].length
+                  for (const typedStatements of nestingStatement.statements) {
+                    ecaCount += typedStatements.statements.length
                   }
-                  if (nestingStatement.statements[NestingStatementKey.THEN_ACTION] != null) {
-                    ecaCount += nestingStatement.statements[NestingStatementKey.THEN_ACTION].length
-                  }
-                  if (nestingStatement.statements[NestingStatementKey.ELSE_ACTION] != null) {
-                    ecaCount += nestingStatement.statements[NestingStatementKey.ELSE_ACTION].length
-                  }
-                  if (nestingStatement.statements[NestingStatementKey.LOOP_ACTION] != null) {
-                    ecaCount += nestingStatement.statements[NestingStatementKey.LOOP_ACTION].length
-                  }
+
                   outBufferToWar.addInt(ecaCount)
-                  if (nestingStatement.statements[NestingStatementKey.CONDITION] != null) {
-                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.CONDITION], StatementClassifier.CONDITION, NestingStatementKey.CONDITION)
-                  }
-                  if (nestingStatement.statements[NestingStatementKey.THEN_ACTION] != null) {
-                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.THEN_ACTION], StatementClassifier.ACTION, NestingStatementKey.THEN_ACTION)
-                  }
-                  if (nestingStatement.statements[NestingStatementKey.ELSE_ACTION] != null) {
-                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.ELSE_ACTION], StatementClassifier.ACTION, NestingStatementKey.ELSE_ACTION)
-                  }
-                  if (nestingStatement.statements[NestingStatementKey.LOOP_ACTION] != null) {
-                    // nested statements ones don't have their own, but rather their group index which overlaps between if-then-else nest and loop nest
-                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.LOOP_ACTION], StatementClassifier.ACTION, NestingStatementKey.CONDITION)
+                  for (let group = 0; group < nestingStatement.statements.length; group++) {
+                    writeStatements(eca, nestingStatement.statements[group].statements, nestingStatement.statements[group].type, group)
                   }
                 } else {
                   outBufferToWar.addInt(0) // ecaCount
                 }
               }
             }
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, StatementClassifier.ACTION, -1)
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, StatementClassifier.EVENT, -1)
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, StatementClassifier.CONDITION, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, StatementType.ACTION, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, StatementType.EVENT, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, StatementType.CONDITION, -1)
           }
           break
 
@@ -559,14 +545,11 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             }
             const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
               for (let j = 0; j < functionCount; j++) {
-                const functionType = outBufferToJSON.readInt() as StatementClassifier
+                const functionType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
 
-                let group: NestingStatementKey | -1 = -1
+                let group = -1
                 if (isChild) {
-                  group = outBufferToJSON.readInt() as NestingStatementKey
-                  if (functionType === StatementClassifier.ACTION && group === 0) {
-                    group = NestingStatementKey.LOOP_ACTION
-                  }
+                  group = outBufferToJSON.readInt()
                 }
                 const name = outBufferToJSON.readString()
                 const isEnabled = outBufferToJSON.readInt() === 1
@@ -574,7 +557,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                 const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
                 const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
                   for (let k = 0; k < paramCount; k++) {
-                    const paramType = outBufferToJSON.readInt() as ParameterType
+                    const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
                     const value = outBufferToJSON.readString()
                     const hasSubParameters = outBufferToJSON.readInt() === 1
 
@@ -588,7 +571,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                         } satisfies FunctionCall
                         break
 
-                      case ParameterType.LITERAL:
+                      case ParameterType.VALUE:
                         parameter = {
                           type: paramType,
                           value
@@ -617,7 +600,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                     }
 
                     if (hasSubParameters) {
-                      const subParamType = outBufferToJSON.readInt() as StatementClassifier // 3
+                      const subParamType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt()) // 3
                       const subParamName = outBufferToJSON.readString() // same as value
                       const beginParams = outBufferToJSON.readInt() !== 0
                       const subParamCount = TriggerDataRegistry.getParameterCount(subParamType, subParamName)
@@ -668,24 +651,27 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
                 if ((content as GUITrigger).events != null) { // is GUITrigger
                   switch (functionType) {
-                    case StatementClassifier.EVENT:
+                    case StatementType.EVENT:
                       (content as GUITrigger).events.push(statement)
                       break
-                    case StatementClassifier.CONDITION:
+                    case StatementType.CONDITION:
                       (content as GUITrigger).conditions.push(statement)
                       break
-                    case StatementClassifier.ACTION:
+                    case StatementType.ACTION:
                       (content as GUITrigger).actions.push(statement)
                       break
                   }
                 } else {
                   if ((content as NestingStatement).statements == null) {
-                    (content as NestingStatement).statements = {} as unknown as Record<NestingStatementKey, Statement[]>
+                    (content as NestingStatement).statements = []
                   }
                   if ((content as NestingStatement).statements[group] != null) {
-                    ((content as NestingStatement).statements[group] as Statement[]).push(statement)
+                    ((content as NestingStatement).statements[group].statements).push(statement)
                   } else {
-                    ((content as NestingStatement).statements[group] as Statement[]) = [statement]
+                    ((content as NestingStatement).statements[group]) = {
+                      statements: [statement],
+                      type: functionType
+                    }
                   }
                 }
               }
