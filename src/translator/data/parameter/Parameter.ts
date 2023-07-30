@@ -1,6 +1,6 @@
 enum ParameterType {
-  NOTHING = 0,
-  PRESET = 1,
+  INVALID = -1,
+  PRESET = 0,
   VARIABLE = 1,
   FUNCTION = 2,
   LITERAL = 3

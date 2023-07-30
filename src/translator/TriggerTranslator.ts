@@ -57,16 +57,37 @@ function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number>
   return result
 }
 
-function getAllOfContentType (roots: TriggerContainer[], type: ContentType): TriggerContent[] {
+function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<number, TriggerContent> {
   const triggerStack: TriggerContent[] = [...roots]
-  const result: TriggerContent[] = []
+  const parentStack: TriggerContainer[] = []
+  const result = new Map<number, TriggerContent>()
   while (triggerStack.length > 0) {
     const currentTrigger = triggerStack.pop()
     if (currentTrigger == null) continue
 
-    if (currentTrigger.contentType === type) {
-      result.push(currentTrigger)
+    let parent = parentStack.pop()
+    let parentId: number | undefined
+    while (parent != null) {
+      if (parent.children.findIndex((value) => value === currentTrigger) > -1) break // this is the parent
+      parent = parentStack.pop() // go down the stack
     }
+    if (parent == null) {
+      parentId = -1
+    } else {
+      parentStack.push(parent)
+      parentId = elementReference.get(parent)
+      if (parentId == null) {
+        throw new Error('Parent ' + parent.name + ' has no ID??') // something wrong with tree traversal? :thinking:
+      }
+    }
+    if ((currentTrigger as TriggerContainer).children != null) {
+      parentStack.push(currentTrigger as TriggerContainer)
+    }
+
+    if (currentTrigger.contentType === type) {
+      result.set(parentId, currentTrigger)
+    }
+
     switch (currentTrigger.contentType) {
       case ContentType.HEADER:
       case ContentType.LIBRARY:
@@ -130,24 +151,6 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
     outBufferToWar.addInt(2) // 1 for RoC?, 2 for TFT?
 
     const elementReference = new Map<TriggerContent, number>()
-    const variables = getAllOfContentType(json.roots, ContentType.VARIABLE) as GlobalVariable[]
-    const variableRelations = new Map<number, GlobalVariable>()
-    outBufferToWar.addInt(variables.length)
-
-    for (let i = 0; i < variables.length; i++) {
-      const variable = variables[i]
-      const variableId = 0x06000000 + i // last byte 06?
-      outBufferToWar.addString(variable.name)
-      outBufferToWar.addString(variable.type)
-      outBufferToWar.addInt(1) // unknown, always 1?
-      outBufferToWar.addInt(variable.isArray ? 1 : 0)
-      outBufferToWar.addInt(variable.arrayLength)
-      outBufferToWar.addInt(variable.isInitialized ? 1 : 0)
-      outBufferToWar.addString(variable.initialValue)
-      outBufferToWar.addInt(variableId)
-      variableRelations.set(variableId, variable)
-      elementReference.set(variable, variableId)
-    }
 
     let headerCount = 0
     let libraryCount = 0
@@ -157,24 +160,25 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
     let customScriptCount = 0
     let variableCount = 0
 
-    outBufferToWar.addInt(totalElements)
     const triggerStack: TriggerContent[] = [...json.roots]
-    const parentStack: TriggerContainer[] = []
+
     while (triggerStack.length > 0) {
       const currentTrigger = triggerStack.pop()
       if (currentTrigger == null) continue
-
       let elementId: number
 
       switch (currentTrigger.contentType) {
         case ContentType.HEADER:
           elementId = 0x00000000 + headerCount++
+          triggerStack.push(...(currentTrigger as TriggerContainer).children)
           break
         case ContentType.LIBRARY:
           elementId = 0x01000000 + libraryCount++
+          triggerStack.push(...(currentTrigger as TriggerContainer).children)
           break
         case ContentType.CATEGORY:
           elementId = 0x02000000 + categoryCount++
+          triggerStack.push(...(currentTrigger as TriggerContainer).children)
           break
         case ContentType.TRIGGER:
           elementId = 0x03000000 + triggerCount++
@@ -192,7 +196,37 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
           continue
       }
       elementReference.set(currentTrigger, elementId)
+    }
 
+    const variables = getAllOfContentType(json.roots, elementReference, ContentType.VARIABLE) as Map<number, GlobalVariable>
+    outBufferToWar.addInt(variables.size)
+
+    for (const [parentId, variable] of variables.entries()) {
+      outBufferToWar.addString(variable.name)
+      outBufferToWar.addString(variable.type)
+      outBufferToWar.addInt(1) // unknown, always 1?
+      outBufferToWar.addInt(variable.isArray ? 1 : 0)
+      outBufferToWar.addInt(variable.arrayLength)
+      outBufferToWar.addInt(variable.isInitialized ? 1 : 0)
+      outBufferToWar.addString(variable.initialValue)
+      const elementId = elementReference.get(variable)
+      if (elementId == null) {
+        throw new Error(`Variable ${variable.name} missing ID`)
+      }
+      outBufferToWar.addInt(elementId)
+      outBufferToWar.addInt(parentId) // parent
+    }
+
+    triggerStack.push(...json.roots)
+    const parentStack: TriggerContainer[] = []
+    outBufferToWar.addInt(totalElements)
+    while (triggerStack.length > 0) {
+      const currentTrigger = triggerStack.pop()
+      if (currentTrigger == null) continue
+      const elementId = elementReference.get(currentTrigger)
+      if (elementId == null) {
+        throw new Error(`TriggerContent ${currentTrigger.name} missing ID`)
+      }
       outBufferToWar.addInt(ContentTypeEnumConverter.toIdentifier(currentTrigger.contentType))
 
       let parent = parentStack.pop()
@@ -222,7 +256,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
           outBufferToWar.addInt(elementId)
           outBufferToWar.addString(currentTrigger.name)
           outBufferToWar.addInt(0) // not a comment
-          outBufferToWar.addInt(0) // not expanded
+          outBufferToWar.addInt((currentTrigger as TriggerContainer).isExpanded ? 1 : 0) // not expanded
           outBufferToWar.addInt(parentId)
           triggerStack.push(...(currentTrigger as TriggerContainer).children)
           break
@@ -237,14 +271,14 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
           if (currentTrigger.contentType === ContentType.CUSTOM_SCRIPT) {
             outBufferToWar.addInt((currentTrigger as CustomScript).isEnabled ? 1 : 0)
             outBufferToWar.addInt(1) // is custom script
-            outBufferToWar.addInt(1) // initially off
-            outBufferToWar.addInt(1) // doesn't run on map init
+            outBufferToWar.addInt(0) // initially off
+            outBufferToWar.addInt(0) // doesn't run on map init
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(0) // ECA count 0
           } else if (currentTrigger.contentType === ContentType.COMMENT) {
             outBufferToWar.addInt(0) // not enabled
             outBufferToWar.addInt(0) // is custom script
-            outBufferToWar.addInt(1) // initially off
+            outBufferToWar.addInt(0) // initially off
             outBufferToWar.addInt(0) // doesn't run on map init
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(0) // ECA count 0
@@ -254,7 +288,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             (currentTrigger as GUITrigger).actions.length
             outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
             outBufferToWar.addInt(0) // is custom script
-            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 0 : 1) // initially off
+            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
             outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1) // run on map init
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(ecaCount)
@@ -262,40 +296,51 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             const writeStatements = (parent: GUITrigger | Statement, ECAs: Statement[], ecaClassifier: StatementClassifier, nestedClassifier: NestingStatementKey | -1): void => {
               for (const eca of ECAs) {
                 outBufferToWar.addInt(ecaClassifier)
-                outBufferToWar.addInt(nestedClassifier)
+
+                if (nestedClassifier !== -1) {
+                  outBufferToWar.addInt(nestedClassifier)
+                }
 
                 outBufferToWar.addString(eca.name)
                 outBufferToWar.addInt(eca.isEnabled ? 1 : 0)
-                outBufferToWar.addInt(eca.parameters.length) // instead of using TriggerDataRegistry
                 const writeParams = (parent: Statement | FunctionCall, parameters: Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>): void => {
                   for (const param of parameters) {
                     outBufferToWar.addInt(param.type)
 
-                    if (param.presetName != null) { // preset
-                      outBufferToWar.addString(param.presetName)
-                      outBufferToWar.addInt(0) // no sub params
-                      outBufferToWar.addInt(0) // is not array
-                    } else if (param.arrayIndex != null) { // array
-                      outBufferToWar.addString(param.presetName)
-                      outBufferToWar.addInt(0) // no sub params
-                      outBufferToWar.addInt(1) // is array
-                      outBufferToWar.addInt(param.arrayIndex)
-                    } else if (param.parameters != null) { // function
-                      outBufferToWar.addString(param.value)
-                      outBufferToWar.addInt(param.parameters.length > 0 ? 1 : 0)
-                      if (param.parameters.length > 0) {
-                        outBufferToWar.addInt(ecaClassifier) // ECA_Classifier??
-                        outBufferToWar.addString(param.value) // name??
-                        outBufferToWar.addInt(0) // begin function
+                    switch (param.type) {
+                      case ParameterType.INVALID:
+                        continue // skip invalid param.
+                        break
+                      case ParameterType.PRESET:
+                        outBufferToWar.addString(param.presetName)
+                        outBufferToWar.addInt(0) // no sub params
+                        outBufferToWar.addInt(0) // is not array
+                        break
+                      case ParameterType.VARIABLE:
+                        outBufferToWar.addString(param.value)
+                        outBufferToWar.addInt(0) // no sub params
+                        if (param.arrayIndex != null) {
+                          outBufferToWar.addInt(1) // is array
+                          writeParams(param, [param.arrayIndex as FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter])
+                        } else {
+                          outBufferToWar.addInt(0) // is not array
+                        }
+                        break
+                      case ParameterType.FUNCTION:
+                        outBufferToWar.addString(param.name)
+                        outBufferToWar.addInt(1) // has sub params
+                        outBufferToWar.addInt(StatementClassifier.CALL)
+                        outBufferToWar.addString(param.name)
+                        outBufferToWar.addInt(1) // begin function
                         writeParams(param, param.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
                         outBufferToWar.addInt(0) // unknown, end function maybe?
                         outBufferToWar.addInt(0) // is not array
-                      }
-                      outBufferToWar.addInt(0) // is not array
-                    } else { // literal or variable
-                      outBufferToWar.addString(param.value)
-                      outBufferToWar.addInt(0) // no sub params
-                      outBufferToWar.addInt(0) // is not array
+                        break
+                      case ParameterType.LITERAL:
+                        outBufferToWar.addString(param.value)
+                        outBufferToWar.addInt(0) // no sub params
+                        outBufferToWar.addInt(0) // is not array
+                        break
                     }
                   }
                 }
@@ -303,21 +348,41 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                 writeParams(eca, eca.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
                 if ((eca as NestingStatement).statements != null) {
                   const nestingStatement = (eca as NestingStatement)
-                  const ecaCount = nestingStatement.statements[NestingStatementKey.CONDITION].length +
-                  nestingStatement.statements[NestingStatementKey.THEN_ACTION].length +
-                  nestingStatement.statements[NestingStatementKey.ELSE_ACTION].length
+                  let ecaCount = 0
+                  if (nestingStatement.statements[NestingStatementKey.CONDITION] != null) {
+                    ecaCount += nestingStatement.statements[NestingStatementKey.CONDITION].length
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.THEN_ACTION] != null) {
+                    ecaCount += nestingStatement.statements[NestingStatementKey.THEN_ACTION].length
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.ELSE_ACTION] != null) {
+                    ecaCount += nestingStatement.statements[NestingStatementKey.ELSE_ACTION].length
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.LOOP_ACTION] != null) {
+                    ecaCount += nestingStatement.statements[NestingStatementKey.LOOP_ACTION].length
+                  }
                   outBufferToWar.addInt(ecaCount)
-                  writeStatements(eca, nestingStatement[NestingStatementKey.CONDITION] as Statement[], StatementClassifier.CALL, NestingStatementKey.CONDITION)
-                  writeStatements(eca, nestingStatement[NestingStatementKey.THEN_ACTION] as Statement[], StatementClassifier.CALL, NestingStatementKey.THEN_ACTION)
-                  writeStatements(eca, nestingStatement[NestingStatementKey.ELSE_ACTION] as Statement[], StatementClassifier.CALL, NestingStatementKey.ELSE_ACTION)
+                  if (nestingStatement.statements[NestingStatementKey.CONDITION] != null) {
+                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.CONDITION], StatementClassifier.CONDITION, NestingStatementKey.CONDITION)
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.THEN_ACTION] != null) {
+                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.THEN_ACTION], StatementClassifier.ACTION, NestingStatementKey.THEN_ACTION)
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.ELSE_ACTION] != null) {
+                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.ELSE_ACTION], StatementClassifier.ACTION, NestingStatementKey.ELSE_ACTION)
+                  }
+                  if (nestingStatement.statements[NestingStatementKey.LOOP_ACTION] != null) {
+                    // nested statements ones don't have their own, but rather their group index which overlaps between if-then-else nest and loop nest
+                    writeStatements(eca, nestingStatement.statements[NestingStatementKey.LOOP_ACTION], StatementClassifier.ACTION, NestingStatementKey.CONDITION)
+                  }
                 } else {
-                  outBufferToWar.addInt(0) // eca count
+                  outBufferToWar.addInt(0) // ecaCount
                 }
               }
             }
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, StatementClassifier.ACTION, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, StatementClassifier.EVENT, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, StatementClassifier.CONDITION, -1)
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, StatementClassifier.ACTION, -1)
           }
           break
 
@@ -414,6 +479,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
       allGlobalVariables[variableId] = globalVariable
       content[variableId] = globalVariable
+      elementRelations.set(variableId, outBufferToJSON.readInt())
     }
 
     const totalElements = outBufferToJSON.readInt()
@@ -498,12 +564,15 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                 let group: NestingStatementKey | -1 = -1
                 if (isChild) {
                   group = outBufferToJSON.readInt() as NestingStatementKey
+                  if (functionType === StatementClassifier.ACTION && group === 0) {
+                    group = NestingStatementKey.LOOP_ACTION
+                  }
                 }
                 const name = outBufferToJSON.readString()
                 const isEnabled = outBufferToJSON.readInt() === 1
 
                 const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
-                const readParams = (parent: Statement | FunctionCall, paramCount: number): void => {
+                const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
                   for (let k = 0; k < paramCount; k++) {
                     const paramType = outBufferToJSON.readInt() as ParameterType
                     const value = outBufferToJSON.readString()
@@ -526,7 +595,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                         } satisfies LiteralParameter
                         break
 
-                      case ParameterType.NOTHING:
+                      case ParameterType.INVALID:
                         parameter = {
                           type: paramType
                         }
@@ -556,7 +625,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                         throw new Error('Missing parameter count for function ' + subParamName)
                       }
 
-                      readParams(parameter as FunctionCall, subParamCount)
+                      readParams(parameter as FunctionCall, subParamCount, false)
                     }
 
                     if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
@@ -572,26 +641,25 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                       isArray = false
                     }
                     if (isArray) {
-                      (parameter as ArrayVariableParameter).arrayIndex = outBufferToJSON.readInt()
+                      readParams(parameter as ArrayVariableParameter, 1, true)
                     }
 
-                    parent.parameters.push(parameter as Parameter)
+                    if (arrayIndex) {
+                      (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
+                    } else {
+                      (parent as FunctionCall).parameters.push(parameter as Parameter)
+                    }
                   }
                 }
-                const statement: Statement | NestingStatement = {
+                const statement: Statement = {
                   name,
                   isEnabled,
-                  statements: {
-                    [NestingStatementKey.CONDITION]: [],
-                    [NestingStatementKey.THEN_ACTION]: [],
-                    [NestingStatementKey.ELSE_ACTION]: []
-                  },
                   parameters: []
                 }
                 if (parameterCount == null) {
                   throw new Error('Missing parameter count for function ' + name)
                 }
-                readParams(statement, parameterCount)
+                readParams(statement, parameterCount, false)
 
                 if (gameVersion === 7) {
                   const nestedEcaCount = outBufferToJSON.readInt()
@@ -611,7 +679,14 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                       break
                   }
                 } else {
-                  ((content as NestingStatement).statements[group] as Statement[]).push(statement)
+                  if ((content as NestingStatement).statements == null) {
+                    (content as NestingStatement).statements = {} as unknown as Record<NestingStatementKey, Statement[]>
+                  }
+                  if ((content as NestingStatement).statements[group] != null) {
+                    ((content as NestingStatement).statements[group] as Statement[]).push(statement)
+                  } else {
+                    ((content as NestingStatement).statements[group] as Statement[]) = [statement]
+                  }
                 }
               }
             }
