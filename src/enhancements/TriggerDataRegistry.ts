@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { LoggerFactory } from '../logging/LoggerFactory'
-import { ECA_Classifier } from '../translator/data/Trigger'
 import { TriggerActions, TriggerCalls, TriggerConditions, TriggerEvents, type VariadicParameterTriggerDefinition } from './data/TriggerDefinition'
+import { StatementClassifier } from '../translator/data/statement/Statement'
 
 const log = LoggerFactory.createLogger('TriggerDataLoader')
 
@@ -64,31 +64,31 @@ const TriggerDataRegistry = {
     }
   },
 
-  getParameterCount: function (classification: ECA_Classifier | TriggerDataSections, name: string): number | undefined {
+  getParameterCount: function (classification: StatementClassifier | TriggerDataSections, name: string): number | undefined {
     let sectionRegistry: Record<string, number | undefined> | undefined
     switch (classification) {
-      case ECA_Classifier.EVENT:
+      case StatementClassifier.EVENT:
       case TriggerDataSections.TRIGGER_EVENTS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_EVENTS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case ECA_Classifier.CONDITION:
+      case StatementClassifier.CONDITION:
       case TriggerDataSections.TRIGGER_CONDITIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CONDITIONS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case ECA_Classifier.ACTION:
+      case StatementClassifier.ACTION:
       case TriggerDataSections.TRIGGER_ACTIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_ACTIONS)
         if (sectionRegistry != null) {
           return sectionRegistry[name]
         }
         break
-      case ECA_Classifier.CALL:
+      case StatementClassifier.CALL:
       case TriggerDataSections.TRIGGER_CALLS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CALLS)
         if (sectionRegistry != null) {

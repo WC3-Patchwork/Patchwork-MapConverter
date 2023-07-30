@@ -6,9 +6,10 @@ import { translatorRecord } from './TranslatorRecord'
 import { type Data, ImportsTranslator, type Translator } from 'wc3maptranslator'
 import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
-import { type TriggerContainer } from '../translator/data/Trigger'
 import { TriggersTranslator } from '../translator/TriggerTranslator'
 import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
+import { type TriggerContainer } from '../translator/data/TriggerContainer'
+import { type MapHeader } from '../translator/data/MapHeader'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -73,11 +74,15 @@ async function processTriggers (triggersFile: string, customScriptsFile?: string
       }
       throw new Error('Failed reading custom scripts file.')
     }
-    asyncLog.info('Read war3map.wct file, found', csResults.json.length, 'custom scripts.')
+    asyncLog.info('Read war3map.wct file, found', csResults.json.scripts.length, 'custom scripts.')
 
     // Combine custom scripts into trigger JSON
     for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
-      triggerJson.scriptReferences[i].script = csResults.json[i]
+      triggerJson.scriptReferences[i].script = csResults.json.scripts[i]
+    }
+
+    for (let i = 0; i < csResults.json.headerComments.length; i++) {
+      (triggerJson.roots[i] as MapHeader).description = csResults.json.headerComments[i]
     }
   }
 

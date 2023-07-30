@@ -8,6 +8,12 @@ import { mkdir, readFile, writeFile } from 'fs/promises'
 
 import EnhancementManager from '../enhancements/EnhancementManager'
 import ImportComposer from '../enhancements/ImportComposer'
+import { type TriggerTranslatorOutput, TriggersTranslator } from '../translator/TriggerTranslator'
+import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
+import { type TriggerContainer } from '../translator/data/TriggerContainer'
+import { ContentType, type TriggerContent } from '../translator/data/content/TriggerContent'
+import { type ScriptContent } from '../translator/data/properties/ScriptContent'
+import { type MapHeader } from '../translator/data/MapHeader'
 
 const log = LoggerFactory.createLogger('Json2War')
 
@@ -44,6 +50,59 @@ async function exportImportsFile (data: Data.Import[], output: string): Promise<
   }
 }
 
+function getAllWithProperty (roots: TriggerContainer[], propertyName: string): TriggerContent[] {
+  const triggerStack: TriggerContent[] = [...roots.reverse()]
+  const result: TriggerContent[] = []
+  while (triggerStack.length > 0) {
+    const currentTrigger = triggerStack.pop()
+    if (currentTrigger == null) continue
+
+    if ((currentTrigger as unknown as Record<string, unknown>)[propertyName] != null) {
+      result.push(currentTrigger)
+    }
+    switch (currentTrigger.contentType) {
+      case ContentType.HEADER:
+      case ContentType.LIBRARY:
+      case ContentType.CATEGORY:
+        triggerStack.push(...(currentTrigger as TriggerContainer).children.reverse())
+    }
+  }
+
+  return result
+}
+
+async function exportTriggers (input: string, output: string): Promise<void> {
+  const tasks: Array<Promise<unknown>> = []
+  const triggerTranslator = TriggersTranslator.getInstance()
+  const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
+  triggerLog.info('Reading triggers.json file')
+  const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
+  const triggerAndScript: TriggerTranslatorOutput = {
+    roots: buffer,
+    scriptReferences: getAllWithProperty(buffer, 'script') as ScriptContent[]
+  }
+  const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
+  tasks.push(writeFile(path.join(output, 'war3map.wtg'), triggerResult.buffer)
+    .then(() => triggerLog.info('Finished exporting triggers.')))
+
+  const scriptTranslator = CustomScriptsTranslator.getInstance()
+  const scriptLog = log.getSubLogger({ name: `${scriptTranslator.constructor.name}-${translatorCount++}` })
+
+  const scriptArg: { headerComments: string[], scripts: string[] } = { headerComments: [], scripts: [] }
+  for (const trigger of triggerAndScript.scriptReferences) {
+    if ((trigger as MapHeader).children != null) { // Found header
+      scriptArg.headerComments.push(trigger.description)
+    }
+    scriptArg.scripts.push(trigger.script)
+  }
+
+  const scriptResult = scriptTranslator.jsonToWar(scriptArg)
+  tasks.push(writeFile(path.join(output, 'war3map.wct'), scriptResult.buffer)
+    .then(() => scriptLog.info('Finished exporting custom scripts.')))
+
+  await Promise.all(tasks)
+}
+
 const Json2WarService = {
   convert: async function (inputPath: string, outputPath: string): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
@@ -70,21 +129,26 @@ const Json2WarService = {
         }
       } else {
         let translator: Translator<unknown> | null = null
+
+        if (file.name.endsWith('triggers.json')) {
+          promises.push(exportTriggers(file.path, outputPath))
+          continue
+        }
+
         for (const [extension, thisTranslator] of Object.entries(translatorRecord)) {
           if (file.name.includes(extension)) {
             translator = thisTranslator
             break
           }
         }
+        let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
         if (translator != null) {
-          let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
           outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove .json extension
 
           if (!EnhancementManager.smartImport || !(translator instanceof ImportsTranslator)) {
             promises.push(processFile(file.path, translator, outputFile))
           }
         } else {
-          const outputFile = path.join(outputPath, path.relative(inputPath, file.path))
           promises.push(copyFileWithDirCreation(file.path, outputFile))
         }
       }
