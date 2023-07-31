@@ -7,6 +7,7 @@ import War2JsonService from './converter/War2JsonService'
 import Json2WarService from './converter/Json2WarService'
 import EnhancementManager from './enhancements/EnhancementManager'
 import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
+import path from 'path'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -18,7 +19,8 @@ program
   .description(DESCRIPTION)
   .option('-d, --debug', 'output extra debugging')
   .option('-si, --smart-imports', 'unpack/compile imports using/into .imp file as reference, ignores .json version if enabled')
-  .addOption(new Option('-imp, --importsFolderName', 'map project imports folder name for smart-imports').default('imports'))
+  .addOption(new Option('-imp, --imports-folder-name <importsFolderName>', 'map project imports folder name for smart-imports').default('imports'))
+  .addOption(new Option('-td, --trigger-data <triggerData>', 'TriggerData.txt file location for reading triggers file.').default(path.join(__dirname, 'triggerdata.txt')))
   .hook('preAction', (thisCommand, actionCommand) => {
     const options = thisCommand.opts()
     if (options.debug === true) LoggerFactory.setLogLevel(LOG_DEBUG)
@@ -29,6 +31,9 @@ program
       } else {
         EnhancementManager.importFolder = options.importsFolderName as string
       }
+    }
+    if (options.triggerData != null) {
+      TriggerDataRegistry.loadTriggerData(options.triggerData as string)
     }
     log = LoggerFactory.createLogger('main')
     log.debug('command:', actionCommand.name())
@@ -42,10 +47,8 @@ program
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<trigger-data-filepath>', 'WE\'s trigger data ini file location required for converting WTG file.').default('triggerdata.txt').argOptional())
-  .action(async (input: string, output: string, triggerDataFilepath: string) => {
+  .action(async (input: string, output: string) => {
     try {
-      TriggerDataRegistry.loadTriggerData(triggerDataFilepath)
-
       await War2JsonService.convert(input, output)
     } catch (exception) {
       log.fatal(exception)
