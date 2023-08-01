@@ -78,7 +78,10 @@ async function processTriggers (triggersFile: string, customScriptsFile?: string
 
     // Combine custom scripts into trigger JSON
     for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
-      triggerJson.scriptReferences[i].script = csResults.json.scripts[i]
+      const scriptRef = triggerJson.scriptReferences[i]
+      if (scriptRef != null) {
+        scriptRef.script = csResults.json.scripts[i]
+      }
     }
 
     for (let i = 0; i < csResults.json.headerComments.length; i++) {

@@ -26,7 +26,7 @@ import { ParameterType } from './data/parameter/ParameterType'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
-  scriptReferences: ScriptContent[]
+  scriptReferences: Array<ScriptContent | null>
 }
 
 function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number> {
@@ -61,10 +61,10 @@ function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number>
   return result
 }
 
-function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<number, TriggerContent> {
+function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const parentStack: TriggerContainer[] = []
-  const result = new Map<number, TriggerContent>()
+  const result = new Map<TriggerContent, number>()
   while (triggerStack.length > 0) {
     const currentTrigger = triggerStack.pop()
     if (currentTrigger == null) continue
@@ -89,7 +89,7 @@ function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<T
     }
 
     if (currentTrigger.contentType === type) {
-      result.set(parentId, currentTrigger)
+      result.set(currentTrigger, parentId)
     }
 
     switch (currentTrigger.contentType) {
@@ -202,10 +202,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
       elementReference.set(currentTrigger, elementId)
     }
 
-    const variables = getAllOfContentType(json.roots, elementReference, ContentType.VARIABLE) as Map<number, GlobalVariable>
+    const variables = getAllOfContentType(json.roots, elementReference, ContentType.VARIABLE) as Map<GlobalVariable, number>
     outBufferToWar.addInt(variables.size)
 
-    for (const [parentId, variable] of variables.entries()) {
+    for (const [variable, parentId] of variables.entries()) {
       outBufferToWar.addString(variable.name)
       outBufferToWar.addString(variable.type)
       outBufferToWar.addInt(1) // unknown, always 1?
@@ -269,7 +269,11 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
         case ContentType.COMMENT:
         case ContentType.CUSTOM_SCRIPT:
           outBufferToWar.addString(currentTrigger.name)
-          outBufferToWar.addString((currentTrigger as GUITrigger).description)
+          if (currentTrigger.contentType === ContentType.COMMENT) {
+            outBufferToWar.addString((currentTrigger as TriggerComment).comment)
+          } else {
+            outBufferToWar.addString((currentTrigger as GUITrigger).description)
+          }
           outBufferToWar.addInt(currentTrigger.contentType === ContentType.COMMENT ? 1 : 0)
           outBufferToWar.addInt(elementId)
           if (currentTrigger.contentType === ContentType.CUSTOM_SCRIPT) {
@@ -333,10 +337,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                       case ParameterType.FUNCTION:
                         outBufferToWar.addString(param.name)
                         outBufferToWar.addInt(1) // has sub params
-                        outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(StatementType.CALL))
-                        outBufferToWar.addString(param.name)
+                        outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(param.statementType))
+                        outBufferToWar.addString(param.statement.name)
                         outBufferToWar.addInt(1) // begin function
-                        writeParams(param, param.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
+                        writeParams(param, param.statement.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
                         outBufferToWar.addInt(0) // unknown, end function maybe?
                         outBufferToWar.addInt(0) // is not array
                         break
@@ -354,12 +358,16 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                   const nestingStatement = (eca as NestingStatement)
                   let ecaCount = 0
                   for (const typedStatements of nestingStatement.statements) {
-                    ecaCount += typedStatements.statements.length
+                    if (typedStatements != null) {
+                      ecaCount += typedStatements.statements.length
+                    }
                   }
 
                   outBufferToWar.addInt(ecaCount)
                   for (let group = 0; group < nestingStatement.statements.length; group++) {
-                    writeStatements(eca, nestingStatement.statements[group].statements, nestingStatement.statements[group].type, group)
+                    if (nestingStatement.statements[group] != null) {
+                      writeStatements(eca, nestingStatement.statements[group].statements, nestingStatement.statements[group].type, group)
+                    }
                   }
                 } else {
                   outBufferToWar.addInt(0) // ecaCount
@@ -386,369 +394,393 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
   public warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     const outBufferToJSON = new W3Buffer(buffer)
 
-    const fileId = outBufferToJSON.readChars(4) // WTG!
-    const formatVersion = outBufferToJSON.readInt() // 04 00 00 80
-    const gameVersion = outBufferToJSON.readInt() // 4 = Roc, 7 = TFT
+    try {
+      const fileId = outBufferToJSON.readChars(4) // WTG!
+      const formatVersion = outBufferToJSON.readInt() // 04 00 00 80
+      const gameVersion = outBufferToJSON.readInt() // 4 = Roc, 7 = TFT
 
-    const headerCount = outBufferToJSON.readInt() // always 1..?
-    const deletedHeaderCount = outBufferToJSON.readInt() //  Includes both existing and deleted headers. (Map script headers?)
-    for (let i = 0; i < deletedHeaderCount; i++) {
-      const headerId = outBufferToJSON.readInt() // always 0..?
-    }
-
-    const libraryCount = outBufferToJSON.readInt()
-    const deletedLibraryCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedHeaderCount; i++) {
-      const libraryId = outBufferToJSON.readInt()
-    }
-
-    const triggerCategoryCount = outBufferToJSON.readInt()
-    const deletedCategoryCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedCategoryCount; i++) { // trigger categories
-      const categoryId = outBufferToJSON.readInt()
-    }
-
-    const triggerCount = outBufferToJSON.readInt()
-    const deletedTriggerCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedTriggerCount; i++) {
-      const triggerId = outBufferToJSON.readInt()
-    }
-
-    const triggerCommentCount = outBufferToJSON.readInt()
-    const deletedTriggerCommentCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedTriggerCommentCount; i++) {
-      const triggerCommentId = outBufferToJSON.readInt()
-    }
-
-    const customScriptCount = outBufferToJSON.readInt()
-    const deletedCustomScriptCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedCustomScriptCount; i++) {
-      const customScriptId = outBufferToJSON.readInt()
-    }
-
-    const variableCount = outBufferToJSON.readInt()
-    const deletedVariableCount = outBufferToJSON.readInt()
-    for (let i = 0; i < deletedVariableCount; i++) {
-      const variableId = outBufferToJSON.readInt()
-    }
-
-    outBufferToJSON.readInt() // unknown
-    outBufferToJSON.readInt() // unknown
-    const triggerDefinitionVersion = outBufferToJSON.readInt() // 1 for RoC?, 2 for TFT?
-
-    const elementRelations = new Map<number, number>()
-    const containers: Record<number, TriggerContainer> = {}
-    const content: Record<number, TriggerContent> = {}
-    const customScripts: ScriptContent[] = []
-    const allGlobalVariables: Record<number, GlobalVariable> = {}
-    const existingVariablesCount = outBufferToJSON.readInt()
-    for (let i = 0; i < existingVariablesCount; i++) {
-      const globalVariable: GlobalVariable = {
-        name: '',
-        contentType: ContentType.VARIABLE,
-        type: '',
-        isArray: false,
-        arrayLength: 0,
-        isInitialized: false,
-        initialValue: ''
+      const headerCount = outBufferToJSON.readInt() // always 1..?
+      const deletedHeaderCount = outBufferToJSON.readInt() //  Includes both existing and deleted headers. (Map script headers?)
+      for (let i = 0; i < deletedHeaderCount; i++) {
+        const headerId = outBufferToJSON.readInt() // always 0..?
       }
-      globalVariable.name = outBufferToJSON.readString()
-      globalVariable.type = outBufferToJSON.readString()
-      outBufferToJSON.readInt() // unknown, always 1?
-      globalVariable.isArray = outBufferToJSON.readInt() === 1
-      if (gameVersion === 7) {
-        globalVariable.arrayLength = outBufferToJSON.readInt()
+
+      const libraryCount = outBufferToJSON.readInt()
+      const deletedLibraryCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedHeaderCount; i++) {
+        const libraryId = outBufferToJSON.readInt()
       }
-      globalVariable.isInitialized = outBufferToJSON.readInt() === 1
-      globalVariable.initialValue = outBufferToJSON.readString()
-      const variableId = outBufferToJSON.readInt() // last byte 06?
 
-      allGlobalVariables[variableId] = globalVariable
-      content[variableId] = globalVariable
-      elementRelations.set(variableId, outBufferToJSON.readInt())
-    }
+      const triggerCategoryCount = outBufferToJSON.readInt()
+      const deletedCategoryCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedCategoryCount; i++) { // trigger categories
+        const categoryId = outBufferToJSON.readInt()
+      }
 
-    const totalElements = outBufferToJSON.readInt()
-    for (let i = 0; i < totalElements; i++) {
-      const type = ContentTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+      const triggerCount = outBufferToJSON.readInt()
+      const deletedTriggerCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedTriggerCount; i++) {
+        const triggerId = outBufferToJSON.readInt()
+      }
 
-      let elementId: number
-      let name: string
-      let description: string
-      let isComment = false
-      let isExpanded = false
-      let isEnabled = false
-      let isCustomScript = false
-      let initiallyOff = false
-      let runOnMapInit = false
-      let ecaCount = 0
-      let parentElementId: number
-      let trigger: GUITrigger
+      const triggerCommentCount = outBufferToJSON.readInt()
+      const deletedTriggerCommentCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedTriggerCommentCount; i++) {
+        const triggerCommentId = outBufferToJSON.readInt()
+      }
 
-      let container: unknown
+      const customScriptCount = outBufferToJSON.readInt()
+      const deletedCustomScriptCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedCustomScriptCount; i++) {
+        const customScriptId = outBufferToJSON.readInt()
+      }
 
-      switch (type) {
-        case ContentType.HEADER:
-        case ContentType.LIBRARY:
-        case ContentType.CATEGORY:
+      const variableCount = outBufferToJSON.readInt()
+      const deletedVariableCount = outBufferToJSON.readInt()
+      for (let i = 0; i < deletedVariableCount; i++) {
+        const variableId = outBufferToJSON.readInt()
+      }
 
-          elementId = outBufferToJSON.readInt()
-          name = outBufferToJSON.readString()
-          if (gameVersion === 7) {
-            isComment = outBufferToJSON.readInt() === 1
-          }
-          isExpanded = outBufferToJSON.readInt() === 1
-          parentElementId = outBufferToJSON.readInt()
+      outBufferToJSON.readInt() // unknown
+      outBufferToJSON.readInt() // unknown
+      const triggerDefinitionVersion = outBufferToJSON.readInt() // 1 for RoC?, 2 for TFT?
 
-          elementRelations.set(elementId, parentElementId)
-          container = {
-            name,
-            isExpanded,
-            contentType: type,
-            children: []
-          }
-          containers[elementId] = container as TriggerContainer
+      const elementRelations = new Map<number, number>()
+      const containers: Record<number, TriggerContainer> = {}
+      const content: Record<number, TriggerContent> = {}
+      const customScripts: Array<ScriptContent | null> = []
+      const allGlobalVariables: Record<number, GlobalVariable> = {}
+      const existingVariablesCount = outBufferToJSON.readInt()
+      for (let i = 0; i < existingVariablesCount; i++) {
+        const globalVariable: GlobalVariable = {
+          name: '',
+          contentType: ContentType.VARIABLE,
+          type: '',
+          isArray: false,
+          arrayLength: 0,
+          isInitialized: false,
+          initialValue: ''
+        }
+        globalVariable.name = outBufferToJSON.readString()
+        globalVariable.type = outBufferToJSON.readString()
+        outBufferToJSON.readInt() // unknown, always 1?
+        globalVariable.isArray = outBufferToJSON.readInt() === 1
+        if (gameVersion === 7) {
+          globalVariable.arrayLength = outBufferToJSON.readInt()
+        }
+        globalVariable.isInitialized = outBufferToJSON.readInt() === 1
+        globalVariable.initialValue = outBufferToJSON.readString()
+        const variableId = outBufferToJSON.readInt() // last byte 06?
 
-          if (type === ContentType.HEADER) {
-            customScripts.push(container as ScriptContent)
-          }
-          break
+        allGlobalVariables[variableId] = globalVariable
+        content[variableId] = globalVariable
+        elementRelations.set(variableId, outBufferToJSON.readInt())
+      }
 
-        case ContentType.TRIGGER:
-        case ContentType.COMMENT:
-        case ContentType.CUSTOM_SCRIPT:
-          name = outBufferToJSON.readString()
-          description = outBufferToJSON.readString()
-          if (gameVersion === 7) {
-            isComment = outBufferToJSON.readInt() === 1
-          }
-          elementId = outBufferToJSON.readInt()
-          isEnabled = outBufferToJSON.readInt() === 1
-          isCustomScript = outBufferToJSON.readInt() === 1
-          initiallyOff = outBufferToJSON.readInt() === 1
-          runOnMapInit = outBufferToJSON.readInt() === 0
-          parentElementId = outBufferToJSON.readInt()
-          elementRelations.set(elementId, parentElementId)
-          ecaCount = outBufferToJSON.readInt()
+      const totalElements = outBufferToJSON.readInt()
+      for (let i = 0; i < totalElements; i++) {
+        const type = ContentTypeEnumConverter.toEnum(outBufferToJSON.readInt())
 
-          if (type === ContentType.TRIGGER) {
-            trigger = {
-              name,
-              contentType: ContentType.TRIGGER,
-              description,
-              isEnabled,
-              initiallyOff,
-              runOnMapInit,
-              events: [],
-              conditions: [],
-              actions: []
+        let elementId: number
+        let name: string
+        let description: string
+        let isComment = false
+        let isExpanded = false
+        let isEnabled = false
+        let isCustomScript = false
+        let initiallyOff = false
+        let runOnMapInit = false
+        let ecaCount = 0
+        let parentElementId: number
+        let trigger: GUITrigger
+
+        let container: unknown
+
+        switch (type) {
+          case ContentType.HEADER:
+          case ContentType.LIBRARY:
+          case ContentType.CATEGORY:
+
+            elementId = outBufferToJSON.readInt()
+            name = outBufferToJSON.readString()
+            if (gameVersion === 7) {
+              isComment = outBufferToJSON.readInt() === 1
             }
-            const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
-              for (let j = 0; j < functionCount; j++) {
-                const functionType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+            isExpanded = outBufferToJSON.readInt() === 1
+            parentElementId = outBufferToJSON.readInt()
 
-                let group = -1
-                if (isChild) {
-                  group = outBufferToJSON.readInt()
-                }
-                const name = outBufferToJSON.readString()
-                const isEnabled = outBufferToJSON.readInt() === 1
+            elementRelations.set(elementId, parentElementId)
+            container = {
+              name,
+              isExpanded,
+              contentType: type,
+              children: []
+            }
+            containers[elementId] = container as TriggerContainer
 
-                const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
-                const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
-                  for (let k = 0; k < paramCount; k++) {
-                    const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
-                    const value = outBufferToJSON.readString()
-                    const hasSubParameters = outBufferToJSON.readInt() === 1
+            if (type === ContentType.HEADER) {
+              customScripts.push(container as ScriptContent)
+            }
+            break
 
-                    let parameter: unknown
-                    switch (paramType) {
-                      case ParameterType.FUNCTION:
-                        parameter = {
-                          name: value,
-                          type: paramType,
-                          parameters: []
-                        } satisfies FunctionCall
-                        break
+          case ContentType.TRIGGER:
+          case ContentType.COMMENT:
+          case ContentType.CUSTOM_SCRIPT:
+            name = outBufferToJSON.readString()
 
-                      case ParameterType.VALUE:
-                        parameter = {
-                          type: paramType,
-                          value
-                        } satisfies LiteralParameter
-                        break
+            description = outBufferToJSON.readString()
+            if (gameVersion === 7) {
+              isComment = outBufferToJSON.readInt() === 1
+            }
+            elementId = outBufferToJSON.readInt()
+            isEnabled = outBufferToJSON.readInt() === 1
+            isCustomScript = outBufferToJSON.readInt() === 1
+            initiallyOff = outBufferToJSON.readInt() === 1
+            runOnMapInit = outBufferToJSON.readInt() === 0
+            parentElementId = outBufferToJSON.readInt()
+            elementRelations.set(elementId, parentElementId)
+            ecaCount = outBufferToJSON.readInt()
 
-                      case ParameterType.INVALID:
-                        parameter = {
-                          type: paramType
-                        }
-                        break
+            if (type === ContentType.TRIGGER) {
+              trigger = {
+                name,
+                contentType: ContentType.TRIGGER,
+                description,
+                isEnabled,
+                initiallyOff,
+                runOnMapInit,
+                events: [],
+                conditions: [],
+                actions: []
+              }
+              const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
+                for (let j = 0; j < functionCount; j++) {
+                  const functionType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
 
-                      case ParameterType.PRESET:
-                        parameter = {
-                          type: paramType,
-                          presetName: value
-                        } satisfies PresetParameter
-                        break
+                  let group = -1
+                  if (isChild) {
+                    group = outBufferToJSON.readInt()
+                  }
+                  const name = outBufferToJSON.readString()
+                  const isEnabled = outBufferToJSON.readInt() === 1
 
-                      case ParameterType.VARIABLE:
-                        parameter = {
-                          type: paramType,
-                          value
-                        } satisfies VariableParameter
-                        break
-                    }
+                  const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
+                  const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
+                    for (let k = 0; k < paramCount; k++) {
+                      const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+                      const value = outBufferToJSON.readString()
+                      const hasSubParameters = outBufferToJSON.readInt() === 1
 
-                    if (hasSubParameters) {
-                      const subParamType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt()) // 3
-                      const subParamName = outBufferToJSON.readString() // same as value
-                      const beginParams = outBufferToJSON.readInt() !== 0
-                      const subParamCount = TriggerDataRegistry.getParameterCount(subParamType, subParamName)
-                      if (subParamCount == null) {
-                        throw new Error('Missing parameter count for function ' + subParamName)
+                      let parameter: unknown
+                      switch (paramType) {
+                        case ParameterType.FUNCTION:
+                          parameter = {
+                            name: value,
+                            type: paramType,
+                            statementType: StatementType.CALL,
+                            statement: {} as unknown as Statement
+                          } satisfies FunctionCall
+                          break
+
+                        case ParameterType.VALUE:
+                          parameter = {
+                            type: paramType,
+                            value
+                          } satisfies LiteralParameter
+                          break
+
+                        case ParameterType.INVALID:
+                          parameter = {
+                            type: paramType
+                          }
+                          break
+
+                        case ParameterType.PRESET:
+                          parameter = {
+                            type: paramType,
+                            presetName: value
+                          } satisfies PresetParameter
+                          break
+
+                        case ParameterType.VARIABLE:
+                          parameter = {
+                            type: paramType,
+                            value
+                          } satisfies VariableParameter
+                          break
                       }
 
-                      readParams(parameter as FunctionCall, subParamCount, false)
-                    }
+                      if (hasSubParameters) {
+                        const functionCall = parameter as FunctionCall
+                        functionCall.statementType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+                        functionCall.statement.name = outBufferToJSON.readString()
+                        functionCall.statement.parameters = []
+                        const beginParams = outBufferToJSON.readInt() !== 0
+                        const subParamCount = TriggerDataRegistry.getParameterCount(functionCall.statementType, functionCall.statement.name)
+                        if (subParamCount == null) {
+                          throw new Error('Missing parameter count for function ' + functionCall.statement.name)
+                        }
 
-                    if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
-                      outBufferToJSON.readInt()
-                    } else if (gameVersion === 7 && hasSubParameters) {
-                      outBufferToJSON.readInt()
-                    }
+                        readParams(functionCall.statement, subParamCount, false)
+                      }
 
-                    let isArray: boolean
-                    if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
-                      isArray = outBufferToJSON.readInt() === 1
-                    } else {
-                      isArray = false
-                    }
-                    if (isArray) {
-                      readParams(parameter as ArrayVariableParameter, 1, true)
-                    }
+                      if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
+                        outBufferToJSON.readInt()
+                      } else if (gameVersion === 7 && hasSubParameters) {
+                        outBufferToJSON.readInt()
+                      }
 
-                    if (arrayIndex) {
-                      (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
-                    } else {
-                      (parent as FunctionCall).parameters.push(parameter as Parameter)
+                      let isArray: boolean
+                      if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
+                        isArray = outBufferToJSON.readInt() === 1
+                      } else {
+                        isArray = false
+                      }
+                      if (isArray) {
+                        readParams(parameter as ArrayVariableParameter, 1, true)
+                      }
+
+                      if (arrayIndex) {
+                        (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
+                      } else if ((parent as FunctionCall).statement != null) {
+                        (parent as FunctionCall).statement.parameters.push(parameter as Parameter)
+                      } else {
+                        (parent as Statement).parameters.push(parameter as Parameter)
+                      }
                     }
                   }
-                }
-                const statement: Statement = {
-                  name,
-                  isEnabled,
-                  parameters: []
-                }
-                if (parameterCount == null) {
-                  throw new Error('Missing parameter count for function ' + name)
-                }
-                readParams(statement, parameterCount, false)
-
-                if (gameVersion === 7) {
-                  const nestedEcaCount = outBufferToJSON.readInt()
-                  readStatements(statement, nestedEcaCount, true)
-                }
-
-                if ((content as GUITrigger).events != null) { // is GUITrigger
-                  switch (functionType) {
-                    case StatementType.EVENT:
-                      (content as GUITrigger).events.push(statement)
-                      break
-                    case StatementType.CONDITION:
-                      (content as GUITrigger).conditions.push(statement)
-                      break
-                    case StatementType.ACTION:
-                      (content as GUITrigger).actions.push(statement)
-                      break
+                  const statement: Statement = {
+                    name,
+                    isEnabled,
+                    parameters: []
                   }
-                } else {
-                  if ((content as NestingStatement).statements == null) {
-                    (content as NestingStatement).statements = []
+                  if (parameterCount == null) {
+                    throw new Error('Missing parameter count for function ' + name)
                   }
-                  if ((content as NestingStatement).statements[group] != null) {
-                    ((content as NestingStatement).statements[group].statements).push(statement)
+                  readParams(statement, parameterCount, false)
+
+                  if (gameVersion === 7) {
+                    const nestedEcaCount = outBufferToJSON.readInt()
+                    readStatements(statement, nestedEcaCount, true)
+                  }
+
+                  if ((content as GUITrigger).events != null) { // is GUITrigger
+                    switch (functionType) {
+                      case StatementType.EVENT:
+                        (content as GUITrigger).events.push(statement)
+                        break
+                      case StatementType.CONDITION:
+                        (content as GUITrigger).conditions.push(statement)
+                        break
+                      case StatementType.ACTION:
+                        (content as GUITrigger).actions.push(statement)
+                        break
+                    }
                   } else {
-                    ((content as NestingStatement).statements[group]) = {
-                      statements: [statement],
-                      type: functionType
+                    if ((content as NestingStatement).statements == null) {
+                      (content as NestingStatement).statements = []
+                    }
+                    if ((content as NestingStatement).statements[group] != null) {
+                      ((content as NestingStatement).statements[group].statements).push(statement)
+                    } else {
+                      ((content as NestingStatement).statements[group]) = {
+                        statements: [statement],
+                        type: functionType
+                      }
                     }
                   }
                 }
               }
+              readStatements(trigger, ecaCount, false)
+              content[elementId] = trigger
+              customScripts.push(null)
+            } else if (type === ContentType.COMMENT) {
+              content[elementId] = {
+                name,
+                contentType: ContentType.COMMENT,
+                comment: description
+              } satisfies TriggerComment as TriggerContent
+            } else if (type === ContentType.CUSTOM_SCRIPT) {
+              const script = {
+                name,
+                contentType: ContentType.CUSTOM_SCRIPT,
+                description,
+                isEnabled,
+                script: ''
+              }
+              content[elementId] = script
+              customScripts.push(script)
             }
-            readStatements(trigger, ecaCount, false)
-            content[elementId] = trigger
-          } else if (type === ContentType.COMMENT) {
-            content[elementId] = {
-              name,
-              contentType: ContentType.COMMENT,
-              comment: description
-            } satisfies TriggerComment as TriggerContent
-          } else if (type === ContentType.CUSTOM_SCRIPT) {
-            const script = {
-              name,
-              contentType: ContentType.CUSTOM_SCRIPT,
-              description,
-              isEnabled,
-              script: ''
-            }
-            content[elementId] = script
-            customScripts.push(script)
+            break
+
+          case ContentType.VARIABLE:
+            elementId = outBufferToJSON.readInt()
+            name = outBufferToJSON.readString() // excess data?
+            parentElementId = outBufferToJSON.readInt()
+
+            elementRelations.set(elementId, parentElementId)
+            break
+        }
+      }
+
+      const roots: TriggerContainer[] = []
+      const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
+      // Generate data tree structure
+      for (const [elementId, parentId] of elementRelations.entries()) {
+        if (parentId === -1) {
+          if (containers[elementId] != null) {
+            roots.push(containers[elementId])
           }
-          break
+        } else {
+          let parent: TriggerContainer | undefined
+          if (containers[parentId] != null) {
+            parent = containers[parentId]
+          }
 
-        case ContentType.VARIABLE:
-          elementId = outBufferToJSON.readInt()
-          name = outBufferToJSON.readString() // excess data?
-          parentElementId = outBufferToJSON.readInt()
+          let element: TriggerContainer | TriggerContent | undefined
+          if (containers[elementId] != null) {
+            element = containers[elementId]
+          } else if (content[elementId] != null) {
+            element = content[elementId]
+          }
 
-          elementRelations.set(elementId, parentElementId)
-          break
+          if (parent == null || element == null) {
+            missingElements.push({
+              foundElement: element != null,
+              foundParent: parent != null,
+              elementId,
+              parentId,
+              data: parent != null ? parent : element
+            })
+            continue
+          }
+
+          parent.children.push(element)
+        }
       }
-    }
 
-    const roots: TriggerContainer[] = []
-    const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
-    // Generate data tree structure
-    for (const [elementId, parentId] of elementRelations.entries()) {
-      if (parentId === -1) {
-        if (containers[elementId] != null) {
-          roots.push(containers[elementId])
-        }
-      } else {
-        let parent: TriggerContainer | undefined
-        if (containers[parentId] != null) {
-          parent = containers[parentId]
-        }
-
-        let element: TriggerContainer | TriggerContent | undefined
-        if (containers[elementId] != null) {
-          element = containers[elementId]
-        } else if (content[elementId] != null) {
-          element = content[elementId]
-        }
-
-        if (parent == null || element == null) {
-          missingElements.push({
-            foundElement: element != null,
-            foundParent: parent != null,
-            elementId,
-            parentId,
-            data: parent != null ? parent : element
-          })
-          continue
-        }
-
-        parent.children.push(element)
+      return {
+        json: {
+          roots,
+          scriptReferences: customScripts
+        },
+        errors: []
       }
-    }
-
-    return {
-      json: {
-        roots,
-        scriptReferences: customScripts
-      },
-      errors: []
+    } catch (e) {
+      return {
+        json: {
+          roots: [],
+          scriptReferences: []
+        },
+        errors: [
+          {
+            message: ` Error at offset: ${(outBufferToJSON as unknown as { _offset: number })._offset}`
+          },
+          {
+            message: e as string
+          }
+        ]
+      }
     }
   }
 }

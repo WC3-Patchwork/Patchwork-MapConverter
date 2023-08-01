@@ -41,7 +41,7 @@ export class CustomScriptsTranslator implements Translator<{ headerComments: str
     for (let i = 0; i < json.scripts.length; i++) {
       const script = json.scripts[i]
 
-      if (script.length === 0) {
+      if (script == null || script.length === 0) {
         outBufferToWar.addInt(0)
       } else {
         const buf = Buffer.from(script, 'utf-8')

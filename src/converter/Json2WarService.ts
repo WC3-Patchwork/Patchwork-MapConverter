@@ -79,7 +79,7 @@ async function exportTriggers (input: string, output: string): Promise<void> {
   const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
   const triggerAndScript: TriggerTranslatorOutput = {
     roots: buffer,
-    scriptReferences: getAllWithProperty(buffer, 'script') as ScriptContent[]
+    scriptReferences: getAllWithProperty(buffer, 'description') as ScriptContent[]
   }
   const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
   tasks.push(writeFile(path.join(output, 'war3map.wtg'), triggerResult.buffer)
@@ -90,10 +90,14 @@ async function exportTriggers (input: string, output: string): Promise<void> {
 
   const scriptArg: { headerComments: string[], scripts: string[] } = { headerComments: [], scripts: [] }
   for (const trigger of triggerAndScript.scriptReferences) {
-    if ((trigger as MapHeader).children != null) { // Found header
-      scriptArg.headerComments.push(trigger.description)
+    if (trigger != null) {
+      if ((trigger as MapHeader).children != null) { // Found header
+        scriptArg.headerComments.push(trigger.description)
+      }
+      scriptArg.scripts.push(trigger.script)
+    } else {
+      scriptArg.scripts.push('')
     }
-    scriptArg.scripts.push(trigger.script)
   }
 
   const scriptResult = scriptTranslator.jsonToWar(scriptArg)
