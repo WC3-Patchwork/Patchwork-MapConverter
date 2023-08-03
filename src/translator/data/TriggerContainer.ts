@@ -5,4 +5,8 @@ interface TriggerContainer extends TriggerContent {
   children: Array<TriggerContainer | TriggerContent>
 }
 
-export { type TriggerContainer }
+function GetTriggerContainerChildren (node: TriggerContent): TriggerContent[] {
+  return (node as TriggerContainer).children
+}
+
+export { type TriggerContainer, GetTriggerContainerChildren }

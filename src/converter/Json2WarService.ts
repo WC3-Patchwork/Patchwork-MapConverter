@@ -4,7 +4,7 @@ import directoryTree, { type DirectoryTree } from 'directory-tree'
 import { ImportsTranslator, type Translator, type Data } from 'wc3maptranslator'
 import { translatorRecord } from './TranslatorRecord'
 import { copyFileWithDirCreation } from './FileCopier'
-import { mkdir, readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 
 import EnhancementManager from '../enhancements/EnhancementManager'
 import ImportComposer from '../enhancements/ImportComposer'
@@ -14,6 +14,9 @@ import { type TriggerContainer } from '../translator/data/TriggerContainer'
 import { ContentType, type TriggerContent } from '../translator/data/content/TriggerContent'
 import { type ScriptContent } from '../translator/data/properties/ScriptContent'
 import { type MapHeader } from '../translator/data/MapHeader'
+import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
+import { FileBlacklist } from '../enhancements/FileBlacklist'
+import { TriggerComposer } from '../enhancements/TriggerComposer'
 
 const log = LoggerFactory.createLogger('Json2War')
 
@@ -28,8 +31,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
       asyncLog.error(error)
     }
   } else {
-    await mkdir(path.dirname(output), { recursive: true })
-    await writeFile(output, result.buffer)
+    await WriteAndCreatePath(output, result.buffer)
     asyncLog.info('Finished processing', output)
   }
 }
@@ -44,8 +46,7 @@ async function exportImportsFile (data: Data.Import[], output: string): Promise<
       asyncLog.error(error)
     }
   } else {
-    await mkdir(path.dirname(output), { recursive: true })
-    await writeFile(output, result.buffer)
+    await WriteAndCreatePath(output, result.buffer)
     asyncLog.info('Finished exporting', output)
   }
 }
@@ -71,16 +72,15 @@ function getAllWithProperty (roots: TriggerContainer[], propertyName: string): T
   return result
 }
 
-async function exportTriggers (input: string, output: string): Promise<void> {
+async function exportTriggers (triggersJson: TriggerContainer[], output: string): Promise<void> {
   const tasks: Array<Promise<unknown>> = []
   const triggerTranslator = TriggersTranslator.getInstance()
   const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
-  triggerLog.info('Reading triggers.json file')
-  const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
   const triggerAndScript: TriggerTranslatorOutput = {
-    roots: buffer,
-    scriptReferences: getAllWithProperty(buffer, 'description') as ScriptContent[]
+    roots: triggersJson,
+    scriptReferences: getAllWithProperty(triggersJson, 'description') as ScriptContent[]
   }
+
   const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
   tasks.push(writeFile(path.join(output, 'war3map.wtg'), triggerResult.buffer)
     .then(() => triggerLog.info('Finished exporting triggers.')))
@@ -107,6 +107,12 @@ async function exportTriggers (input: string, output: string): Promise<void> {
   await Promise.all(tasks)
 }
 
+async function processTriggers (input: string, output: string): Promise<void> {
+  log.info('Reading triggers.json file')
+  const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
+  await exportTriggers(buffer, output)
+}
+
 const Json2WarService = {
   convert: async function (inputPath: string, outputPath: string): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
@@ -118,12 +124,24 @@ const Json2WarService = {
     while (fileStack.length > 0) {
       const file = fileStack.pop()
       if (file == null) break
+      if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       if (file.type === 'directory') {
         if (EnhancementManager.smartImport && file.path.endsWith(EnhancementManager.importFolder)) {
           importDirectoryTree = file
           continue // skip imports
         }
+
+        if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
+          log.debug('ComposeTriggers requested')
+          promises.push((async (): Promise<void> => {
+            const triggerJson = await TriggerComposer.composeTriggerJson(file)
+            await exportTriggers([triggerJson], outputPath)
+          })())
+
+          continue // skip triggers
+        }
+
         const children = file.children
 
         if (children != null) {
@@ -134,8 +152,8 @@ const Json2WarService = {
       } else {
         let translator: Translator<unknown> | null = null
 
-        if (file.name.endsWith('triggers.json')) {
-          promises.push(exportTriggers(file.path, outputPath))
+        if (!EnhancementManager.composeTriggers && file.name.endsWith('triggers.json')) {
+          promises.push(processTriggers(file.path, outputPath))
           continue
         }
 

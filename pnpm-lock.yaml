@@ -11,6 +11,9 @@ dependencies:
   directory-tree:
     specifier: ^3.5.1
     version: 3.5.1
+  ini:
+    specifier: ^4.1.1
+    version: 4.1.1
   source-map-support:
     specifier: ^0.5.21
     version: 0.5.21
@@ -28,6 +31,9 @@ devDependencies:
   '@eslint/create-config':
     specifier: ^0.4.5
     version: 0.4.5
+  '@types/ini':
+    specifier: ^1.3.31
+    version: 1.3.31
   '@types/node':
     specifier: ^20.4.2
     version: 20.4.2
@@ -273,6 +279,10 @@ packages:
 
   /@tsconfig/node16@1.0.4:
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
+    dev: true
+
+  /@types/ini@1.3.31:
+    resolution: {integrity: sha512-8ecxxaG4AlVEM1k9+BsziMw8UsX0qy3jYI1ad/71RrDZ+rdL6aZB0wLfAuflQiDhkD5o4yJ0uPK3OSUic3fG0w==}
     dev: true
 
   /@types/json-schema@7.0.12:
@@ -1463,6 +1473,11 @@ packages:
     resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
     dev: true
 
+  /ini@4.1.1:
+    resolution: {integrity: sha512-QQnnxNyfvmHFIsj7gkPcYymR8Jdw/o7mp5ZFihxn6h8Ci6fh3Dx4E1gPjpQEpIuPo9XVNY/ZUwh4BPMjGyL01g==}
+    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
+    dev: false
+
   /internal-slot@1.0.5:
     resolution: {integrity: sha512-Y+R5hJrzs52QCG2laLn4udYVnxsfny9CpOhNhUvk/SSSVyF6T27FzRbF0sroPidSu3X8oEAkOn2K804mjpt6UQ==}
     engines: {node: '>= 0.4'}
@@ -2543,7 +2558,7 @@ packages:
     dev: true
 
   file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz:
-    resolution: {integrity: sha512-Fu9cMI6bpIWFdj56wGKnJiMqR7tWwzyv0BT5LGrObpu+jw8fQxU4BAb9fUKyt9L85VyRZWUNV7l+wqiMRPKHgA==, tarball: file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz}
+    resolution: {integrity: sha512-iWLfvbITz7ebEyM5IxakHVR4A/i2FUhMmBHupGFsaqNl/lMZ8A1CpfwnGbQQouBQl7uYXTNqNSyKr7V8anGIkg==, tarball: file:../WC3MapTranslator/wc3maptranslator-4.0.1.tgz}
     name: wc3maptranslator
     version: 4.0.1
     engines: {node: '>=14', npm: '>=7', tsc: '>3'}

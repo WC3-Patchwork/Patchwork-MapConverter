@@ -1,5 +1,5 @@
 import { LoggerFactory } from '../logging/LoggerFactory'
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
 import path from 'path'
 import { translatorRecord } from './TranslatorRecord'
@@ -10,6 +10,9 @@ import { TriggersTranslator } from '../translator/TriggerTranslator'
 import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
 import { type TriggerContainer } from '../translator/data/TriggerContainer'
 import { type MapHeader } from '../translator/data/MapHeader'
+import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
+import { FileBlacklist } from '../enhancements/FileBlacklist'
+import { TriggerComposer } from '../enhancements/TriggerComposer'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -24,8 +27,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
       asyncLog.error(error)
     }
   } else {
-    await mkdir(path.dirname(output), { recursive: true })
-    await writeFile(output, JSON.stringify(result.json), { encoding: 'utf8' })
+    await WriteAndCreatePath(output, JSON.stringify(result.json), { encoding: 'utf8' })
     asyncLog.info('Finished processing', output)
   }
 }
@@ -107,6 +109,7 @@ const War2JsonService = {
     while (fileStack.length > 0) {
       const file = fileStack.pop()
       if (file == null) break
+      if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       if (file.type === 'directory') {
         const children = file.children
@@ -150,7 +153,11 @@ const War2JsonService = {
     if (triggerFile != null) {
       promises.push(async function () {
         const triggerJSON = await processTriggers(triggerFile, customScriptFile?.input)
-        await writeFile(path.join(outputPath, 'triggers.json'), JSON.stringify(triggerJSON), { encoding: 'utf8' })
+        if (EnhancementManager.composeTriggers) {
+          await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, triggerJSON[0] as unknown as TriggerContainer)
+        } else {
+          await writeFile(path.join(outputPath, 'triggers.json'), JSON.stringify(triggerJSON), { encoding: 'utf8' })
+        }
       }())
     } else if (customScriptFile != null) {
       promises.push(copyFileWithDirCreation(customScriptFile.input, customScriptFile.output))
