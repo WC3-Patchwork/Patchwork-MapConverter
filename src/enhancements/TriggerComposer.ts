@@ -15,7 +15,6 @@ import type directoryTree from 'directory-tree'
 import { type DirectoryTree } from 'directory-tree'
 import { readFile } from 'fs/promises'
 import { type CustomScript } from '../translator/data/content/CustomScript'
-import { ContentTypeEnumConverter } from '../translator/util/ContentTypeEnumConverter'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
@@ -141,7 +140,7 @@ const TriggerComposer = {
             tasks.push(populateCustomScript(result as unknown as CustomScript, file))
           } else {
             containerParent.children.push(element)
-            tasks.push(populateCustomScript(containerParent as unknown as CustomScript, file))
+            tasks.push(populateCustomScript(element, file))
           }
         } else if (file.extension === EnhancementManager.commentExtension) {
           const element = {
@@ -150,7 +149,7 @@ const TriggerComposer = {
             comment: ''
           } satisfies TriggerComment
           containerParent.children.push(element)
-          tasks.push(populateComment(element as TriggerComment, file))
+          tasks.push(populateComment(element, file))
         }
       }
     }
