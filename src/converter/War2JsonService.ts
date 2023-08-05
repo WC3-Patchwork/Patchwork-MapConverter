@@ -3,7 +3,6 @@ import { readFile, writeFile } from 'fs/promises'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
 import path from 'path'
 import { translatorRecord } from './TranslatorRecord'
-import { type Data, ImportsTranslator, type Translator } from 'wc3maptranslator'
 import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
 import { TriggersTranslator } from '../translator/TriggerTranslator'
@@ -13,6 +12,8 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
+import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
+import { type Import } from '../wc3maptranslator/data'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -32,7 +33,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function processImportsRegistry (importsFile: string): Promise<Data.Import[]> {
+async function processImportsRegistry (importsFile: string): Promise<Import[]> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Reading war3map.imp file.')

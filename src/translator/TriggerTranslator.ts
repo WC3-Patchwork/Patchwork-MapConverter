@@ -1,8 +1,4 @@
-import { type Translator } from 'wc3maptranslator'
-import { type WarResult, type JsonResult } from 'wc3maptranslator/lib/CommonInterfaces'
-import { W3Buffer } from 'wc3maptranslator/lib/W3Buffer'
 import { TriggerDataRegistry } from '../enhancements/TriggerDataRegistry'
-import { HexBuffer } from 'wc3maptranslator/lib/HexBuffer'
 import { type FunctionCall } from './data/parameter/FunctionCall'
 import { type TriggerContainer } from './data/TriggerContainer'
 import { ContentType, type TriggerContent } from './data/content/TriggerContent'
@@ -23,6 +19,10 @@ import { type NestingStatement } from './data/statement/NestingStatement'
 import { ParameterTypeEnumConverter } from './util/ParameterTypeEnumConverter'
 import { type Parameter } from './data/parameter/Parameter'
 import { ParameterType } from './data/parameter/ParameterType'
+import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInterfaces'
+import { HexBuffer } from '../wc3maptranslator/HexBuffer'
+import { W3Buffer } from '../wc3maptranslator/W3Buffer'
+import { type Translator } from '../wc3maptranslator/translators'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]

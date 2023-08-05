@@ -1,19 +1,7 @@
-import {
-  type Translator,
-  Data,
-  CamerasTranslator,
-  DoodadsTranslator,
-  ImportsTranslator,
-  InfoTranslator,
-  ObjectsTranslator,
-  RegionsTranslator,
-  SoundsTranslator,
-  StringsTranslator,
-  TerrainTranslator,
-  UnitsTranslator
-} from 'wc3maptranslator'
 import { TriggersTranslator } from '../translator/TriggerTranslator'
 import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
+import { type Translator, TerrainTranslator, UnitsTranslator, DoodadsTranslator, RegionsTranslator, CamerasTranslator, SoundsTranslator, ObjectsTranslator, StringsTranslator, InfoTranslator, ImportsTranslator } from '../wc3maptranslator/translators'
+import { ObjectType } from '../wc3maptranslator/data/ObjectModificationTable'
 
 export const translatorRecord: Record<string, Translator<unknown>> = {
   // World files
@@ -25,13 +13,13 @@ export const translatorRecord: Record<string, Translator<unknown>> = {
   '.w3s': SoundsTranslator.getInstance() as Translator<unknown>,
 
   // Object data files
-  '.w3u': ObjectsTranslator.getInstance(Data.ObjectType.Units) as Translator<unknown>,
-  '.w3t': ObjectsTranslator.getInstance(Data.ObjectType.Items) as Translator<unknown>,
-  '.w3a': ObjectsTranslator.getInstance(Data.ObjectType.Abilities) as Translator<unknown>,
-  '.w3b': ObjectsTranslator.getInstance(Data.ObjectType.Destructables) as Translator<unknown>,
-  '.w3d': ObjectsTranslator.getInstance(Data.ObjectType.Doodads) as Translator<unknown>,
-  '.w3q': ObjectsTranslator.getInstance(Data.ObjectType.Upgrades) as Translator<unknown>,
-  '.w3h': ObjectsTranslator.getInstance(Data.ObjectType.Buffs) as Translator<unknown>,
+  '.w3u': ObjectsTranslator.getInstance(ObjectType.Units) as Translator<unknown>,
+  '.w3t': ObjectsTranslator.getInstance(ObjectType.Items) as Translator<unknown>,
+  '.w3a': ObjectsTranslator.getInstance(ObjectType.Abilities) as Translator<unknown>,
+  '.w3b': ObjectsTranslator.getInstance(ObjectType.Destructables) as Translator<unknown>,
+  '.w3d': ObjectsTranslator.getInstance(ObjectType.Doodads) as Translator<unknown>,
+  '.w3q': ObjectsTranslator.getInstance(ObjectType.Upgrades) as Translator<unknown>,
+  '.w3h': ObjectsTranslator.getInstance(ObjectType.Buffs) as Translator<unknown>,
 
   // Trigger files
   // '.lua': IGNORED

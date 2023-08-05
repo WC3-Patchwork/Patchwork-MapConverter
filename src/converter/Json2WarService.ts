@@ -1,11 +1,9 @@
 import path from 'path'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
-import { ImportsTranslator, type Translator, type Data } from 'wc3maptranslator'
 import { translatorRecord } from './TranslatorRecord'
 import { copyFileWithDirCreation } from './FileCopier'
 import { readFile, writeFile } from 'fs/promises'
-
 import EnhancementManager from '../enhancements/EnhancementManager'
 import ImportComposer from '../enhancements/ImportComposer'
 import { type TriggerTranslatorOutput, TriggersTranslator } from '../translator/TriggerTranslator'
@@ -17,7 +15,8 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-
+import { type Import } from '../wc3maptranslator/data'
+import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
@@ -36,7 +35,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function exportImportsFile (data: Data.Import[], output: string): Promise<void> {
+async function exportImportsFile (data: Import[], output: string): Promise<void> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Exporting generated war3map.imp file.')

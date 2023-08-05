@@ -1,7 +1,7 @@
-import { type Translator } from 'wc3maptranslator'
-import { type WarResult, type JsonResult } from 'wc3maptranslator/lib/CommonInterfaces'
-import { W3Buffer } from 'wc3maptranslator/lib/W3Buffer'
-import { HexBuffer } from 'wc3maptranslator/lib/HexBuffer'
+import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInterfaces'
+import { HexBuffer } from '../wc3maptranslator/HexBuffer'
+import { W3Buffer } from '../wc3maptranslator/W3Buffer'
+import { type Translator } from '../wc3maptranslator/translators'
 
 export class CustomScriptsTranslator implements Translator<{ headerComments: string[], scripts: string[] }> {
   private static instance: CustomScriptsTranslator | null = null
