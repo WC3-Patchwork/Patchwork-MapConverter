@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 'use strict'
 import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
@@ -21,8 +23,8 @@ program
   .option('-d, --debug', 'output extra debugging')
   .option('-si, --smart-imports', 'unpack/compile imports using/into .imp file as reference, ignores .json version if enabled')
   .addOption(new Option('-imp, --imports-folder-name <importsFolderName>', 'map project imports folder name for smart-imports').default(EnhancementManager.importFolder))
-  .addOption(new Option('-td, --trigger-data <triggerData>', 'TriggerData.txt file location for reading triggers file.').default(path.join(__dirname, EnhancementManager.triggerDataPath)))
-  .addOption(new Option('--ignore <blacklist>', 'Specify a blacklist location for which files to ignore').default(path.join(__dirname, EnhancementManager.ignoreFilelist)))
+  .addOption(new Option('-td, --trigger-data <triggerData>', 'TriggerData.txt file location for reading triggers file.').default(path.join('./', EnhancementManager.triggerDataPath)))
+  .addOption(new Option('--ignore <blacklist>', 'Specify a blacklist location for which files to ignore').default(path.join('./', EnhancementManager.ignoreFilelist)))
   .option('-ct, --compose-triggers', 'unpack/compile triggers into/from binary/fs+json representation, following options apply only if this is enabled:')
   .addOption(new Option('-sf, --sourceFolder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
   .addOption(new Option('-cse, --custom-script-extension <extension>', 'What file extension will be given to all custom scripts').default(EnhancementManager.scriptExtension))
