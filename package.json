@@ -1,6 +1,6 @@
 {
   "name": "patchwork-mapconverter",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
   "main": "./build/index.js",
   "bin": "./build/index.js",
@@ -50,6 +50,6 @@
     "ini": "4.1.1",
     "source-map-support": "0.5.21",
     "tslog": "4.8.2",
-    "wc3maptranslator": "file:E:/Projects/WC3MapTranslator/wc3maptranslator-4.0.1.tgz"
+    "wc3maptranslator": "file:./wc3maptranslator-4.0.1.tgz"
   }
 }
