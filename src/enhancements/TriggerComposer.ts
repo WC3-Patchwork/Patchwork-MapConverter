@@ -45,24 +45,38 @@ async function populateParentDetails (parent: TriggerContainer, file: DirectoryT
   }
 }
 
-function sortTriggerContent (root: TriggerContainer): void {
-  root.children = root.children.sort((a, b): number => {
-    const aIsContainer = (a as TriggerContainer).children != null
-    const bIsContainer = (b as TriggerContainer).children != null
-    if (aIsContainer && bIsContainer) {
-      return a.name.localeCompare(b.name)
-    } else if (aIsContainer) {
-      return -1
-    } else if (bIsContainer) {
-      return 1
+function generateTriggerOrder (parent: TriggerContainer): string[] {
+  return parent.children.map(it => it.name)
+}
+
+type OrderedTriggerContainer = TriggerContainer & { order: string[] }
+function sortTriggerContent (root: OrderedTriggerContainer): void {
+  const newChildrenOrder = new Array(root.children.length) as TriggerContent[]
+  const unspecifiedChildren: TriggerContent[] = []
+  const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {
+    ret[value.name] = value
+    return ret
+  }, {}) as Record<string, TriggerContent>
+  const orderedContentRecord = Object.entries(root.order).reduce((ret, entry) => {
+    const [key, value] = entry
+    ret[value] = key
+    return ret
+  }, {}) as Record<string, number>
+  for (const [name, content] of Object.entries(containerChildrenRecord)) {
+    const desiredIndex = orderedContentRecord[name]
+    if (desiredIndex == null) {
+      unspecifiedChildren.push(content)
     } else {
-      return a.name.localeCompare(b.name)
+      newChildrenOrder[desiredIndex] = content
     }
-  })
+  }
+
+  newChildrenOrder.push(...unspecifiedChildren)
+  root.children = newChildrenOrder
 
   for (const child of root.children) {
     if ((child as TriggerContainer).children != null) {
-      sortTriggerContent(child as TriggerContainer)
+      sortTriggerContent(child as OrderedTriggerContainer)
     }
   }
 }
@@ -163,7 +177,7 @@ const TriggerComposer = {
     }
 
     await Promise.all(tasks)
-    sortTriggerContent(result)
+    sortTriggerContent(result as unknown as OrderedTriggerContainer)
     return result
   },
 
@@ -184,11 +198,13 @@ const TriggerComposer = {
           exportObj.description = (content as MapHeader).description
           tasks.push(WriteAndCreatePath(path.join(outPath, `${EnhancementManager.mapHeaderFilename}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'))
           exportObj.isExpanded = (content as TriggerContainer).isExpanded
+          exportObj.order = generateTriggerOrder(content as TriggerContainer)
           tasks.push(WriteAndCreatePath(path.join(outPath, `${EnhancementManager.mapHeaderFilename}${EnhancementManager.containerInfoExtension}`), ini.encode(exportObj), 'utf8'))
           break
         case ContentType.LIBRARY:
         case ContentType.CATEGORY:
           exportObj.isExpanded = (content as TriggerContainer).isExpanded
+          exportObj.order = generateTriggerOrder(content as TriggerContainer)
           tasks.push(WriteAndCreatePath(path.join(outPath, content.name, `${content.name}${EnhancementManager.containerInfoExtension}`), ini.encode(exportObj), 'utf8'))
           break
         case ContentType.TRIGGER:

@@ -1,6 +1,6 @@
 {
   "name": "patchwork-mapconverter",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
   "main": "./build/index.js",
   "bin": "./build/index.js",
@@ -8,7 +8,6 @@
     "prebuild": "node generateProgramMetadata.js > src/metadata.ts",
     "clean": "tsc --build --clean",
     "build": "npm run clean && tsc --build",
-    "compile": "pkg .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
