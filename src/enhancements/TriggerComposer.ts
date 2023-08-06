@@ -51,12 +51,13 @@ function generateTriggerOrder (parent: TriggerContainer): string[] {
 
 type OrderedTriggerContainer = TriggerContainer & { order: string[] }
 function sortTriggerContent (root: OrderedTriggerContainer): void {
-  const newChildrenOrder = new Array(root.children.length) as TriggerContent[]
+  let newChildrenOrder = new Array(root.order != null ? root.order.length : 0) as TriggerContent[]
   const unspecifiedChildren: TriggerContent[] = []
   const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {
     ret[value.name] = value
     return ret
   }, {}) as Record<string, TriggerContent>
+  if (root.order == null) root.order = []
   const orderedContentRecord = Object.entries(root.order).reduce((ret, entry) => {
     const [key, value] = entry
     ret[value] = key
@@ -71,6 +72,7 @@ function sortTriggerContent (root: OrderedTriggerContainer): void {
     }
   }
 
+  newChildrenOrder = newChildrenOrder.filter(it => it != null)
   newChildrenOrder.push(...unspecifiedChildren)
   root.children = newChildrenOrder
 

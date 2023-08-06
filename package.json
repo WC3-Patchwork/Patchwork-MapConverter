@@ -1,6 +1,6 @@
 {
   "name": "patchwork-mapconverter",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
   "main": "./build/index.js",
   "bin": "./build/index.js",
