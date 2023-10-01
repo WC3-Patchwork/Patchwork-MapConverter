@@ -39,8 +39,10 @@
     "ieee754": "^1.2.1",
     "ini": "4.1.1",
     "intn": "^1.0.0",
+    "reflect-metadata": "^0.1.13",
     "round-to": "5.0.0",
     "source-map-support": "0.5.21",
-    "tslog": "4.8.2"
+    "tslog": "4.8.2",
+    "typedi": "^0.10.0"
   }
 }

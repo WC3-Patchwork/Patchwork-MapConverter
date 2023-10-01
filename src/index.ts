@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 'use strict'
+import 'reflect-metadata'
 import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
 import { type ILogObj, type Logger } from 'tslog'

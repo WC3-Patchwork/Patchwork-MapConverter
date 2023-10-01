@@ -20,6 +20,9 @@ dependencies:
   intn:
     specifier: ^1.0.0
     version: 1.0.0
+  reflect-metadata:
+    specifier: ^0.1.13
+    version: 0.1.13
   round-to:
     specifier: 5.0.0
     version: 5.0.0
@@ -29,6 +32,9 @@ dependencies:
   tslog:
     specifier: 4.8.2
     version: 4.8.2
+  typedi:
+    specifier: ^0.10.0
+    version: 0.10.0
 
 devDependencies:
   '@commander-js/extra-typings':
@@ -1651,6 +1657,10 @@ packages:
     engines: {node: '>=6'}
     dev: false
 
+  /reflect-metadata@0.1.13:
+    resolution: {integrity: sha512-Ts1Y/anZELhSsjMcU605fU9RE4Oi3p5ORujwbIKXfWa+0Zxs510Qrmrce5/Jowq3cHSZSJqBjypxmHarc+vEWg==}
+    dev: false
+
   /regexp.prototype.flags@1.5.0:
     resolution: {integrity: sha512-0SutC3pNudRKgquxGoRGIz946MZVHqbNfPjBdxeOhBrdgDKlRoXmYLQN9xRbrR09ZXWeGAdPuif7egofn6v5LA==}
     engines: {node: '>= 0.4'}
@@ -1955,6 +1965,10 @@ packages:
       for-each: 0.3.3
       is-typed-array: 1.1.12
     dev: true
+
+  /typedi@0.10.0:
+    resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
+    dev: false
 
   /typescript@5.1.6:
     resolution: {integrity: sha512-zaWCozRZ6DLEWAWFrVDz1H6FVXzUSfTy5FUMWsQlU8Ym5JP9eO4xkTIROFCQvhQf61z6O/G6ugw3SgAnvvm+HA==}
