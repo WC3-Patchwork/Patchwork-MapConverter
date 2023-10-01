@@ -34,8 +34,8 @@ export class DoodadsTranslator implements VersionedBinaryToJsonConverter<Doodad[
     (subVersion === this.expectedSubversion)
   }
 
-  public translate (buffer: Buffer): JSONExportResult<Doodad[]> {
-    const resultObject: JSONExportResult<Doodad[]> = {
+  public translate (buffer: Buffer): JSONTranslationResult<Doodad[]> {
+    const resultObject: JSONTranslationResult<Doodad[]> = {
       result: [],
       errors: [],
       warnings: []
@@ -99,93 +99,4 @@ export class DoodadsTranslator implements VersionedBinaryToJsonConverter<Doodad[
 
     return resultObject
   }
-
-  //   public jsonToWar (doodadsRootJson: PreplacedDoodads): WarResult {
-  //     const doodadsJson = doodadsRootJson.normal
-  //     const outBufferToWar = new HexBuffer()
-  //     /*
-  //          * Header
-  //          */
-  //     outBufferToWar.addChars('W3do') // file id
-  //     outBufferToWar.addInt(8) // file version
-  //     outBufferToWar.addInt(11) // subversion 0x0B
-  //     outBufferToWar.addInt(doodadsJson.length) // num of trees
-
-  //     /*
-  //          * Body
-  //          */
-  //     doodadsJson.forEach((tree) => {
-  //       outBufferToWar.addChars(tree.type)
-  //       outBufferToWar.addInt(tree.variation != null ? tree.variation : 0) // optional - default value 0
-  //       outBufferToWar.addFloat(tree.position[0])
-  //       outBufferToWar.addFloat(tree.position[1])
-  //       outBufferToWar.addFloat(tree.position[2])
-
-  //       // Angle
-  //       // Doodads format is unique because it uses radians for angles, as opposed
-  //       // to angles in any other file which use degrees. Hence conversion is needed.
-  //       //    war3map: Expects angle in RADIANS
-  //       //    JSON: Spec defines angle in DEGREES
-  //       const radAngle = deg2Rad(tree.angle != null ? tree.angle : 0)
-  //       outBufferToWar.addFloat(radAngle) // optional - default value 0
-
-  //       // Scale
-  //       if (tree.scale == null) tree.scale = [1, 1, 1]
-  //       outBufferToWar.addFloat(tree.scale[0] != null ? tree.scale[0] : 1)
-  //       outBufferToWar.addFloat(tree.scale[1] != null ? tree.scale[1] : 1)
-  //       outBufferToWar.addFloat(tree.scale[2] != null ? tree.scale[2] : 1)
-
-  //       outBufferToWar.addChars(tree.skinId)
-
-  //       // Tree flags
-  //       /* | Visible | Solid | Flag value |
-  //                |   no    |  no   |     0      |
-  //                |  yes    |  no   |     1      |
-  //                |  yes    |  yes  |     2      | */
-  //       let treeFlag = 2 // default: normal tree
-  //       if (tree.flags == null) tree.flags = { visible: true, solid: true } // defaults if no flags are specified
-  //       if (!tree.flags.visible && !tree.flags.solid) treeFlag = 0
-  //       else if (tree.flags.visible && !tree.flags.solid) treeFlag = 1
-  //       else if (tree.flags.visible && tree.flags.solid) treeFlag = 2
-  //       // Note: invisible and solid is not an option
-  //       outBufferToWar.addByte(treeFlag)
-
-  //       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
-
-  //       if (typeof (tree.randomItemSets) === 'number') {
-  //         outBufferToWar.addInt(tree.randomItemSets)
-  //         outBufferToWar.addInt(-1)
-  //       } else {
-  //         outBufferToWar.addInt(-1)
-  //         outBufferToWar.addInt(tree.randomItemSets.length)
-
-  //         for (let j = 0; j < tree.randomItemSets.length; j++) {
-  //           outBufferToWar.addInt(tree.randomItemSets[j].items.length)
-  //           for (let k = 0; k < tree.randomItemSets[j].items.length; k++) {
-  //             outBufferToWar.addChars(tree.randomItemSets[j].items[k].itemId)
-  //             outBufferToWar.addInt(tree.randomItemSets[j].items[k].dropChance)
-  //           }
-  //         }
-  //       }
-
-  //       outBufferToWar.addInt(tree.id)
-  //     })
-
-  //     /*
-  //          * Footer
-  //          */
-  //     outBufferToWar.addInt(0) // special doodad format number, fixed at 0x00
-  //     outBufferToWar.addInt(doodadsRootJson.terrain.length)
-  //     for (let i = 0; i < doodadsRootJson.terrain.length; i++) {
-  //       outBufferToWar.addChars(doodadsRootJson.terrain[i].type) // doodad ID
-  //       outBufferToWar.addInt(doodadsRootJson.terrain[i].variation)
-  //       outBufferToWar.addInt(doodadsRootJson.terrain[i].x)
-  //       outBufferToWar.addInt(doodadsRootJson.terrain[i].y)
-  //     }
-
-  //     return {
-  //       errors: [],
-  //       buffer: outBufferToWar.getBuffer()
-  //     }
-  //   }
 }

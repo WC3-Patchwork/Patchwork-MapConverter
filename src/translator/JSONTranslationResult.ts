@@ -1,4 +1,4 @@
-interface JSONExportResult<T> {
+interface JSONTranslationResult<T> {
   result: T
   errors: Error[]
   warnings: Error[]

@@ -11,9 +11,9 @@ export class ItemSetsTranslator implements VersionedBinaryToJsonConverter<Random
     return w3Buffer.readInt() === -1
   }
 
-  public translate (buffer: Buffer): JSONExportResult<RandomItemSet[]> {
+  public translate (buffer: Buffer): JSONTranslationResult<RandomItemSet[]> {
     const outBufferToJSON = new W3Buffer(buffer)
-    const resultObject: JSONExportResult<RandomItemSet[]> = {
+    const resultObject: JSONTranslationResult<RandomItemSet[]> = {
       result: [],
       errors: [],
       warnings: []

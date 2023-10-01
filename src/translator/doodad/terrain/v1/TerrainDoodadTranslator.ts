@@ -14,8 +14,8 @@ export class TerrainDoodadTranslator implements VersionedBinaryToJsonConverter<T
     return this.canTranslateFor(w3Buffer.readInt())
   }
 
-  public translate (buffer: Buffer): JSONExportResult<TerrainDoodad[]> {
-    const resultObject: JSONExportResult<TerrainDoodad[]> = {
+  public translate (buffer: Buffer): JSONTranslationResult<TerrainDoodad[]> {
+    const resultObject: JSONTranslationResult<TerrainDoodad[]> = {
       result: [],
       errors: [],
       warnings: []
