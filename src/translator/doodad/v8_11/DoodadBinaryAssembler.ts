@@ -1,11 +1,12 @@
 import { Service } from 'typedi'
-import { type Doodad } from '../../data/editor/preplaced/doodad/Doodad'
-import { type TerrainDoodad } from '../../data/editor/preplaced/doodad/TerrainDoodad'
-import { type JsonToBinaryConverter } from '../JsonToBinaryConverter'
-import { type BinaryTranslationResult } from '../BinaryTranslationResult'
-import { HexBuffer } from '../../wc3maptranslator/HexBuffer'
-import { deg2Rad } from '../../wc3maptranslator/AngleConverter'
-import { type ItemSetsBinaryAssembler } from '../itemsets/ItemSetsBinaryAssembler'
+import { type Doodad } from '../../../data/editor/preplaced/doodad/Doodad'
+import { type TerrainDoodad } from '../../../data/editor/preplaced/doodad/TerrainDoodad'
+import { type JsonToBinaryConverter } from '../../JsonToBinaryConverter'
+import { type BinaryTranslationResult } from '../../BinaryTranslationResult'
+import { type HexBuffer } from '../../../wc3maptranslator/HexBuffer'
+import { deg2Rad } from '../../../wc3maptranslator/AngleConverter'
+import { type ItemSetsBinaryAssembler } from '../../itemsets/ItemSetsBinaryAssembler'
+import { TerrainDoodadBinaryAssembler } from '../terrain/v1/TerrainDoodadBinaryAssembler'
 
 export interface DoodadData {
   normal: Doodad[]
@@ -15,15 +16,15 @@ export interface DoodadData {
 @Service()
 export class DoodadBinaryAssembler implements JsonToBinaryConverter<DoodadData> {
   constructor (
-    readonly itemSetsBinaryAssembler: ItemSetsBinaryAssembler
+    private readonly itemSetsBinaryAssembler: ItemSetsBinaryAssembler,
+    private readonly terrainDoodadBinaryAssembler: TerrainDoodadBinaryAssembler
   ) {}
 
   public canTranslate (...metadata: Array<string | number>): boolean {
-    return metadata.length >= 3 && metadata[0] === 'W3do' && metadata[1] === 8 && metadata[2] === 11 && metadata[3] === 1
+    return metadata.length >= 2 && metadata[0] === 'W3do' && metadata[1] === 8 && metadata[2] === 11
   }
 
-  public translate (data: DoodadData): BinaryTranslationResult {
-    const outBufferToWar = new HexBuffer()
+  public translate (outBufferToWar: HexBuffer, data: DoodadData, ...metadata: Array<string | number>): BinaryTranslationResult {
     const errors = new Array<Error>()
     const warnings = new Array<Error>()
 
@@ -36,13 +37,14 @@ export class DoodadBinaryAssembler implements JsonToBinaryConverter<DoodadData> 
       this.translateNormalDoodad(outBufferToWar, errors, warnings, doodad)
     }
 
-    outBufferToWar.addInt(1)
-    outBufferToWar.addInt(data.terrain.length)
-    for (const doodad of data.terrain) {
-      this.translateTerrainDoodad(outBufferToWar, errors, warnings, doodad)
+    if (metadata.length < 3) {
+      warnings.push(new Error('Terrain doodads format version not specified, will try format \'1\''))
+      this.terrainDoodadBinaryAssembler.translate(outBufferToWar, data.terrain, 1)
+    } else if (this.terrainDoodadBinaryAssembler.canTranslate(metadata[3])) {
+      this.terrainDoodadBinaryAssembler.translate(outBufferToWar, data.terrain, metadata[3])
     }
+
     return {
-      result: outBufferToWar.getBuffer(),
       errors,
       warnings
     }
@@ -84,12 +86,5 @@ export class DoodadBinaryAssembler implements JsonToBinaryConverter<DoodadData> 
     }
 
     outBufferToWar.addInt(data.id)
-  }
-
-  private translateTerrainDoodad (outBufferToWar: HexBuffer, errorsOutput: Error[], warningsOutput: Error[], data: TerrainDoodad): void {
-    outBufferToWar.addChars(data.type.codeRep)
-    outBufferToWar.addInt(data.variation)
-    outBufferToWar.addInt(data.x)
-    outBufferToWar.addInt(data.y)
   }
 }
