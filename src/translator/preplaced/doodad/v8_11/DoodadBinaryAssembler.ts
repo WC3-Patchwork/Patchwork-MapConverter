@@ -1,11 +1,11 @@
 import { Service } from 'typedi'
-import { type Doodad } from '../../../data/editor/preplaced/doodad/Doodad'
-import { type TerrainDoodad } from '../../../data/editor/preplaced/doodad/TerrainDoodad'
-import { type JsonToBinaryConverter } from '../../JsonToBinaryConverter'
-import { type BinaryTranslationResult } from '../../BinaryTranslationResult'
-import { type HexBuffer } from '../../../wc3maptranslator/HexBuffer'
-import { deg2Rad } from '../../../wc3maptranslator/AngleConverter'
-import { type ItemSetsBinaryAssembler } from '../../itemsets/ItemSetsBinaryAssembler'
+import { type Doodad } from '../../../../data/editor/preplaced/doodad/Doodad'
+import { type TerrainDoodad } from '../../../../data/editor/preplaced/doodad/TerrainDoodad'
+import { deg2Rad } from '../../../../wc3maptranslator/AngleConverter'
+import { type HexBuffer } from '../../../../wc3maptranslator/HexBuffer'
+import { type BinaryTranslationResult } from '../../../BinaryTranslationResult'
+import { type JsonToBinaryConverter } from '../../../JsonToBinaryConverter'
+import { ItemSetsBinaryAssembler } from '../../../itemsets/ItemSetsBinaryAssembler'
 import { TerrainDoodadBinaryAssembler } from '../terrain/v1/TerrainDoodadBinaryAssembler'
 
 export interface DoodadData {
@@ -62,15 +62,18 @@ export class DoodadBinaryAssembler implements JsonToBinaryConverter<DoodadData> 
     outBufferToWar.addFloat(data.scale.z)
     outBufferToWar.addChars(data.skinId.codeRep)
 
-    // Tree flags
+    // Doodad flags
     /* | Visible | Solid | Flag value |
             |   no    |  no   |     0      |
             |  yes    |  no   |     1      |
             |  yes    |  yes  |     2      | */
-    let treeFlag = 2 // default: normal tree
+    let treeFlag = 2 // default: normal doodad
     if (!data.flags.visible && !data.flags.solid) treeFlag = 0
     else if (data.flags.visible && !data.flags.solid) treeFlag = 1
     else if (data.flags.visible && data.flags.solid) treeFlag = 2
+    else if (!data.flags.visible && data.flags.solid) {
+      warningsOutput.push(new Error(`Doodad [id=${data.id}]'s flags cannot be set to invisible and solid, defaulting to visible and solid.`))
+    }
     // Note: invisible and solid is not an option
     outBufferToWar.addByte(treeFlag)
 

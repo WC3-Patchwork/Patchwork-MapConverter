@@ -1,8 +1,8 @@
 import { Service } from 'typedi'
-import { type TerrainDoodad } from '../../../../data/editor/preplaced/doodad/TerrainDoodad'
-import { type HexBuffer } from '../../../../wc3maptranslator/HexBuffer'
-import { type BinaryTranslationResult } from '../../../BinaryTranslationResult'
-import { type JsonToBinaryConverter } from '../../../JsonToBinaryConverter'
+import { type TerrainDoodad } from '../../../../../data/editor/preplaced/doodad/TerrainDoodad'
+import { type HexBuffer } from '../../../../../wc3maptranslator/HexBuffer'
+import { type BinaryTranslationResult } from '../../../../BinaryTranslationResult'
+import { type JsonToBinaryConverter } from '../../../../JsonToBinaryConverter'
 
 @Service()
 export class TerrainDoodadBinaryAssembler implements JsonToBinaryConverter<TerrainDoodad[]> {

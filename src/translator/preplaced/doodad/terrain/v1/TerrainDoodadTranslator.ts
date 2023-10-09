@@ -1,9 +1,9 @@
 import { Service } from 'typedi'
-import { type integer } from '../../../../data/editor/common/DataTypes'
-import { FourCC } from '../../../../data/editor/common/FourCC'
-import { type TerrainDoodad } from '../../../../data/editor/preplaced/doodad/TerrainDoodad'
-import { type VersionedBinaryToJsonConverter } from '../../../VersionedBinaryToJsonConverter'
-import { W3Buffer } from '../../../W3Buffer'
+import { type integer } from '../../../../../data/editor/common/DataTypes'
+import { FourCC } from '../../../../../data/editor/common/FourCC'
+import { type TerrainDoodad } from '../../../../../data/editor/preplaced/doodad/TerrainDoodad'
+import { type VersionedBinaryToJsonConverter } from '../../../../VersionedBinaryToJsonConverter'
+import { W3Buffer } from '../../../../W3Buffer'
 
 @Service()
 export class TerrainDoodadTranslator implements VersionedBinaryToJsonConverter<TerrainDoodad[]> {

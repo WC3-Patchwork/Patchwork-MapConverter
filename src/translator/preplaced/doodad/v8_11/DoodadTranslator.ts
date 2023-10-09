@@ -1,13 +1,13 @@
 import { Service } from 'typedi'
-import { type integer } from '../../../data/editor/common/DataTypes'
-import { FourCC } from '../../../data/editor/common/FourCC'
-import { PropertyFlags } from '../../../data/editor/common/PropertyFlag'
-import { type Doodad } from '../../../data/editor/preplaced/doodad/Doodad'
-import { DoodadBuilder } from '../../../data/editor/preplaced/doodad/DoodadBuilder'
-import { rad2Deg } from '../../../wc3maptranslator/AngleConverter'
-import { type VersionedBinaryToJsonConverter } from '../../VersionedBinaryToJsonConverter'
-import { W3Buffer } from '../../W3Buffer'
-import { type ItemSetsTranslator } from '../../itemsets/ItemSetsTranslator'
+import { type integer } from '../../../../data/editor/common/DataTypes'
+import { FourCC } from '../../../../data/editor/common/FourCC'
+import { PropertyFlags } from '../../../../data/editor/common/PropertyFlag'
+import { type Doodad } from '../../../../data/editor/preplaced/doodad/Doodad'
+import { DoodadBuilder } from '../../../../data/editor/preplaced/doodad/DoodadBuilder'
+import { rad2Deg } from '../../../../wc3maptranslator/AngleConverter'
+import { type VersionedBinaryToJsonConverter } from '../../../VersionedBinaryToJsonConverter'
+import { W3Buffer } from '../../../W3Buffer'
+import { ItemSetsTranslator } from '../../../itemsets/ItemSetsTranslator'
 
 @Service()
 export class DoodadsTranslator implements VersionedBinaryToJsonConverter<Doodad[]> {
