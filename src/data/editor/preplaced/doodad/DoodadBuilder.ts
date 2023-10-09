@@ -2,9 +2,9 @@ import { type angle } from '../../common/Angle'
 import { type integer, type byte } from '../../common/DataTypes'
 import { type FourCC } from '../../common/FourCC'
 import { type Value3D } from '../../common/Value3D'
-import { type DoodadFlag } from '../Doodad'
 import { type RandomItemSet } from '../RandomItemSet'
 import { type Doodad } from './Doodad'
+import { type DoodadFlag } from './DoodadFlag'
 
 export class DoodadBuilder implements Doodad {
   type: FourCC
