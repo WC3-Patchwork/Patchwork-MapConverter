@@ -1,6 +1,5 @@
-import { type integer } from '../data/editor/common/DataTypes'
-import { type HexBuffer } from '../wc3maptranslator/HexBuffer'
-import { type BinaryTranslationResult } from './BinaryTranslationResult'
+import { integer } from "patchwork-data"
+import { BinaryTranslationResult } from "./BinaryTranslationResult.js"
 
 export interface JsonToBinaryConverter<T> {
   canTranslate: (...metadata: Array<integer | string>) => boolean

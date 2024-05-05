@@ -1,4 +1,4 @@
-import { type ILogObj, Logger } from 'tslog'
+import { Logger, ILogObj } from "tslog"
 
 const LOG_SILLY = 0
 const LOG_TRACE = 1

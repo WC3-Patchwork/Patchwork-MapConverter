@@ -1,66 +1,60 @@
 import path from 'path'
 import { LoggerFactory } from '../logging/LoggerFactory'
-import { GetTriggerContainerChildren, type TriggerContainer } from '../translator/data/TriggerContainer'
-import EnhancementManager from './EnhancementManager'
 import TreeIterator from '../util/TreeIterator'
-import { ContentType, type TriggerContent } from '../translator/data/content/TriggerContent'
-import { type MapHeader } from '../translator/data/MapHeader'
-import { type ScriptContent } from '../translator/data/properties/ScriptContent'
-import { type GlobalVariable } from '../translator/data/content/GlobalVariable'
-import { type TriggerComment } from '../translator/data/content/TriggerComment'
 import * as ini from 'ini'
-import { type GUITrigger } from '../translator/data/content/GUITrigger'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import type directoryTree from 'directory-tree'
 import { type DirectoryTree } from 'directory-tree'
 import { readFile } from 'fs/promises'
-import { type CustomScript } from '../translator/data/content/CustomScript'
+import { TriggerComment, TriggerContent, CustomScript, TriggerContainer, ContentType, MapHeader, GUITrigger, GlobalVariable, ScriptContent } from 'patchwork-data'
+import { EnhancementManager } from './EnhancementManager'
+
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
-async function populateComment (element: TriggerComment, child: DirectoryTree): Promise<void> {
+async function populateComment(element: TriggerComment, child: DirectoryTree): Promise<void> {
   element.comment = await readFile(child.path, 'utf8')
 }
 
 // handles both GUI trigger and Variable
-async function populateGUIContent (element: TriggerContent, child: DirectoryTree): Promise<void> {
+async function populateGUIContent(element: TriggerContent, child: DirectoryTree): Promise<void> {
   const trigger: unknown = JSON.parse(await readFile(child.path, 'utf8'))
   for (const [key, value] of Object.entries(trigger as JSON)) {
     if (key === 'children') continue
     if (value == null || value === '') continue
-    element[key] = value as unknown
+
+    element[key as keyof TriggerContent] = value
   }
 }
 
-async function populateCustomScript (element: CustomScript, child: DirectoryTree): Promise<void> {
+async function populateCustomScript(element: CustomScript, child: DirectoryTree): Promise<void> {
   element.script = await readFile(child.path, 'utf8')
   element.isEnabled = true
 }
 
-async function populateParentDetails (parent: TriggerContainer, file: DirectoryTree): Promise<void> {
+async function populateParentDetails(parent: TriggerContainer, file: DirectoryTree): Promise<void> {
   const record = ini.parse(await readFile(file.path, 'utf8'))
   for (const [key, value] of Object.entries(record)) {
     if (key === 'children') continue // ignore children entry, that one is handled internally (shouldn't exist anyways)
-    parent[key] = value as unknown
+    parent[key as keyof TriggerContainer] = value as never
   }
 }
 
-function generateTriggerOrder (parent: TriggerContainer): string[] {
+function generateTriggerOrder(parent: TriggerContainer): string[] {
   return parent.children.map(it => it.name)
 }
 
 type OrderedTriggerContainer = TriggerContainer & { order: string[] }
-function sortTriggerContent (root: OrderedTriggerContainer): void {
+function sortTriggerContent(root: OrderedTriggerContainer): void {
   let newChildrenOrder = new Array(root.order != null ? root.order.length : 0) as TriggerContent[]
   const unspecifiedChildren: TriggerContent[] = []
-  const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {
+  const containerChildrenRecord = Object.values(root.children).reduce((ret: Record<string, TriggerContent>, value) => {
     ret[value.name] = value
     return ret
   }, {}) as Record<string, TriggerContent>
   if (root.order == null) root.order = []
-  const orderedContentRecord = Object.entries(root.order).reduce((ret, entry) => {
-    const [key, value] = entry
-    ret[value] = key
+  const orderedContentRecord = Object.values(root.order).reduce((ret: Record<string, number>, value, index) => {
+    ret[value] = index
     return ret
   }, {}) as Record<string, number>
   for (const [name, content] of Object.entries(containerChildrenRecord)) {
@@ -183,6 +177,10 @@ const TriggerComposer = {
     return result
   },
 
+  getTriggerContainerChildren: (node: TriggerContent): TriggerContent[] => {
+    return (node as TriggerContainer).children
+  },
+
   explodeTriggersJsonIntoSource: async function (output: string, triggersJson: TriggerContainer): Promise<void> {
     const sourceOutput = path.join(output, EnhancementManager.sourceFolder)
     log.info('Exploding triggers.json into a source code tree at', sourceOutput)
@@ -190,7 +188,7 @@ const TriggerComposer = {
     triggersJson.name = '' // Delete header name
 
     const tasks: Array<Promise<unknown>> = []
-    for (const [parents, content] of TreeIterator<TriggerContent>(triggersJson, GetTriggerContainerChildren)) {
+    for (const [parents, content] of TreeIterator<TriggerContent>(triggersJson, this.getTriggerContainerChildren)) {
       const outPath = path.join(sourceOutput, ...parents.map(it => it.name))
       const exportObj: Record<string, unknown> = {
         contentType: content.contentType

@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from 'fs'
-import { LoggerFactory } from '../logging/LoggerFactory'
 import { type DirectoryTree } from 'directory-tree'
+import { LoggerFactory } from '../logging/LoggerFactory.js'
 
 const log = LoggerFactory.createLogger('FileBlacklist')
 
 const blacklist: RegExp[] = []
 
-const FileBlacklist = {
+export const FileBlacklist = {
   readBlacklist: function (blacklistFilePath: string): void {
     if (!existsSync(blacklistFilePath)) {
       return
@@ -34,5 +34,3 @@ const FileBlacklist = {
     return false
   }
 }
-
-export { FileBlacklist }

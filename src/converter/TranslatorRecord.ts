@@ -1,13 +1,12 @@
 import { TriggersTranslator } from '../translator/TriggerTranslator'
 import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
-import { type Translator, TerrainTranslator, UnitsTranslator, DoodadsTranslator, RegionsTranslator, CamerasTranslator, SoundsTranslator, ObjectsTranslator, StringsTranslator, InfoTranslator, ImportsTranslator } from '../wc3maptranslator/translators'
-import { ObjectType } from '../wc3maptranslator/data/ObjectModificationTable'
+import W3Doo from '../kaitai/w3-doo/W3Doo.js'
 
 export const translatorRecord: Record<string, Translator<unknown>> = {
   // World files
   '.w3e': TerrainTranslator.getInstance() as Translator<unknown>,
   'Units.doo': UnitsTranslator.getInstance() as Translator<unknown>,
-  '.doo': DoodadsTranslator.getInstance() as Translator<unknown>,
+  '.doo': W3Doo,
   '.w3r': RegionsTranslator.getInstance() as Translator<unknown>,
   '.w3c': CamerasTranslator.getInstance() as Translator<unknown>,
   '.w3s': SoundsTranslator.getInstance() as Translator<unknown>,

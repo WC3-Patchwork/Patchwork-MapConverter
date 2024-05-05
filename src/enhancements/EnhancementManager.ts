@@ -1,4 +1,4 @@
-const EnhancementManager = {
+export const EnhancementManager = {
   smartImport: false,
   importFolder: 'imports',
   sourceFolder: 'src',
@@ -11,5 +11,3 @@ const EnhancementManager = {
   commentExtension: '.txt',
   mapHeaderFilename: 'header'
 }
-
-export default EnhancementManager

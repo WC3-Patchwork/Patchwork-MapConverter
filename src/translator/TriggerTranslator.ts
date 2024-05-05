@@ -1,35 +1,14 @@
+import { TriggerContainer, ScriptContent, ContentType, TriggerContent, WarResult, JsonResult, GlobalVariable, TriggerComment, GUITrigger, CustomScript, Statement, StatementType, FunctionCall, ArrayVariableParameter, LiteralParameter, PresetParameter, ParameterType, NestingStatement, VariableParameter, Parameter } from 'patchwork-data'
 import { TriggerDataRegistry } from '../enhancements/TriggerDataRegistry'
-import { type FunctionCall } from './data/parameter/FunctionCall'
-import { type TriggerContainer } from './data/TriggerContainer'
-import { ContentType, type TriggerContent } from './data/content/TriggerContent'
-import { ContentTypeEnumConverter } from './util/ContentTypeEnumConverter'
-import { type ScriptContent } from './data/properties/ScriptContent'
-import { type CustomScript } from './data/content/CustomScript'
-import { type GlobalVariable } from './data/content/GlobalVariable'
-import { type GUITrigger } from './data/content/GUITrigger'
-import { type TriggerComment } from './data/content/TriggerComment'
-import { type ArrayVariableParameter } from './data/parameter/ArrayVariableParameter'
-import { type PresetParameter } from './data/parameter/PresetParameter'
-import { type LiteralParameter } from './data/parameter/LiteralParameter'
-import { type VariableParameter } from './data/parameter/VariableParameter'
-import { type Statement } from './data/statement/Statement'
-import { StatementTypeEnumConverter } from './util/StatementTypeEnumConverter'
-import { StatementType } from './data/statement/StatementType'
-import { type NestingStatement } from './data/statement/NestingStatement'
-import { ParameterTypeEnumConverter } from './util/ParameterTypeEnumConverter'
-import { type Parameter } from './data/parameter/Parameter'
-import { ParameterType } from './data/parameter/ParameterType'
-import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInterfaces'
-import { HexBuffer } from '../wc3maptranslator/HexBuffer'
-import { W3Buffer } from '../wc3maptranslator/W3Buffer'
-import { type Translator } from '../wc3maptranslator/translators'
+import { W3Buffer } from './W3Buffer'
+
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
   scriptReferences: Array<ScriptContent | null>
 }
 
-function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number> {
+function countContentTypes(roots: TriggerContainer[]): Map<ContentType, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const result = new Map<ContentType, number>()
 
@@ -61,7 +40,7 @@ function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number>
   return result
 }
 
-function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
+function getAllOfContentType(roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const parentStack: TriggerContainer[] = []
   const result = new Map<TriggerContent, number>()
@@ -106,24 +85,24 @@ function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<T
 export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
   private static instance: TriggersTranslator | null = null
 
-  private constructor () {}
+  private constructor() { }
 
-  public static getInstance (): TriggersTranslator {
+  public static getInstance(): TriggersTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (triggers: TriggerTranslatorOutput): WarResult {
+  public static jsonToWar(triggers: TriggerTranslatorOutput): WarResult {
     return this.getInstance().jsonToWar(triggers)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public static warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (json: TriggerTranslatorOutput): WarResult {
+  public jsonToWar(json: TriggerTranslatorOutput): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addChars('WTG!') // File header
@@ -292,8 +271,8 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             outBufferToWar.addInt(0) // ECA count 0
           } else if (currentTrigger.contentType === ContentType.TRIGGER) {
             ecaCount = (currentTrigger as GUITrigger).events.length +
-            (currentTrigger as GUITrigger).conditions.length +
-            (currentTrigger as GUITrigger).actions.length
+              (currentTrigger as GUITrigger).conditions.length +
+              (currentTrigger as GUITrigger).actions.length
             outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
             outBufferToWar.addInt(0) // is custom script
             outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
@@ -391,7 +370,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
     return { buffer: outBufferToWar.getBuffer(), errors: [] }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     const outBufferToJSON = new W3Buffer(buffer)
 
     try {

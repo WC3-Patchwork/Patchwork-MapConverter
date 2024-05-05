@@ -4,21 +4,18 @@ import directoryTree, { type DirectoryTree } from 'directory-tree'
 import path from 'path'
 import { translatorRecord } from './TranslatorRecord'
 import { copyFileWithDirCreation } from './FileCopier'
-import EnhancementManager from '../enhancements/EnhancementManager'
 import { TriggersTranslator } from '../translator/TriggerTranslator'
 import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
-import { type TriggerContainer } from '../translator/data/TriggerContainer'
-import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
-import { type Import } from '../wc3maptranslator/data'
+import { Asset, MapHeader, TriggerContainer } from 'patchwork-data'
+import { EnhancementManager } from '../enhancements/EnhancementManager'
 
 const log = LoggerFactory.createLogger('War2Json')
 
 let translatorCount = 0
-async function processFile<T> (input: string, translator: Translator<T>, output: string): Promise<void> {
+async function processFile<T>(input: string, translator: Translator<T>, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Processing', input)
   const buffer = await readFile(input)
@@ -33,7 +30,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function processImportsRegistry (importsFile: string): Promise<Import[]> {
+async function processImportsRegistry(importsFile: string): Promise<Asset[]> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Reading war3map.imp file.')
@@ -50,7 +47,7 @@ async function processImportsRegistry (importsFile: string): Promise<Import[]> {
   }
 }
 
-async function processTriggers (triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer[]> {
+async function processTriggers(triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer[]> {
   const triggerTranslator = TriggersTranslator.getInstance()
   const customScriptTranslator = CustomScriptsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })

@@ -6,7 +6,7 @@ interface VariadicParameterTriggerDefinition {
   getParameterCount: () => number
 }
 
-function removeNothings (params: string[]): string[] {
+function removeNothings(params: string[]): string[] {
   return params.filter(it => it !== 'nothing')
 }
 
@@ -16,12 +16,12 @@ class TriggerCategory implements TriggerDefinition { // Defines categories for o
   public iconImageFile: string // Value 1: Icon image file
   public disableNameDisplay: boolean // Value 2: Optional flag (defaults to 0) indicating to disable display of category name
 
-  public constructor (identifier: string, ...values: [string, string, boolean]) {
+  public constructor(identifier: string, ...values: [string, string, boolean]) {
     [this.displayText, this.iconImageFile, this.disableNameDisplay] = values
     this.identifier = identifier
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.identifier
   }
 }
@@ -36,12 +36,12 @@ class TriggerType implements TriggerDefinition { // Defines all trigger variable
   public importType: string // Value 5: import type, for strings which represent files (optional)
   public isBaseType: boolean // Value 6: flag (0 or 1) indicating to treat this type as the base type in the editor
 
-  public constructor (type: string, ...values: [number, boolean, boolean, string, string, string, boolean]) {
+  public constructor(type: string, ...values: [number, boolean, boolean, string, string, string, boolean]) {
     [this.sinceGameVersion, this.canBeGlobal, this.canBeCompared, this.displayText, this.baseType, this.importType, this.isBaseType] = values
     this.type = type
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.type
   }
 }
@@ -53,12 +53,12 @@ class TriggerTypeDefaults implements TriggerDefinition { // Defines an optional 
 
   // If a type does not have an entry here, it will be set to null if it is a handle
 
-  public constructor (type: string, ...values: [string, string]) {
+  public constructor(type: string, ...values: [string, string]) {
     [this.script, this.displayText] = values
     this.type = type
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.type
   }
 }
@@ -70,12 +70,12 @@ class TriggerParams implements TriggerDefinition {// Defines possible values for
   public script: string// Value 2: code text (used in script)
   public displayText: string// Value 3: display text
 
-  public constructor (name: string, ...values: [number, string, string, string]) {
+  public constructor(name: string, ...values: [number, string, string, string]) {
     [this.sinceGameVersion, this.type, this.script, this.displayText] = values
     this.name = name
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.name
   }
 }
@@ -86,17 +86,17 @@ class TriggerEvents implements TriggerDefinition, VariadicParameterTriggerDefini
   public argumentTypes: string[] // Value 1+: argument types
   // Note that the first argument is always a `trigger`, and is excluded here
 
-  public constructor (event: string, values: [number, ...string[]]) {
+  public constructor(event: string, values: [number, ...string[]]) {
     [this.sinceGameVersion, ...this.argumentTypes] = values
     this.argumentTypes = removeNothings(this.argumentTypes)
     this.event = event
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.event
   }
 
-  public getParameterCount (): number {
+  public getParameterCount(): number {
     return this.argumentTypes.length
   }
 }
@@ -106,17 +106,17 @@ class TriggerConditions implements TriggerDefinition, VariadicParameterTriggerDe
   public sinceGameVersion: number// Value 0: first game version in which this function is valid
   public argumentTypes: string[]// Value 1+: argument types
 
-  public constructor (condition: string, values: [number, ...string[]]) {
+  public constructor(condition: string, values: [number, ...string[]]) {
     [this.sinceGameVersion, ...this.argumentTypes] = values
     this.argumentTypes = removeNothings(this.argumentTypes)
     this.condition = condition
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.condition
   }
 
-  public getParameterCount (): number {
+  public getParameterCount(): number {
     return this.argumentTypes.length
   }
 }
@@ -126,17 +126,17 @@ class TriggerActions implements TriggerDefinition, VariadicParameterTriggerDefin
   public sinceGameVersion: number// Value 0: first game version in which this function is valid
   public argumentTypes: string[]// Value 1+: argument types
 
-  public constructor (action: string, values: [number, ...string[]]) {
+  public constructor(action: string, values: [number, ...string[]]) {
     [this.sinceGameVersion, ...this.argumentTypes] = values
     this.argumentTypes = removeNothings(this.argumentTypes)
     this.action = action
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.action
   }
 
-  public getParameterCount (): number {
+  public getParameterCount(): number {
     return this.argumentTypes.length
   }
 }
@@ -149,17 +149,17 @@ class TriggerCalls implements TriggerDefinition, VariadicParameterTriggerDefinit
   argumentTypes: string[]// Value 3+: argument types
   // Note: Operators are specially handled by the editor
 
-  public constructor (functionName: string, values: [number, boolean, string, ...string[]]) {
+  public constructor(functionName: string, values: [number, boolean, string, ...string[]]) {
     [this.sinceGameVersion, this.forEvent, this.returnType, ...this.argumentTypes] = values
     this.argumentTypes = removeNothings(this.argumentTypes)
     this.functionName = functionName
   }
 
-  public getKey (): string {
+  public getKey(): string {
     return this.functionName
   }
 
-  public getParameterCount (): number {
+  public getParameterCount(): number {
     return this.argumentTypes.length
   }
 }

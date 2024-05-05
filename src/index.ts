@@ -3,19 +3,18 @@
 'use strict'
 import 'reflect-metadata'
 import { Argument, Option, program } from 'commander'
-import { NAME, DESCRIPTION, VERSION } from './metadata'
-import { type ILogObj, type Logger } from 'tslog'
-import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
-import War2JsonService from './converter/War2JsonService'
-import Json2WarService from './converter/Json2WarService'
-import EnhancementManager from './enhancements/EnhancementManager'
-import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
-import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
+import { DESCRIPTION, NAME, VERSION } from './metadata.js'
+import Json2WarService from './converter/Json2WarService.js'
+import War2JsonService from './converter/War2JsonService.js'
+import EnhancementManager from './enhancements/EnhancementManager.js'
+import { FileBlacklist } from './enhancements/FileBlacklist.js'
+import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry.js'
+import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory.js'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
-let log: Logger<ILogObj>
+const log = LoggerFactory.createLogger('main');
 
 program
   .name(NAME)
@@ -34,7 +33,6 @@ program
   .addOption(new Option('-ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('-mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
   .hook('preAction', (thisCommand, actionCommand) => {
-    log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
 
     log.debug('command:', actionCommand.name())

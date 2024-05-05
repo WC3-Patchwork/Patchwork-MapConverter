@@ -1,30 +1,29 @@
-import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInterfaces'
-import { HexBuffer } from '../wc3maptranslator/HexBuffer'
-import { W3Buffer } from '../wc3maptranslator/W3Buffer'
-import { type Translator } from '../wc3maptranslator/translators'
+import { WarResult, JsonResult } from "patchwork-data"
+import { W3Buffer } from "./W3Buffer"
+
 
 export class CustomScriptsTranslator implements Translator<{ headerComments: string[], scripts: string[] }> {
   private static instance: CustomScriptsTranslator | null = null
 
-  private constructor () {}
+  private constructor() { }
 
-  public static getInstance (): CustomScriptsTranslator {
+  public static getInstance(): CustomScriptsTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (json: { headerComments: string[], scripts: string[] }): WarResult {
+  public static jsonToWar(json: { headerComments: string[], scripts: string[] }): WarResult {
     return this.getInstance().jsonToWar(json)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult< { headerComments: string[], scripts: string[] }> {
+  public static warToJson(buffer: Buffer): JsonResult<{ headerComments: string[], scripts: string[] }> {
     return this.getInstance().warToJson(buffer)
   }
 
   // expecting first string to belong to header
-  public jsonToWar (json: { headerComments: string[], scripts: string[] }): WarResult {
+  public jsonToWar(json: { headerComments: string[], scripts: string[] }): WarResult {
     const outBufferToWar = new HexBuffer()
 
     // format version
@@ -59,7 +58,7 @@ export class CustomScriptsTranslator implements Translator<{ headerComments: str
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<{ headerComments: string[], scripts: string[] }> {
+  public warToJson(buffer: Buffer): JsonResult<{ headerComments: string[], scripts: string[] }> {
     const headerComments: string[] = []
     const scripts: string[] = []
     const outBufferToJSON = new W3Buffer(buffer)

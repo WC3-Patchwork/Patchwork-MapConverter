@@ -1,26 +1,21 @@
-import path from 'path'
-import { LoggerFactory } from '../logging/LoggerFactory'
-import directoryTree, { type DirectoryTree } from 'directory-tree'
-import { translatorRecord } from './TranslatorRecord'
-import { copyFileWithDirCreation } from './FileCopier'
+import directoryTree, { DirectoryTree } from 'directory-tree/index.js'
 import { readFile, writeFile } from 'fs/promises'
-import EnhancementManager from '../enhancements/EnhancementManager'
-import ImportComposer from '../enhancements/ImportComposer'
-import { type TriggerTranslatorOutput, TriggersTranslator } from '../translator/TriggerTranslator'
-import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
-import { type TriggerContainer } from '../translator/data/TriggerContainer'
-import { ContentType, type TriggerContent } from '../translator/data/content/TriggerContent'
-import { type ScriptContent } from '../translator/data/properties/ScriptContent'
-import { type MapHeader } from '../translator/data/MapHeader'
-import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
-import { FileBlacklist } from '../enhancements/FileBlacklist'
-import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { type Import } from '../wc3maptranslator/data'
-import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
+import path from 'path'
+import { EnhancementManager } from '../enhancements/EnhancementManager.js'
+import { FileBlacklist } from '../enhancements/FileBlacklist.js'
+import ImportComposer from '../enhancements/ImportComposer.js'
+import { TriggerComposer } from '../enhancements/TriggerComposer.js'
+import { LoggerFactory } from '../logging/LoggerFactory.js'
+import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator.js'
+import { TriggersTranslator, TriggerTranslatorOutput } from '../translator/TriggerTranslator.js'
+import { WriteAndCreatePath } from '../util/WriteAndCreatePath.js'
+import { copyFileWithDirCreation } from './FileCopier.js'
+import { translatorRecord } from './TranslatorRecord.js'
+import { Asset, ContentType, MapHeader, ScriptContent, TriggerContainer, TriggerContent } from 'patchwork-data'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
-async function processFile<T> (input: string, translator: Translator<T>, output: string): Promise<void> {
+async function processFile<T>(input: string, translator: Translator<T>, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Processing', input)
   const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as T
@@ -35,7 +30,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function exportImportsFile (data: Import[], output: string): Promise<void> {
+async function exportImportsFile(data: Asset[], output: string): Promise<void> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Exporting generated war3map.imp file.')
@@ -50,7 +45,7 @@ async function exportImportsFile (data: Import[], output: string): Promise<void>
   }
 }
 
-function getAllWithProperty (roots: TriggerContainer[], propertyName: string): TriggerContent[] {
+function getAllWithProperty(roots: TriggerContainer[], propertyName: string): TriggerContent[] {
   const triggerStack: TriggerContent[] = [...roots.reverse()]
   const result: TriggerContent[] = []
   while (triggerStack.length > 0) {
@@ -71,7 +66,7 @@ function getAllWithProperty (roots: TriggerContainer[], propertyName: string): T
   return result
 }
 
-async function exportTriggers (triggersJson: TriggerContainer[], output: string): Promise<void> {
+async function exportTriggers(triggersJson: TriggerContainer[], output: string): Promise<void> {
   const tasks: Array<Promise<unknown>> = []
   const triggerTranslator = TriggersTranslator.getInstance()
   const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
@@ -106,7 +101,7 @@ async function exportTriggers (triggersJson: TriggerContainer[], output: string)
   await Promise.all(tasks)
 }
 
-async function processTriggers (input: string, output: string): Promise<void> {
+async function processTriggers(input: string, output: string): Promise<void> {
   log.info('Reading triggers.json file')
   const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
   await exportTriggers(buffer, output)

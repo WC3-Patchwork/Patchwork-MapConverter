@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { LoggerFactory } from '../logging/LoggerFactory'
-import { TriggerActions, TriggerCalls, TriggerConditions, TriggerEvents, type VariadicParameterTriggerDefinition } from './data/TriggerDefinition'
-import { StatementType } from '../translator/data/statement/StatementType'
+import { StatementType } from 'patchwork-data'
+import { VariadicParameterTriggerDefinition, TriggerActions, TriggerEvents, TriggerConditions, TriggerCalls } from './data/TriggerDefinition'
 
 const log = LoggerFactory.createLogger('TriggerDataLoader')
 
@@ -12,7 +12,7 @@ enum TriggerDataSections {
   TRIGGER_CALLS = 'TriggerCalls'
 }
 
-function convertToSectionRowData (section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
+function convertToSectionRowData(section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
   const values = value.split(',') as [unknown, unknown, unknown, unknown, ...unknown[]]
 
   switch (section) {
