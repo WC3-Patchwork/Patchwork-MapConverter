@@ -65,28 +65,30 @@ export class InfoTranslator implements Translator<Info> {
       if (infoJson.map.flags.hideMinimapInPreview) flags |= 0x0001 // hide minimap in preview screens
       if (infoJson.map.flags.modifyAllyPriorities) flags |= 0x0002 // modify ally priorities
       if (infoJson.map.flags.isMeleeMap) flags |= 0x0004 // melee map
-      // 0x0008 - unknown;                                                 // playable map size was large and never reduced to medium (?)
+      if (infoJson.map.flags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium) 0x0008 // playable map size was large and never reduced to medium (?)
       if (infoJson.map.flags.maskedPartiallyVisible) flags |= 0x0010 // masked area are partially visible
       if (infoJson.map.flags.fixedPlayerSetting) flags |= 0x0020 // fixed player setting for custom forces
       if (infoJson.map.flags.useCustomForces) flags |= 0x0040 // use custom forces
       if (infoJson.map.flags.useCustomTechtree) flags |= 0x0080 // use custom techtree
       if (infoJson.map.flags.useCustomAbilities) flags |= 0x0100 // use custom abilities
       if (infoJson.map.flags.useCustomUpgrades) flags |= 0x0200 // use custom upgrades
-      // 0x0400 - unknown;                                                 // map properties menu opened at least once since map creation (?)
+      if (infoJson.map.flags.mapPropertiesMenuOpenedAtLeastOnce) flags |= 0x0400 // map properties menu opened at least once since map creation (?)
       if (infoJson.map.flags.waterWavesOnCliffShores) flags |= 0x0800 // show water waves on cliff shores
       if (infoJson.map.flags.waterWavesOnRollingShores) flags |= 0x1000 // show water waves on rolling shores
-      // 0x2000: 1=unknown
-      // 0x4000: 1=unknown
+      if (infoJson.map.flags.useTerrainFog) flags |= 0x2000
+      if (infoJson.map.flags.tftRequired) flags |= 0x4000
       if (infoJson.map.flags.useItemClassificationSystem) flags |= 0x8000
-      if (infoJson.map.flags.enableWaterTinting) flags |= 0x10000
-      if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x20000
-      if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x40000
+      if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x10000
+      if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x20000
+      //0x40000
+      //0x80000
+      //0x100000
+      //0x200000
+      if (infoJson.map.flags.enableWaterTinting) flags |= 0x400000
+
+      // 8 -unknown bits?
     }
 
-    // Unknown, but these seem to always be on, at least for default maps
-    flags |= 0x8000
-    flags |= 0x4000
-    flags |= 0x0400
 
     outBufferToWar.addInt(flags) // Add flags
 
@@ -100,8 +102,8 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addString(infoJson.loadingScreen.title)
     outBufferToWar.addString(infoJson.loadingScreen.subtitle)
 
-    // Use game data set (Unsupported)
-    outBufferToWar.addInt(0)
+    // Use game data set
+    outBufferToWar.addInt(infoJson.game_data_set)
 
     // Prologue
     outBufferToWar.addString(infoJson.prologue.path)
