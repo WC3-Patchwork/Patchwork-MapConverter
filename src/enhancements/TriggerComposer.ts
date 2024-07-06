@@ -15,6 +15,7 @@ import type directoryTree from 'directory-tree'
 import { type DirectoryTree } from 'directory-tree'
 import { readFile } from 'fs/promises'
 import { type CustomScript } from '../translator/data/content/CustomScript'
+import { ScriptedTrigger } from '../translator/data/content/ScriptedTrigger'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
@@ -217,6 +218,11 @@ const TriggerComposer = {
           exportObj.events = (content as GUITrigger).events
           exportObj.conditions = (content as GUITrigger).conditions
           exportObj.actions = (content as GUITrigger).actions
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), JSON.stringify(content), 'utf8'))
+          break
+        case ContentType.TRIGGER_SCRIPTED:
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'));
+          (content as ScriptedTrigger).script = ''
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), JSON.stringify(content), 'utf8'))
           break
         case ContentType.COMMENT:

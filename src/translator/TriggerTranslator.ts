@@ -29,7 +29,7 @@ interface TriggerTranslatorOutput {
   scriptReferences: Array<ScriptContent | null>
 }
 
-function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number> {
+function countContentTypes(roots: TriggerContainer[]): Map<ContentType, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const result = new Map<ContentType, number>()
 
@@ -61,7 +61,7 @@ function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number>
   return result
 }
 
-function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
+function getAllOfContentType(roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const parentStack: TriggerContainer[] = []
   const result = new Map<TriggerContent, number>()
@@ -106,24 +106,24 @@ function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<T
 export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
   private static instance: TriggersTranslator | null = null
 
-  private constructor () {}
+  private constructor() { }
 
-  public static getInstance (): TriggersTranslator {
+  public static getInstance(): TriggersTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (triggers: TriggerTranslatorOutput): WarResult {
+  public static jsonToWar(triggers: TriggerTranslatorOutput): WarResult {
     return this.getInstance().jsonToWar(triggers)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public static warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (json: TriggerTranslatorOutput): WarResult {
+  public jsonToWar(json: TriggerTranslatorOutput): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addChars('WTG!') // File header
@@ -292,8 +292,8 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             outBufferToWar.addInt(0) // ECA count 0
           } else if (currentTrigger.contentType === ContentType.TRIGGER) {
             ecaCount = (currentTrigger as GUITrigger).events.length +
-            (currentTrigger as GUITrigger).conditions.length +
-            (currentTrigger as GUITrigger).actions.length
+              (currentTrigger as GUITrigger).conditions.length +
+              (currentTrigger as GUITrigger).actions.length
             outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
             outBufferToWar.addInt(0) // is custom script
             outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
@@ -391,7 +391,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
     return { buffer: outBufferToWar.getBuffer(), errors: [] }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     const outBufferToJSON = new W3Buffer(buffer)
 
     try {
@@ -542,158 +542,170 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             ecaCount = outBufferToJSON.readInt()
 
             if (type === ContentType.TRIGGER) {
-              trigger = {
-                name,
-                contentType: ContentType.TRIGGER,
-                description,
-                isEnabled,
-                initiallyOff,
-                runOnMapInit,
-                events: [],
-                conditions: [],
-                actions: []
-              }
-              const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
-                for (let j = 0; j < functionCount; j++) {
-                  const functionType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+              if (isCustomScript) {
+                const script = {
+                  name,
+                  contentType: ContentType.TRIGGER_SCRIPTED,
+                  description,
+                  isEnabled,
+                  script: ''
+                }
+                content[elementId] = script
+                customScripts.push(script)
+              } else {
+                trigger = {
+                  name,
+                  contentType: ContentType.TRIGGER,
+                  description,
+                  isEnabled,
+                  initiallyOff,
+                  runOnMapInit,
+                  events: [],
+                  conditions: [],
+                  actions: []
+                }
+                const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
+                  for (let j = 0; j < functionCount; j++) {
+                    const functionType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
 
-                  let group = -1
-                  if (isChild) {
-                    group = outBufferToJSON.readInt()
-                  }
-                  const name = outBufferToJSON.readString()
-                  const isEnabled = outBufferToJSON.readInt() === 1
+                    let group = -1
+                    if (isChild) {
+                      group = outBufferToJSON.readInt()
+                    }
+                    const name = outBufferToJSON.readString()
+                    const isEnabled = outBufferToJSON.readInt() === 1
 
-                  const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
-                  const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
-                    for (let k = 0; k < paramCount; k++) {
-                      const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
-                      const value = outBufferToJSON.readString()
-                      const hasSubParameters = outBufferToJSON.readInt() === 1
+                    const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
+                    const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
+                      for (let k = 0; k < paramCount; k++) {
+                        const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+                        const value = outBufferToJSON.readString()
+                        const hasSubParameters = outBufferToJSON.readInt() === 1
 
-                      let parameter: unknown
-                      switch (paramType) {
-                        case ParameterType.FUNCTION:
-                          parameter = {
-                            name: value,
-                            type: paramType,
-                            statementType: StatementType.CALL,
-                            statement: {} as unknown as Statement
-                          } satisfies FunctionCall
-                          break
+                        let parameter: unknown
+                        switch (paramType) {
+                          case ParameterType.FUNCTION:
+                            parameter = {
+                              name: value,
+                              type: paramType,
+                              statementType: StatementType.CALL,
+                              statement: {} as unknown as Statement
+                            } satisfies FunctionCall
+                            break
 
-                        case ParameterType.VALUE:
-                          parameter = {
-                            type: paramType,
-                            value
-                          } satisfies LiteralParameter
-                          break
+                          case ParameterType.VALUE:
+                            parameter = {
+                              type: paramType,
+                              value
+                            } satisfies LiteralParameter
+                            break
 
-                        case ParameterType.INVALID:
-                          parameter = {
-                            type: paramType
-                          }
-                          break
+                          case ParameterType.INVALID:
+                            parameter = {
+                              type: paramType
+                            }
+                            break
 
-                        case ParameterType.PRESET:
-                          parameter = {
-                            type: paramType,
-                            presetName: value
-                          } satisfies PresetParameter
-                          break
+                          case ParameterType.PRESET:
+                            parameter = {
+                              type: paramType,
+                              presetName: value
+                            } satisfies PresetParameter
+                            break
 
-                        case ParameterType.VARIABLE:
-                          parameter = {
-                            type: paramType,
-                            value
-                          } satisfies VariableParameter
-                          break
-                      }
-
-                      if (hasSubParameters) {
-                        const functionCall = parameter as FunctionCall
-                        functionCall.statementType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
-                        functionCall.statement.name = outBufferToJSON.readString()
-                        functionCall.statement.parameters = []
-                        const beginParams = outBufferToJSON.readInt() !== 0
-                        const subParamCount = TriggerDataRegistry.getParameterCount(functionCall.statementType, functionCall.statement.name)
-                        if (subParamCount == null) {
-                          throw new Error('Missing parameter count for function ' + functionCall.statement.name)
+                          case ParameterType.VARIABLE:
+                            parameter = {
+                              type: paramType,
+                              value
+                            } satisfies VariableParameter
+                            break
                         }
 
-                        readParams(functionCall.statement, subParamCount, false)
-                      }
+                        if (hasSubParameters) {
+                          const functionCall = parameter as FunctionCall
+                          functionCall.statementType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
+                          functionCall.statement.name = outBufferToJSON.readString()
+                          functionCall.statement.parameters = []
+                          const beginParams = outBufferToJSON.readInt() !== 0
+                          const subParamCount = TriggerDataRegistry.getParameterCount(functionCall.statementType, functionCall.statement.name)
+                          if (subParamCount == null) {
+                            throw new Error('Missing parameter count for function ' + functionCall.statement.name)
+                          }
 
-                      if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
-                        outBufferToJSON.readInt()
-                      } else if (gameVersion === 7 && hasSubParameters) {
-                        outBufferToJSON.readInt()
-                      }
+                          readParams(functionCall.statement, subParamCount, false)
+                        }
 
-                      let isArray: boolean
-                      if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
-                        isArray = outBufferToJSON.readInt() === 1
-                      } else {
-                        isArray = false
-                      }
-                      if (isArray) {
-                        readParams(parameter as ArrayVariableParameter, 1, true)
-                      }
+                        if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
+                          outBufferToJSON.readInt()
+                        } else if (gameVersion === 7 && hasSubParameters) {
+                          outBufferToJSON.readInt()
+                        }
 
-                      if (arrayIndex) {
-                        (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
-                      } else if ((parent as FunctionCall).statement != null) {
-                        (parent as FunctionCall).statement.parameters.push(parameter as Parameter)
-                      } else {
-                        (parent as Statement).parameters.push(parameter as Parameter)
+                        let isArray: boolean
+                        if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
+                          isArray = outBufferToJSON.readInt() === 1
+                        } else {
+                          isArray = false
+                        }
+                        if (isArray) {
+                          readParams(parameter as ArrayVariableParameter, 1, true)
+                        }
+
+                        if (arrayIndex) {
+                          (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
+                        } else if ((parent as FunctionCall).statement != null) {
+                          (parent as FunctionCall).statement.parameters.push(parameter as Parameter)
+                        } else {
+                          (parent as Statement).parameters.push(parameter as Parameter)
+                        }
                       }
                     }
-                  }
-                  const statement: Statement = {
-                    name,
-                    isEnabled,
-                    parameters: []
-                  }
-                  if (parameterCount == null) {
-                    throw new Error('Missing parameter count for function ' + name)
-                  }
-                  readParams(statement, parameterCount, false)
-
-                  if (gameVersion === 7) {
-                    const nestedEcaCount = outBufferToJSON.readInt()
-                    readStatements(statement, nestedEcaCount, true)
-                  }
-
-                  if ((content as GUITrigger).events != null) { // is GUITrigger
-                    switch (functionType) {
-                      case StatementType.EVENT:
-                        (content as GUITrigger).events.push(statement)
-                        break
-                      case StatementType.CONDITION:
-                        (content as GUITrigger).conditions.push(statement)
-                        break
-                      case StatementType.ACTION:
-                        (content as GUITrigger).actions.push(statement)
-                        break
+                    const statement: Statement = {
+                      name,
+                      isEnabled,
+                      parameters: []
                     }
-                  } else {
-                    if ((content as NestingStatement).statements == null) {
-                      (content as NestingStatement).statements = []
+                    if (parameterCount == null) {
+                      throw new Error('Missing parameter count for function ' + name)
                     }
-                    if ((content as NestingStatement).statements[group] != null) {
-                      ((content as NestingStatement).statements[group].statements).push(statement)
+                    readParams(statement, parameterCount, false)
+
+                    if (gameVersion === 7) {
+                      const nestedEcaCount = outBufferToJSON.readInt()
+                      readStatements(statement, nestedEcaCount, true)
+                    }
+
+                    if ((content as GUITrigger).events != null) { // is GUITrigger
+                      switch (functionType) {
+                        case StatementType.EVENT:
+                          (content as GUITrigger).events.push(statement)
+                          break
+                        case StatementType.CONDITION:
+                          (content as GUITrigger).conditions.push(statement)
+                          break
+                        case StatementType.ACTION:
+                          (content as GUITrigger).actions.push(statement)
+                          break
+                      }
                     } else {
-                      ((content as NestingStatement).statements[group]) = {
-                        statements: [statement],
-                        type: functionType
+                      if ((content as NestingStatement).statements == null) {
+                        (content as NestingStatement).statements = []
+                      }
+                      if ((content as NestingStatement).statements[group] != null) {
+                        ((content as NestingStatement).statements[group].statements).push(statement)
+                      } else {
+                        ((content as NestingStatement).statements[group]) = {
+                          statements: [statement],
+                          type: functionType
+                        }
                       }
                     }
                   }
                 }
+                readStatements(trigger, ecaCount, false)
+                content[elementId] = trigger
+                customScripts.push(null)
               }
-              readStatements(trigger, ecaCount, false)
-              content[elementId] = trigger
-              customScripts.push(null)
             } else if (type === ContentType.COMMENT) {
               content[elementId] = {
                 name,
