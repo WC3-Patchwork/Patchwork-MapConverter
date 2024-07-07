@@ -3,7 +3,7 @@ import { W3Buffer } from '../W3Buffer'
 import { rad2Deg, deg2Rad } from '../AngleConverter'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
-import { type Doodad } from '../data/Doodad'
+import { SpecialDoodad, type Doodad } from '../data/Doodad'
 
 enum flag {
   // 0= invisible and non-solid tree
@@ -14,27 +14,29 @@ enum flag {
   solid = 2
 }
 
-export class DoodadsTranslator implements Translator<Doodad[]> {
+export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]> {
   private static instance: DoodadsTranslator
 
-  private constructor () {}
+  private constructor() { }
 
-  public static getInstance (): DoodadsTranslator {
+  public static getInstance(): DoodadsTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (doodads: Doodad[]): WarResult {
+  public static jsonToWar(doodads: [Doodad[], SpecialDoodad[]]): WarResult {
     return this.getInstance().jsonToWar(doodads)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<Doodad[]> {
+  public static warToJson(buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (doodadsJson: Doodad[]): WarResult {
+  public jsonToWar(compositeJson: [Doodad[], SpecialDoodad[]]): WarResult {
+    const doodadsJson = compositeJson[0];
+    const specialDoodadsJson = compositeJson[1];
     const outBufferToWar = new HexBuffer()
     /*
          * Header
@@ -84,8 +86,16 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
       outBufferToWar.addByte(treeFlag)
 
       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
-      outBufferToWar.addInt(0) // NOT SUPPORTED: random item table pointer: fixed to 0
-      outBufferToWar.addInt(0) // NOT SUPPORTED: number of items dropped for item table
+      outBufferToWar.addInt(tree.randomItemSetPtr)
+      outBufferToWar.addInt(tree.droppedItemSets.length)
+      for (const itemSet of tree.droppedItemSets) {
+        // Write the item set
+        outBufferToWar.addInt(itemSet.items.length);
+        for (const item of itemSet.items) {
+          outBufferToWar.addChars(item.itemId)
+          outBufferToWar.addInt(item.chance)
+        }
+      }
       outBufferToWar.addInt(tree.id)
     })
 
@@ -93,7 +103,13 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
          * Footer
          */
     outBufferToWar.addInt(0) // special doodad format number, fixed at 0x00
-    outBufferToWar.addInt(0) // NOT SUPPORTED: number of special doodads
+    outBufferToWar.addInt(specialDoodadsJson.length) // number of special doodads
+    for (const specialDoodad of specialDoodadsJson) {
+      outBufferToWar.addChars(specialDoodad.type)
+      outBufferToWar.addInt(specialDoodad.position[0]) //x
+      outBufferToWar.addInt(specialDoodad.position[1]) //y
+      outBufferToWar.addInt(specialDoodad.position[2]) //z
+    }
 
     return {
       errors: [],
@@ -101,7 +117,7 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Doodad[]> {
+  public warToJson(buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
     const result: Doodad[] = []
     const outBufferToJSON = new W3Buffer(buffer)
 
@@ -120,6 +136,8 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
         skinId: '',
         flags: { visible: true, solid: true },
         life: -1,
+        randomItemSetPtr: 0,
+        droppedItemSets: [],
         id: -1
       }
 
@@ -145,17 +163,18 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
 
       doodad.life = outBufferToJSON.readByte() // as a %
 
-      // UNSUPPORTED: random item set drops when doodad is destroyed/killed
-      // This section just consumes the bytes from the file
-      const randomItemSetPtr = outBufferToJSON.readInt() // points to an item set defined in the map (rather than custom one defined below)
+      doodad.randomItemSetPtr = outBufferToJSON.readInt() // points to an item set defined in the map (rather than custom one defined below)
       const numberOfItemSets = outBufferToJSON.readInt() // this should be 0 if randomItemSetPtr is >= 0
 
       for (let j = 0; j < numberOfItemSets; j++) {
         // Read the item set
         const numberOfItems = outBufferToJSON.readInt()
+        doodad.droppedItemSets.push({ items: [] })
         for (let k = 0; k < numberOfItems; k++) {
-          outBufferToJSON.readChars(4) // Item ID
-          outBufferToJSON.readInt() // % chance to drop
+          doodad.droppedItemSets[j].items.push({
+            itemId: outBufferToJSON.readChars(4), // Item ID
+            chance: outBufferToJSON.readInt() // % chance to drop
+          });
         }
       }
 
@@ -164,19 +183,21 @@ export class DoodadsTranslator implements Translator<Doodad[]> {
       result.push(doodad)
     }
 
-    // UNSUPPORTED: Special doodads
+    const resultSpecial: SpecialDoodad[] = []
     outBufferToJSON.readInt() // special doodad format version set to '0'
     const numSpecialDoodads = outBufferToJSON.readInt()
     for (let i = 0; i < numSpecialDoodads; i++) {
-      outBufferToJSON.readChars(4) // doodad ID
-      outBufferToJSON.readInt()
-      outBufferToJSON.readInt()
-      outBufferToJSON.readInt()
+      resultSpecial.push({
+        type: outBufferToJSON.readChars(4), // doodad ID
+        position: [outBufferToJSON.readInt(),
+        outBufferToJSON.readInt(),
+        outBufferToJSON.readInt()]
+      })
     }
 
     return {
       errors: [],
-      json: result
+      json: [result, resultSpecial]
     }
   }
 }

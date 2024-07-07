@@ -8,24 +8,24 @@ import { FogType, type Force, type Info, type Player, ScriptLanguage, SupportedM
 export class InfoTranslator implements Translator<Info> {
   private static instance: InfoTranslator
 
-  private constructor () {}
+  private constructor() { }
 
-  public static getInstance (): InfoTranslator {
+  public static getInstance(): InfoTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (info: Info): WarResult {
+  public static jsonToWar(info: Info): WarResult {
     return this.getInstance().jsonToWar(info)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<Info> {
+  public static warToJson(buffer: Buffer): JsonResult<Info> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (infoJson: Info): WarResult {
+  public jsonToWar(infoJson: Info): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addInt(31) // file version, 0x1F
@@ -78,14 +78,14 @@ export class InfoTranslator implements Translator<Info> {
       if (infoJson.map.flags.useTerrainFog) flags |= 0x2000
       if (infoJson.map.flags.tftRequired) flags |= 0x4000
       if (infoJson.map.flags.useItemClassificationSystem) flags |= 0x8000
-      if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x10000
-      if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x20000
-      //0x40000
+      if (infoJson.map.flags.enableWaterTinting) flags |= 0x10000
+      if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x20000
+      if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x40000
       //0x80000
       //0x100000
       //0x200000
-      if (infoJson.map.flags.enableWaterTinting) flags |= 0x400000
-
+      //0x400000
+      //0x800000
       // 8 -unknown bits?
     }
 
@@ -103,7 +103,7 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addString(infoJson.loadingScreen.subtitle)
 
     // Use game data set
-    outBufferToWar.addInt(infoJson.game_data_set)
+    outBufferToWar.addInt(infoJson.gameDataSet)
 
     // Prologue
     outBufferToWar.addString(infoJson.prologue.path)
@@ -119,7 +119,7 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addByte(infoJson.fog.color[0])
     outBufferToWar.addByte(infoJson.fog.color[1])
     outBufferToWar.addByte(infoJson.fog.color[2])
-    outBufferToWar.addByte(255) // Fog alpha - unsupported
+    outBufferToWar.addByte(infoJson.fog.color[3])
 
     // Misc.
     // If globalWeather is not defined or is set to 'none', use 0 sentinel value, else add char[4]
@@ -135,11 +135,11 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addByte(infoJson.water[0])
     outBufferToWar.addByte(infoJson.water[1])
     outBufferToWar.addByte(infoJson.water[2])
-    outBufferToWar.addByte(255) // Water alpha - unsupported
+    outBufferToWar.addByte(infoJson.water[3])
 
     outBufferToWar.addInt(infoJson.scriptLanguage)
     outBufferToWar.addInt(infoJson.supportedModes)
-    outBufferToWar.addInt(0) // unknown
+    outBufferToWar.addInt(infoJson.gameDataVersion)
 
     // Players
     outBufferToWar.addInt(infoJson.players.length)
@@ -151,10 +151,10 @@ export class InfoTranslator implements Translator<Info> {
       outBufferToWar.addString(player.name)
       outBufferToWar.addFloat(player.startingPos.x)
       outBufferToWar.addFloat(player.startingPos.y)
-      outBufferToWar.addInt(0) // ally low prio flags - unsupported
-      outBufferToWar.addInt(0) // ally high prio flags - unsupported
-      outBufferToWar.addInt(0) // enemy low prio flags - unsupported
-      outBufferToWar.addInt(0) // enemy high prio flags - unsupported
+      outBufferToWar.addInt(player.allyLowPriorities) // ally low prio flags
+      outBufferToWar.addInt(player.allyHighPriorities) // ally high prio flags
+      outBufferToWar.addInt(player.enemyLowPriorities) // enemy low prio flags
+      outBufferToWar.addInt(player.enermyHighPriorities) // enemy high prio flags
     })
 
     // Forces
@@ -174,25 +174,62 @@ export class InfoTranslator implements Translator<Info> {
       outBufferToWar.addString(force.name)
     })
 
-    // Upgrades - unsupported
-    outBufferToWar.addInt(0)
+    // Struct: upgrade avail.
+    outBufferToWar.addInt(infoJson.upgrades.length)
+    for (const upgrade of infoJson.upgrades) {
+      outBufferToWar.addInt(upgrade.playerFlags)
+      outBufferToWar.addChars(upgrade.upgradeId)
+      outBufferToWar.addInt(upgrade.level)
+      outBufferToWar.addInt(upgrade.availability)
+    }
 
-    // Tech availability - unsupported
-    outBufferToWar.addInt(0)
+    // Struct: tech avail.
+    outBufferToWar.addInt(infoJson.techBlacklist.length)
+    for (const tech of infoJson.techBlacklist) {
+      outBufferToWar.addInt(tech.playerFlags)
+      outBufferToWar.addChars(tech.techId)
+    }
 
-    // Unit table (random) - unsupported
-    outBufferToWar.addInt(0)
+    // Struct: random unit table
+    outBufferToWar.addInt(infoJson.randomUnitTables.length)
+    for (const randomUnitTable of infoJson.randomUnitTables) {
+      outBufferToWar.addInt(randomUnitTable.id)
+      outBufferToWar.addChars(randomUnitTable.name)
 
-    // Item table (random) - unsupported
-    outBufferToWar.addInt(0)
+      outBufferToWar.addInt(randomUnitTable.rows.length)
+      for (const randomUnitPool of randomUnitTable.rows) {
+        outBufferToWar.addInt(randomUnitPool.type)
 
+        outBufferToWar.addInt(randomUnitPool.objects.length)
+        for (const randomUnit of randomUnitPool.objects) {
+          outBufferToWar.addInt(randomUnit.chance)
+          outBufferToWar.addChars(randomUnit.objectId)
+        }
+      }
+    }
+
+    // Struct: random item table
+    outBufferToWar.addInt(infoJson.randomItemTables.length)
+    for (const randomItemTable of infoJson.randomItemTables) {
+      outBufferToWar.addInt(randomItemTable.id)
+      outBufferToWar.addChars(randomItemTable.name)
+
+      outBufferToWar.addInt(randomItemTable.rows.length)
+      for (const randomItemPool of randomItemTable.rows) {
+        outBufferToWar.addInt(randomItemPool.objects.length)
+        for (const randomItem of randomItemPool.objects) {
+          outBufferToWar.addInt(randomItem.chance)
+          outBufferToWar.addChars(randomItem.objectId)
+        }
+      }
+    }
     return {
       errors: [],
       buffer: outBufferToWar.getBuffer()
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Info> {
+  public warToJson(buffer: Buffer): JsonResult<Info> {
     const result: Info = {
       map: {
         name: '',
@@ -208,16 +245,18 @@ export class InfoTranslator implements Translator<Info> {
           hideMinimapInPreview: false, // 0x0001: 1=hide minimap in preview screens
           modifyAllyPriorities: true, // 0x0002: 1=modify ally priorities
           isMeleeMap: false, // 0x0004: 1=melee map
-          // 0x0008: 1=playable map size was large and has never been reduced to medium (?)
+          nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: false, // 0x0008: 1=playable map size was large and has never been reduced to medium (?)
           maskedPartiallyVisible: false, // 0x0010: 1=masked area are partially visible
           fixedPlayerSetting: false, // 0x0020: 1=fixed player setting for custom forces
           useCustomForces: false, // 0x0040: 1=use custom forces
           useCustomTechtree: false, // 0x0080: 1=use custom techtree
           useCustomAbilities: false, // 0x0100: 1=use custom abilities
           useCustomUpgrades: false, // 0x0200: 1=use custom upgrades
-          // 0x0400: 1=map properties menu opened at least once since map creation (?)
+          mapPropertiesMenuOpenedAtLeastOnce: false, // 0x0400: 1=map properties menu opened at least once since map creation (?)
           waterWavesOnCliffShores: false, // 0x0800: 1=show water waves on cliff shores
           waterWavesOnRollingShores: false, // 0x1000: 1=show water waves on rolling shores
+          useTerrainFog: false, // 0x2000
+          tftRequired: false, // 0x4000
           useItemClassificationSystem: false, // 0x8000: 1=use item classification system
           enableWaterTinting: false, // 0x10000
           useAccurateProbabilityForCalculations: false, // 0x20000
@@ -248,12 +287,8 @@ export class InfoTranslator implements Translator<Info> {
         bounds: [],
         complements: []
       },
-      players: [
-
-      ],
-      forces: [
-
-      ],
+      players: [],
+      forces: [],
       saves: 0,
       editorVersion: 0,
       scriptLanguage: ScriptLanguage.JASS,
@@ -267,7 +302,13 @@ export class InfoTranslator implements Translator<Info> {
       globalWeather: '',
       customSoundEnvironment: '',
       customLightEnv: '',
-      water: []
+      water: [],
+      gameDataVersion: 0,
+      gameDataSet: 0,
+      upgrades: [],
+      techBlacklist: [],
+      randomUnitTables: [],
+      randomItemTables: []
     }
     const outBufferToJSON = new W3Buffer(buffer)
 
@@ -307,17 +348,18 @@ export class InfoTranslator implements Translator<Info> {
       hideMinimapInPreview: !!(flags & 0x0001),
       modifyAllyPriorities: !!(flags & 0x0002),
       isMeleeMap: !!(flags & 0x0004),
-      // skip 0x008
+      nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: !!(flags & 0x0008),
       maskedPartiallyVisible: !!(flags & 0x0010),
       fixedPlayerSetting: !!(flags & 0x0020),
       useCustomForces: !!(flags & 0x0040),
       useCustomTechtree: !!(flags & 0x0080),
       useCustomAbilities: !!(flags & 0x0100),
       useCustomUpgrades: !!(flags & 0x0200),
+      mapPropertiesMenuOpenedAtLeastOnce: !!(flags & 0x0400),
       waterWavesOnCliffShores: !!(flags & 0x0800),
       waterWavesOnRollingShores: !!(flags & 0x1000),
-      // skip 0x2000
-      // skip 0x4000
+      useTerrainFog: !!(flags & 0x2000),
+      tftRequired: !!(flags & 0x4000),
       useItemClassificationSystem: !!(flags & 0x8000),
       enableWaterTinting: !!(flags & 0x10000),
       useAccurateProbabilityForCalculations: !!(flags & 0x20000),
@@ -332,7 +374,7 @@ export class InfoTranslator implements Translator<Info> {
     result.loadingScreen.title = outBufferToJSON.readString()
     result.loadingScreen.subtitle = outBufferToJSON.readString()
 
-    const gameDataSet = outBufferToJSON.readInt() // 0 = standard
+    result.gameDataSet = outBufferToJSON.readInt() // 0 = standard
 
     result.prologue = {
       path: outBufferToJSON.readString(),
@@ -356,7 +398,7 @@ export class InfoTranslator implements Translator<Info> {
 
     result.scriptLanguage = outBufferToJSON.readInt()
     result.supportedModes = outBufferToJSON.readInt()
-    outBufferToJSON.readInt() // unknown
+    result.gameDataVersion = outBufferToJSON.readInt()
 
     // Struct: players
     const numPlayers = outBufferToJSON.readInt()
@@ -366,7 +408,11 @@ export class InfoTranslator implements Translator<Info> {
         startingPos: { x: 0, y: 0, fixed: false },
         playerNum: 0,
         type: 0,
-        race: 0
+        race: 0,
+        allyLowPriorities: 0,
+        allyHighPriorities: 0,
+        enemyLowPriorities: 0,
+        enermyHighPriorities: 0
       }
 
       player.playerNum = outBufferToJSON.readInt()
@@ -382,10 +428,10 @@ export class InfoTranslator implements Translator<Info> {
         fixed: isPlayerStartPositionFixed
       }
 
-      outBufferToJSON.readInt() // ally low priorities flags (bit "x"=1 --> set for player "x")
-      outBufferToJSON.readInt() // ally high priorities flags (bit "x"=1 --> set for player "x")
-      outBufferToJSON.readInt() // enemy low priorities flags
-      outBufferToJSON.readInt() // enemy high priorities flags
+      player.allyLowPriorities = outBufferToJSON.readInt() // ally low priorities flags (bit "x"=1 --> set for player "x")
+      player.allyHighPriorities = outBufferToJSON.readInt() // ally high priorities flags (bit "x"=1 --> set for player "x")
+      player.enemyLowPriorities = outBufferToJSON.readInt() // enemy low priorities flags
+      player.enermyHighPriorities = outBufferToJSON.readInt() // enemy high priorities flags
 
       result.players.push(player)
     }
@@ -414,52 +460,74 @@ export class InfoTranslator implements Translator<Info> {
       result.forces.push(force)
     }
 
-    // UNSUPPORTED: Struct: upgrade avail.
+    // Struct: upgrade avail.
     const numUpgrades = outBufferToJSON.readInt()
     for (let i = 0; i < numUpgrades; i++) {
-      outBufferToJSON.readInt() // Player Flags (bit "x"=1 if this change applies for player "x")
-      outBufferToJSON.readChars(4) // upgrade id (as in UpgradeData.slk)
-      outBufferToJSON.readInt() // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
-      outBufferToJSON.readInt() // Availability (0 = unavailable, 1 = available, 2 = researched)
+      result.upgrades.push({
+        playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
+        upgradeId: outBufferToJSON.readChars(4), // upgrade id (as in UpgradeData.slk)
+        level: outBufferToJSON.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
+        availability: outBufferToJSON.readInt() // Availability (0 = unavailable, 1 = available, 2 = researched)
+      })
     }
 
-    // UNSUPPORTED: Struct: tech avail.
+    // Struct: tech avail.
     const numTech = outBufferToJSON.readInt()
     for (let i = 0; i < numTech; i++) {
-      outBufferToJSON.readInt() // Player Flags (bit "x"=1 if this change applies for player "x")
-      outBufferToJSON.readChars(4) // tech id (this can be an item, unit or ability)
+      result.techBlacklist.push({
+        playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
+        techId: outBufferToJSON.readChars(4) // tech id (this can be an item, unit or ability)
+      })
     }
 
-    // UNSUPPORTED: Struct: random unit table
+    // Struct: random unit table
     const numUnitTable = outBufferToJSON.readInt()
     for (let i = 0; i < numUnitTable; i++) {
-      outBufferToJSON.readInt() // Group number
-      outBufferToJSON.readString() // Group name
+      result.randomUnitTables.push({
+        id: outBufferToJSON.readInt(), // Group number
+        name: outBufferToJSON.readString(), // Group name
+        rows: []
+      })
 
       const numPositions = outBufferToJSON.readInt() // Number "m" of positions
       for (let j = 0; j < numPositions; j++) {
-        outBufferToJSON.readInt() // unit table (=0), a building table (=1) or an item table (=2)
+        result.randomUnitTables[i].rows.push({
+          type: outBufferToJSON.readInt(), // unit table (=0), a building table (=1) or an item table (=2)
+          objects: []
+        })
 
         const numLinesInTable = outBufferToJSON.readInt()
         for (let k = 0; k < numLinesInTable; k++) {
-          outBufferToJSON.readInt() // Chance of the unit/item (percentage)
-          outBufferToJSON.readChars(4) // unit/item id's for this line specified
+          result.randomUnitTables[i].rows[j].objects.push({
+            chance: outBufferToJSON.readInt(), // Chance of the unit/item (percentage)
+            objectId: outBufferToJSON.readChars(4) // unit/item id's for this line specified
+          })
         }
       }
     }
 
-    // UNSUPPORTED: Struct: random item table
+    // Struct: random item table
     const numItemTable = outBufferToJSON.readInt()
     for (let i = 0; i < numItemTable; i++) {
-      outBufferToJSON.readInt() // Table number
-      outBufferToJSON.readString() // Table name
+      result.randomItemTables.push({
+        id: outBufferToJSON.readInt(), // Group number
+        name: outBufferToJSON.readString(), // Group name
+        rows: []
+      })
 
       const itemSetsCurrentTable = outBufferToJSON.readInt() // Number "m" of item sets on the current item table
       for (let j = 0; j < itemSetsCurrentTable; j++) {
+        result.randomItemTables[i].rows.push({
+          type: 2, // unit table (=0), a building table (=1) or an item table (=2) - not used
+          objects: []
+        })
+
         const itemsInItemSet = outBufferToJSON.readInt() // Number "i" of items on the current item set
         for (let k = 0; k < itemsInItemSet; k++) {
-          outBufferToJSON.readInt() // Percentual chance
-          outBufferToJSON.readChars(4) // Item id (as in ItemData.slk)
+          result.randomItemTables[i].rows[j].objects.push({
+            chance: outBufferToJSON.readInt(), // Percentual chance
+            objectId: outBufferToJSON.readChars(4) // Item id (as in ItemData.slk)
+          })
         }
       }
     }

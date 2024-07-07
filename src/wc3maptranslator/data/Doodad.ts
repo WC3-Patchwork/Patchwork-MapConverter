@@ -1,4 +1,5 @@
 import { type angle } from '../CommonInterfaces'
+import { ItemSet } from './ItemSet'
 
 interface Doodad {
   type: string
@@ -9,6 +10,8 @@ interface Doodad {
   skinId: string
   flags: DoodadFlag
   life: number
+  randomItemSetPtr: number
+  droppedItemSets: ItemSet[]
   id: number
 }
 
@@ -17,4 +20,9 @@ interface DoodadFlag {
   solid: boolean
 }
 
-export type { Doodad, DoodadFlag }
+interface SpecialDoodad {
+  type: string,
+  position: number[]
+}
+
+export type { Doodad, DoodadFlag, SpecialDoodad }
