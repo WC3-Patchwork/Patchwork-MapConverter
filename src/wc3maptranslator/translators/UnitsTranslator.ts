@@ -3,12 +3,12 @@ import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Unit } from '../data/Unit'
 import { type Translator } from './Translator'
-import { UnitSet } from '../data/UnitSet'
+import { type UnitSet } from '../data/UnitSet'
 
 export class UnitsTranslator implements Translator<Unit[]> {
   private static instance: UnitsTranslator
 
-  private constructor () {}
+  private constructor () { }
 
   public static getInstance (): UnitsTranslator {
     if (this.instance == null) {
@@ -106,13 +106,13 @@ export class UnitsTranslator implements Translator<Unit[]> {
         outBufferToWar.addInt(ability.level)
       })
 
-      //Random
-      outBufferToWar.addInt(0)
-      switch(unit.random.type){
+      // Random
+      outBufferToWar.addInt(unit.random.type)
+      switch (unit.random.type) {
         case 0:
           outBufferToWar.addByte(unit.random.level as number)
-          outBufferToWar.addByte(0) //Unknown - apparently it's part of level ^
-          outBufferToWar.addByte(0) //Unknown - apparently it's part of level ^
+          outBufferToWar.addByte(0) // Unknown - apparently it's part of level ^
+          outBufferToWar.addByte(0) // Unknown - apparently it's part of level ^
           outBufferToWar.addByte(unit.random.itemClass as number)
           break
         case 1:
@@ -121,7 +121,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
           break
         case 2:
           outBufferToWar.addInt((unit.random.unitSet as UnitSet).length)
-          for(const spawnableUnit of (unit.random.unitSet as UnitSet)){
+          for (const spawnableUnit of (unit.random.unitSet as UnitSet)) {
             outBufferToWar.addChars(spawnableUnit.unitId)
             outBufferToWar.addInt(spawnableUnit.chance)
           }
@@ -129,7 +129,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
       }
 
       outBufferToWar.addInt(unit.color != null ? unit.color : unit.player) // custom color, defaults to owning player
-      outBufferToWar.addInt(unit.waygate); // waygate
+      outBufferToWar.addInt(unit.waygate) // waygate
       outBufferToWar.addInt(unit.id) // id
     })
 
@@ -206,7 +206,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
       }
       const numDroppedItemSets = outBufferToJSON.readInt()
       for (let j = 0; j < numDroppedItemSets; j++) {
-        unit.droppedItemSets.push({items: []})
+        unit.droppedItemSets.push({ items: [] })
         const numDroppableItems = outBufferToJSON.readInt()
         for (let k = 0; k < numDroppableItems; k++) {
           unit.droppedItemSets[j].items.push({
@@ -255,8 +255,8 @@ export class UnitsTranslator implements Translator<Unit[]> {
         //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
         //   r is also 0 for non random units/items so we have these 4 bytes anyway (even if the id wasnt uDNR or iDNR)
         unit.random.level = outBufferToJSON.readByte()
-        outBufferToJSON.readByte() //unknown
-        outBufferToJSON.readByte() //unknown
+        outBufferToJSON.readByte() // unknown
+        outBufferToJSON.readByte() // unknown
         unit.random.itemClass = outBufferToJSON.readByte()
       } else if (randFlag === 1) {
         // 1 = random unit from random group (defined in the w3i), in this case we have
@@ -280,7 +280,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
       }
 
       unit.color = outBufferToJSON.readInt()
-      unit.waygate = outBufferToJSON.readInt() //waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
+      unit.waygate = outBufferToJSON.readInt() // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
       unit.id = outBufferToJSON.readInt()
 
       result.push(unit)

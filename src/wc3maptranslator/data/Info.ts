@@ -85,19 +85,19 @@ interface Info {
   gameDataVersion: number
   map: Map
   camera: PlayableCamera
-  gameDataSet: number,
+  gameDataSet: number
   prologue: Prologue
   loadingScreen: LoadingScreen
   fog: Fog
-  globalWeather: string
+  globalWeather: number
   customSoundEnvironment: string
-  customLightEnv: string
+  customLightEnv: number
   water: number[] // R G B A
   players: Player[]
   forces: Force[]
   upgrades: UpgradeAvailable[]
   techBlacklist: TechUnavailable[]
-  randomUnitTables: RandomTable[]
+  randomUnitTables: RandomUnitTable[]
   randomItemTables: RandomTable[]
 }
 
@@ -136,32 +136,38 @@ interface Force {
 }
 
 interface UpgradeAvailable {
-  playerFlags: number,
-  upgradeId: string,
-  level: number,
-  availability: Availability,
+  playerFlags: number
+  upgradeId: string
+  level: number
+  availability: Availability
 }
 
 interface TechUnavailable {
-  playerFlags: number,
+  playerFlags: number
   techId: string
 }
 
 interface RandomTable {
-  id: number,
-  name: string,
+  id: number
+  name: string
   rows: ObjectPool[]
-
 }
 
 interface ObjectPool {
-  type: number,
+  type: number
   objects: RandomObject[]
 }
 
 interface RandomObject {
-  objectId: string,
+  objectId: string
   chance: number
+}
+
+interface RandomUnitTable {
+  id: number
+  name: string
+  positions: number[]
+  chances: Array<{ chance: number, unitIds: string[] }>
 }
 
 enum ScriptLanguage {

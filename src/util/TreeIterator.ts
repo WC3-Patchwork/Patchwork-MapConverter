@@ -10,6 +10,8 @@ function * TreeIterator<NODE> (root: NODE, getChildNodes: (parent: NODE) => NODE
     let childParentPath = parentMaps.get(node)
     if (childParentPath == null) {
       childParentPath = []
+    } else { // copy
+      childParentPath = childParentPath.map(it => it)
     }
 
     childParentPath.push(node)
@@ -20,6 +22,7 @@ function * TreeIterator<NODE> (root: NODE, getChildNodes: (parent: NODE) => NODE
       }
     }
 
+    childParentPath = childParentPath.map(it => it)
     childParentPath.pop()
 
     yield [childParentPath, node]

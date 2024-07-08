@@ -8,24 +8,24 @@ import { FogType, type Force, type Info, type Player, ScriptLanguage, SupportedM
 export class InfoTranslator implements Translator<Info> {
   private static instance: InfoTranslator
 
-  private constructor() { }
+  private constructor () { }
 
-  public static getInstance(): InfoTranslator {
+  public static getInstance (): InfoTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar(info: Info): WarResult {
+  public static jsonToWar (info: Info): WarResult {
     return this.getInstance().jsonToWar(info)
   }
 
-  public static warToJson(buffer: Buffer): JsonResult<Info> {
+  public static warToJson (buffer: Buffer): JsonResult<Info> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar(infoJson: Info): WarResult {
+  public jsonToWar (infoJson: Info): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addInt(31) // file version, 0x1F
@@ -48,7 +48,7 @@ export class InfoTranslator implements Translator<Info> {
       outBufferToWar.addFloat(infoJson.camera.bounds[cbIndex])
     }
 
-    // Camera complements (4 floats total)
+    // Camera complements (4 ints total)
     for (let ccIndex = 0; ccIndex < 4; ccIndex++) {
       outBufferToWar.addInt(infoJson.camera.complements[ccIndex])
     }
@@ -65,7 +65,7 @@ export class InfoTranslator implements Translator<Info> {
       if (infoJson.map.flags.hideMinimapInPreview) flags |= 0x0001 // hide minimap in preview screens
       if (infoJson.map.flags.modifyAllyPriorities) flags |= 0x0002 // modify ally priorities
       if (infoJson.map.flags.isMeleeMap) flags |= 0x0004 // melee map
-      if (infoJson.map.flags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium) 0x0008 // playable map size was large and never reduced to medium (?)
+      if (infoJson.map.flags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium) flags |= 0x0008 // playable map size was large and never reduced to medium (?)
       if (infoJson.map.flags.maskedPartiallyVisible) flags |= 0x0010 // masked area are partially visible
       if (infoJson.map.flags.fixedPlayerSetting) flags |= 0x0020 // fixed player setting for custom forces
       if (infoJson.map.flags.useCustomForces) flags |= 0x0040 // use custom forces
@@ -81,14 +81,13 @@ export class InfoTranslator implements Translator<Info> {
       if (infoJson.map.flags.enableWaterTinting) flags |= 0x10000
       if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x20000
       if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x40000
-      //0x80000
-      //0x100000
-      //0x200000
-      //0x400000
-      //0x800000
+      // 0x80000
+      // 0x100000
+      // 0x200000
+      // 0x400000
+      // 0x800000
       // 8 -unknown bits?
     }
-
 
     outBufferToWar.addInt(flags) // Add flags
 
@@ -122,14 +121,14 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addByte(infoJson.fog.color[3])
 
     // Misc.
-    // If globalWeather is not defined or is set to 'none', use 0 sentinel value, else add char[4]
-    if (infoJson.globalWeather == null || infoJson.globalWeather.toLowerCase() === 'none') {
-      outBufferToWar.addInt(0)
-    } else {
-      outBufferToWar.addChars(infoJson.globalWeather) // char[4] - lookup table
-    }
+    // // If globalWeather is not defined or is set to 'none', use 0 sentinel value, else add char[4] -- why this distinct crap? it just breaks the w3i for me.
+    // if (infoJson.globalWeather == null || infoJson.globalWeather.toLowerCase() === 'none') {
+    //   outBufferToWar.addInt(0)
+    // } else {
+    outBufferToWar.addInt(infoJson.globalWeather)
+    // }
     outBufferToWar.addString(infoJson.customSoundEnvironment != null ? infoJson.customSoundEnvironment : '')
-    outBufferToWar.addChar(infoJson.customLightEnv != null ? infoJson.customLightEnv : 'L')
+    outBufferToWar.addByte(infoJson.customLightEnv)
 
     // Custom water tinting
     outBufferToWar.addByte(infoJson.water[0])
@@ -194,16 +193,19 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addInt(infoJson.randomUnitTables.length)
     for (const randomUnitTable of infoJson.randomUnitTables) {
       outBufferToWar.addInt(randomUnitTable.id)
-      outBufferToWar.addChars(randomUnitTable.name)
+      outBufferToWar.addString(randomUnitTable.name)
 
-      outBufferToWar.addInt(randomUnitTable.rows.length)
-      for (const randomUnitPool of randomUnitTable.rows) {
-        outBufferToWar.addInt(randomUnitPool.type)
+      outBufferToWar.addInt(randomUnitTable.positions.length)
+      for (const position of randomUnitTable.positions) {
+        outBufferToWar.addInt(position)
+      }
 
-        outBufferToWar.addInt(randomUnitPool.objects.length)
-        for (const randomUnit of randomUnitPool.objects) {
-          outBufferToWar.addInt(randomUnit.chance)
-          outBufferToWar.addChars(randomUnit.objectId)
+      outBufferToWar.addInt(randomUnitTable.chances.length)
+      for (const chance of randomUnitTable.chances) {
+        outBufferToWar.addInt(chance.chance)
+
+        for (const unitId of chance.unitIds) {
+          outBufferToWar.addChars(unitId)
         }
       }
     }
@@ -212,7 +214,7 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addInt(infoJson.randomItemTables.length)
     for (const randomItemTable of infoJson.randomItemTables) {
       outBufferToWar.addInt(randomItemTable.id)
-      outBufferToWar.addChars(randomItemTable.name)
+      outBufferToWar.addString(randomItemTable.name)
 
       outBufferToWar.addInt(randomItemTable.rows.length)
       for (const randomItemPool of randomItemTable.rows) {
@@ -229,7 +231,7 @@ export class InfoTranslator implements Translator<Info> {
     }
   }
 
-  public warToJson(buffer: Buffer): JsonResult<Info> {
+  public warToJson (buffer: Buffer): JsonResult<Info> {
     const result: Info = {
       map: {
         name: '',
@@ -299,9 +301,9 @@ export class InfoTranslator implements Translator<Info> {
         patch: 0,
         build: 0
       },
-      globalWeather: '',
+      globalWeather: 0,
       customSoundEnvironment: '',
-      customLightEnv: '',
+      customLightEnv: 0,
       water: [],
       gameDataVersion: 0,
       gameDataSet: 0,
@@ -391,9 +393,9 @@ export class InfoTranslator implements Translator<Info> {
       color: [outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte()] // R G B A
     }
 
-    result.globalWeather = outBufferToJSON.readChars(4)
+    result.globalWeather = outBufferToJSON.readInt()
     result.customSoundEnvironment = outBufferToJSON.readString()
-    result.customLightEnv = outBufferToJSON.readChars()
+    result.customLightEnv = outBufferToJSON.readByte()
     result.water = [outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte()] // R G B A
 
     result.scriptLanguage = outBufferToJSON.readInt()
@@ -486,22 +488,24 @@ export class InfoTranslator implements Translator<Info> {
       result.randomUnitTables.push({
         id: outBufferToJSON.readInt(), // Group number
         name: outBufferToJSON.readString(), // Group name
-        rows: []
+        positions: [],
+        chances: []
       })
 
       const numPositions = outBufferToJSON.readInt() // Number "m" of positions
       for (let j = 0; j < numPositions; j++) {
-        result.randomUnitTables[i].rows.push({
-          type: outBufferToJSON.readInt(), // unit table (=0), a building table (=1) or an item table (=2)
-          objects: []
+        result.randomUnitTables[i].positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
+      }
+
+      const numChances = outBufferToJSON.readInt()
+      for (let j = 0; j < numChances; j++) {
+        result.randomUnitTables[i].chances.push({
+          chance: outBufferToJSON.readInt(), // Chance of the unit/item (percentage)
+          unitIds: []
         })
 
-        const numLinesInTable = outBufferToJSON.readInt()
-        for (let k = 0; k < numLinesInTable; k++) {
-          result.randomUnitTables[i].rows[j].objects.push({
-            chance: outBufferToJSON.readInt(), // Chance of the unit/item (percentage)
-            objectId: outBufferToJSON.readChars(4) // unit/item id's for this line specified
-          })
+        for (let k = 0; k < numPositions; k++) {
+          result.randomUnitTables[i].chances[j].unitIds.push(outBufferToJSON.readChars(4)) // unit/item id's for this line specified
         }
       }
     }
