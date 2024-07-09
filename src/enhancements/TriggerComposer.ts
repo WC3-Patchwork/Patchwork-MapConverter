@@ -15,7 +15,7 @@ import type directoryTree from 'directory-tree'
 import { type DirectoryTree } from 'directory-tree'
 import { readFile } from 'fs/promises'
 import { type CustomScript } from '../translator/data/content/CustomScript'
-import { ScriptedTrigger } from '../translator/data/content/ScriptedTrigger'
+import { type ScriptedTrigger } from '../translator/data/content/ScriptedTrigger'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
@@ -99,6 +99,9 @@ const TriggerComposer = {
     const parentMap = new Map<DirectoryTree, TriggerContainer>()
     parentMap.set(input, result)
 
+    const triggerContentMap = new Map<TriggerContainer, Map<string, TriggerContent[]>>()
+    triggerContentMap.set(result, new Map<string, TriggerContent[]>())
+
     if (input.children == null) {
       return result
     }
@@ -122,6 +125,7 @@ const TriggerComposer = {
           children: []
         } satisfies TriggerContainer
         parentMap.set(file, container)
+        triggerContentMap.set(container, new Map<string, TriggerContent[]>())
         containerParent.children.push(container)
       } else if (file.type === 'file') {
         if (file.extension === EnhancementManager.containerInfoExtension) {
@@ -143,20 +147,30 @@ const TriggerComposer = {
             runOnMapInit: true,
             type: ''
           } satisfies GUITrigger | GlobalVariable
-          containerParent.children.push(element)
+          // containerParent.children.push(element)
+          if ((triggerContentMap.get(containerParent)?.has(file.name)) ?? false) {
+            triggerContentMap.get(containerParent)?.get(file.name)?.push(element as TriggerContent)
+          } else {
+            triggerContentMap.get(containerParent)?.set(file.name, [element])
+          }
           tasks.push(populateGUIContent(element, file))
         } else if (file.extension === EnhancementManager.scriptExtension) {
-          const element = {
-            name: file.name.substring(0, file.name.indexOf('.')),
-            contentType: ContentType.CUSTOM_SCRIPT,
-            script: '',
-            description: '',
-            isEnabled: true
-          } satisfies CustomScript
           if (file.name.endsWith(`${EnhancementManager.mapHeaderFilename}${EnhancementManager.scriptExtension}`)) {
             tasks.push(populateCustomScript(result as unknown as CustomScript, file))
           } else {
-            containerParent.children.push(element)
+            const element = {
+              name: file.name.substring(0, file.name.indexOf('.')),
+              contentType: ContentType.CUSTOM_SCRIPT,
+              script: '',
+              description: '',
+              isEnabled: true
+            } satisfies CustomScript
+            // containerParent.children.push(element)
+            if ((triggerContentMap.get(containerParent)?.has(file.name)) ?? false) {
+              triggerContentMap.get(containerParent)?.get(file.name)?.push(element as TriggerContent)
+            } else {
+              triggerContentMap.get(containerParent)?.set(file.name, [element])
+            }
             tasks.push(populateCustomScript(element, file))
           }
         } else if (file.extension === EnhancementManager.commentExtension) {
@@ -180,6 +194,36 @@ const TriggerComposer = {
     }
 
     await Promise.all(tasks)
+    for (const [container, contentMap] of triggerContentMap) {
+      for (const [, contents] of contentMap) {
+        if (contents.length > 1) {
+          let script: CustomScript | undefined
+          let trigger: GUITrigger | ScriptedTrigger | undefined
+          for (const content of contents) {
+            switch (content.contentType) {
+              case ContentType.TRIGGER:
+              case ContentType.TRIGGER_SCRIPTED:
+                trigger = content as ScriptedTrigger | GUITrigger
+                break
+              case ContentType.CUSTOM_SCRIPT:
+                script = content as CustomScript
+                break
+            }
+            if (script != null && trigger != null) {
+              (trigger as ScriptedTrigger).script = script.script;
+              (trigger as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
+              container.children.push(trigger as TriggerContent)
+            } else if (script != null) {
+              container.children.push(script as TriggerContent)
+            } else if (trigger != null) {
+              container.children.push(trigger as TriggerContent)
+            }
+          }
+        } else {
+          contents.forEach(it => container.children.push(it))
+        }
+      }
+    }
     sortTriggerContent(result as unknown as OrderedTriggerContainer)
     return result
   },
