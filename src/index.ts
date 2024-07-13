@@ -74,8 +74,9 @@ program
     } else {
       EnhancementManager.mapHeaderFilename = options.mapHeader as string
     }
-
-    TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+    if (options.triggerData != null) {
+      TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+    }
   })
 
 program
