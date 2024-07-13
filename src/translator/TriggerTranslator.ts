@@ -18,7 +18,6 @@ import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInter
 import { HexBuffer } from '../wc3maptranslator/HexBuffer'
 import { W3Buffer } from '../wc3maptranslator/W3Buffer'
 import { type Translator } from '../wc3maptranslator/translators'
-import { Logger } from 'tslog'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
@@ -181,6 +180,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
           triggerStack.push(...(currentTrigger as TriggerContainer).children)
           break
         case ContentType.TRIGGER:
+        case ContentType.TRIGGER_SCRIPTED:
           elementId = 0x03000000 + triggerCount++
           break
         case ContentType.COMMENT:
@@ -262,6 +262,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
           break
 
         case ContentType.TRIGGER:
+        case ContentType.TRIGGER_SCRIPTED:
         case ContentType.COMMENT:
         case ContentType.CUSTOM_SCRIPT:
           outBufferToWar.addString(currentTrigger.name)
@@ -355,6 +356,13 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, -1)
+          } else if (currentTrigger.contentType === ContentType.TRIGGER_SCRIPTED) {
+            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
+            outBufferToWar.addInt(1) // is custom script
+            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
+            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1) // run on map init
+            outBufferToWar.addInt(parentId)
+            outBufferToWar.addInt(0)
           }
           break
 

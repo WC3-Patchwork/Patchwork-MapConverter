@@ -42,7 +42,7 @@ export class CustomScriptsTranslator implements Translator<{ headerComments: str
       const script = json.scripts[i]
 
       if (script == null || script.length === 0) {
-        outBufferToWar.addInt(0)
+        outBufferToWar.addInt(0) // size
       } else {
         const buf = Buffer.from(script, 'utf-8')
         outBufferToWar.addInt(buf.length + 1) // + nul char

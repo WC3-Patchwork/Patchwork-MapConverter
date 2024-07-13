@@ -15,7 +15,7 @@ reverseDictionary.set(ContentType.HEADER, 1)
 reverseDictionary.set(ContentType.LIBRARY, 2)
 reverseDictionary.set(ContentType.CATEGORY, 4)
 reverseDictionary.set(ContentType.TRIGGER, 8)
-reverseDictionary.set(ContentType.TRIGGER_SCRIPTED, 8) //special type for Patchwork
+reverseDictionary.set(ContentType.TRIGGER_SCRIPTED, 8) // special type for Patchwork
 reverseDictionary.set(ContentType.COMMENT, 16)
 reverseDictionary.set(ContentType.CUSTOM_SCRIPT, 32)
 reverseDictionary.set(ContentType.VARIABLE, 64)

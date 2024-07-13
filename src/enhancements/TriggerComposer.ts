@@ -132,7 +132,7 @@ const TriggerComposer = {
           tasks.push(populateParentDetails(containerParent, file))
         } else if (file.extension === EnhancementManager.guiExtension) {
           const element = {
-            name: file.name,
+            name: file.name.substring(0, file.name.indexOf('.')),
             contentType: ContentType.TRIGGER,
             actions: [],
             arrayLength: 0,
@@ -148,10 +148,10 @@ const TriggerComposer = {
             type: ''
           } satisfies GUITrigger | GlobalVariable
           // containerParent.children.push(element)
-          if ((triggerContentMap.get(containerParent)?.has(file.name)) ?? false) {
-            triggerContentMap.get(containerParent)?.get(file.name)?.push(element as TriggerContent)
+          if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
+            triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
           } else {
-            triggerContentMap.get(containerParent)?.set(file.name, [element])
+            triggerContentMap.get(containerParent)?.set(element.name, [element])
           }
           tasks.push(populateGUIContent(element, file))
         } else if (file.extension === EnhancementManager.scriptExtension) {
@@ -166,10 +166,10 @@ const TriggerComposer = {
               isEnabled: true
             } satisfies CustomScript
             // containerParent.children.push(element)
-            if ((triggerContentMap.get(containerParent)?.has(file.name)) ?? false) {
-              triggerContentMap.get(containerParent)?.get(file.name)?.push(element as TriggerContent)
+            if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
+              triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
             } else {
-              triggerContentMap.get(containerParent)?.set(file.name, [element])
+              triggerContentMap.get(containerParent)?.set(element.name, [element])
             }
             tasks.push(populateCustomScript(element, file))
           }
