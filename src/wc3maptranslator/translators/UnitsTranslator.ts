@@ -167,7 +167,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
         gold: 0,
         targetAcquisition: -1,
         random: {
-          type: 1,
+          type: -1,
           level: undefined,
           itemClass: undefined,
           groupIndex: undefined,
@@ -248,8 +248,8 @@ export class UnitsTranslator implements Translator<Unit[]> {
         })
       }
 
-      const randFlag = outBufferToJSON.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
-      if (randFlag === 0) {
+      unit.random.type = outBufferToJSON.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
+      if (unit.random.type === 0) {
         // 0 = Any neutral passive building/item, in this case we have
         //   byte[3]: level of the random unit/item,-1 = any (this is actually interpreted as a 24-bit number)
         //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
@@ -258,14 +258,14 @@ export class UnitsTranslator implements Translator<Unit[]> {
         outBufferToJSON.readByte() // unknown
         outBufferToJSON.readByte() // unknown
         unit.random.itemClass = outBufferToJSON.readByte()
-      } else if (randFlag === 1) {
+      } else if (unit.random.type === 1) {
         // 1 = random unit from random group (defined in the w3i), in this case we have
         //   int: unit group number (which group from the global table)
         //   int: position number (which column of this group)
         //   the column should of course have the item flag set (in the w3i) if this is a random item
         unit.random.groupIndex = outBufferToJSON.readInt()
         unit.random.columnIndex = outBufferToJSON.readInt()
-      } else if (randFlag === 2) {
+      } else if (unit.random.type === 2) {
         // 2 = random unit from custom table, in this case we have
         //   int: number "n" of different available units
         //   then we have n times a random unit structure
