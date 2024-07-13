@@ -240,6 +240,8 @@ const TriggerComposer = {
       const exportObj: Record<string, unknown> = {
         contentType: content.contentType
       }
+      content.name.replace('/', '-') // Let's hope someone didn't use exact name but with slash and minus symbol, otherwise hello collision
+      content.name.replace('\\', '-')
       switch (content.contentType) {
         case ContentType.HEADER:
           exportObj.description = (content as MapHeader).description
