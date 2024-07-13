@@ -1,5 +1,4 @@
 import { TriggerDataRegistry } from '../enhancements/TriggerDataRegistry'
-import { type FunctionCall } from './data/parameter/FunctionCall'
 import { type TriggerContainer } from './data/TriggerContainer'
 import { ContentType, type TriggerContent } from './data/content/TriggerContent'
 import { ContentTypeEnumConverter } from './util/ContentTypeEnumConverter'
@@ -8,10 +7,6 @@ import { type CustomScript } from './data/content/CustomScript'
 import { type GlobalVariable } from './data/content/GlobalVariable'
 import { type GUITrigger } from './data/content/GUITrigger'
 import { type TriggerComment } from './data/content/TriggerComment'
-import { type ArrayVariableParameter } from './data/parameter/ArrayVariableParameter'
-import { type PresetParameter } from './data/parameter/PresetParameter'
-import { type LiteralParameter } from './data/parameter/LiteralParameter'
-import { type VariableParameter } from './data/parameter/VariableParameter'
 import { type Statement } from './data/statement/Statement'
 import { StatementTypeEnumConverter } from './util/StatementTypeEnumConverter'
 import { StatementType } from './data/statement/StatementType'
@@ -23,13 +18,14 @@ import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInter
 import { HexBuffer } from '../wc3maptranslator/HexBuffer'
 import { W3Buffer } from '../wc3maptranslator/W3Buffer'
 import { type Translator } from '../wc3maptranslator/translators'
+import { Logger } from 'tslog'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
   scriptReferences: Array<ScriptContent | null>
 }
 
-function countContentTypes(roots: TriggerContainer[]): Map<ContentType, number> {
+function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const result = new Map<ContentType, number>()
 
@@ -61,7 +57,7 @@ function countContentTypes(roots: TriggerContainer[]): Map<ContentType, number> 
   return result
 }
 
-function getAllOfContentType(roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
+function getAllOfContentType (roots: TriggerContainer[], elementReference: Map<TriggerContent, number>, type: ContentType): Map<TriggerContent, number> {
   const triggerStack: TriggerContent[] = [...roots]
   const parentStack: TriggerContainer[] = []
   const result = new Map<TriggerContent, number>()
@@ -106,24 +102,24 @@ function getAllOfContentType(roots: TriggerContainer[], elementReference: Map<Tr
 export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
   private static instance: TriggersTranslator | null = null
 
-  private constructor() { }
+  private constructor () { }
 
-  public static getInstance(): TriggersTranslator {
+  public static getInstance (): TriggersTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar(triggers: TriggerTranslatorOutput): WarResult {
+  public static jsonToWar (triggers: TriggerTranslatorOutput): WarResult {
     return this.getInstance().jsonToWar(triggers)
   }
 
-  public static warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public static warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar(json: TriggerTranslatorOutput): WarResult {
+  public jsonToWar (json: TriggerTranslatorOutput): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addChars('WTG!') // File header
@@ -301,9 +297,9 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(ecaCount)
 
-            const writeStatements = (parent: GUITrigger | Statement, ECAs: Statement[], statementType: StatementType, group: number): void => {
+            const writeStatements = (parent: GUITrigger | Statement, ECAs: Statement[], group: number): void => {
               for (const eca of ECAs) {
-                outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(statementType))
+                outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(eca.type))
 
                 if (group !== -1) {
                   outBufferToWar.addInt(group)
@@ -311,62 +307,44 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
                 outBufferToWar.addString(eca.name)
                 outBufferToWar.addInt(eca.isEnabled ? 1 : 0)
-                const writeParams = (parent: Statement | FunctionCall, parameters: Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>): void => {
+                const writeParams = (parent: Statement | Parameter, parameters: Parameter[]): void => {
                   for (const param of parameters) {
                     outBufferToWar.addInt(ParameterTypeEnumConverter.toIdentifier(param.type))
+                    outBufferToWar.addString(param.value)
+                    if (param.statement != null) {
+                      outBufferToWar.addInt(1) // has sub params
+                      outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(param.statement.type))
+                      outBufferToWar.addString(param.statement.name)
+                      outBufferToWar.addInt(1) // begin function
+                      writeParams(param, param.statement.parameters)
+                      outBufferToWar.addInt(0) // unknown, end function maybe?
+                    } else {
+                      outBufferToWar.addInt(0) // no sub params
+                    }
 
-                    switch (param.type) {
-                      case ParameterType.INVALID:
-                        continue // skip invalid param.
-                        break
-                      case ParameterType.PRESET:
-                        outBufferToWar.addString(param.presetName)
-                        outBufferToWar.addInt(0) // no sub params
-                        outBufferToWar.addInt(0) // is not array
-                        break
-                      case ParameterType.VARIABLE:
-                        outBufferToWar.addString(param.value)
-                        outBufferToWar.addInt(0) // no sub params
-                        if (param.arrayIndex != null) {
-                          outBufferToWar.addInt(1) // is array
-                          writeParams(param, [param.arrayIndex as FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter])
-                        } else {
-                          outBufferToWar.addInt(0) // is not array
-                        }
-                        break
-                      case ParameterType.FUNCTION:
-                        outBufferToWar.addString(param.name)
-                        outBufferToWar.addInt(1) // has sub params
-                        outBufferToWar.addInt(StatementTypeEnumConverter.toIdentifier(param.statementType))
-                        outBufferToWar.addString(param.statement.name)
-                        outBufferToWar.addInt(1) // begin function
-                        writeParams(param, param.statement.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
-                        outBufferToWar.addInt(0) // unknown, end function maybe?
-                        outBufferToWar.addInt(0) // is not array
-                        break
-                      case ParameterType.VALUE:
-                        outBufferToWar.addString(param.value)
-                        outBufferToWar.addInt(0) // no sub params
-                        outBufferToWar.addInt(0) // is not array
-                        break
+                    if (param.arrayIndex != null) {
+                      outBufferToWar.addInt(1) // is array
+                      writeParams(param, [param.arrayIndex])
+                    } else {
+                      outBufferToWar.addInt(0) // is not array
                     }
                   }
                 }
 
-                writeParams(eca, eca.parameters as Array<FunctionCall & ArrayVariableParameter & LiteralParameter & PresetParameter>)
+                writeParams(eca, eca.parameters)
                 if ((eca as NestingStatement).statements != null) {
                   const nestingStatement = (eca as NestingStatement)
                   let ecaCount = 0
-                  for (const typedStatements of nestingStatement.statements) {
-                    if (typedStatements != null) {
-                      ecaCount += typedStatements.statements.length
+                  for (const nestedStatements of Object.values(nestingStatement.statements)) {
+                    if (nestedStatements != null) {
+                      ecaCount += nestedStatements.length
                     }
                   }
 
                   outBufferToWar.addInt(ecaCount)
-                  for (let group = 0; group < nestingStatement.statements.length; group++) {
-                    if (nestingStatement.statements[group] != null) {
-                      writeStatements(eca, nestingStatement.statements[group].statements, nestingStatement.statements[group].type, group)
+                  for (const [group, nestedStatements] of Object.entries(nestingStatement.statements)) {
+                    if (nestedStatements != null) {
+                      writeStatements(eca, nestedStatements, Number(group))
                     }
                   }
                 } else {
@@ -374,9 +352,9 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                 }
               }
             }
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, StatementType.ACTION, -1)
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, StatementType.EVENT, -1)
-            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, StatementType.CONDITION, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).actions, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, -1)
+            writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, -1)
           }
           break
 
@@ -391,7 +369,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
     return { buffer: outBufferToWar.getBuffer(), errors: [] }
   }
 
-  public warToJson(buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
+  public warToJson (buffer: Buffer): JsonResult<TriggerTranslatorOutput> {
     const outBufferToJSON = new W3Buffer(buffer)
 
     try {
@@ -576,63 +554,33 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                     const isEnabled = outBufferToJSON.readInt() === 1
 
                     const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
-                    const readParams = (parent: Statement | FunctionCall | ArrayVariableParameter, paramCount: number, arrayIndex: boolean): void => {
+                    const readParams = (parent: Statement | Parameter, paramCount: number, arrayIndex: boolean): void => {
                       for (let k = 0; k < paramCount; k++) {
                         const paramType = ParameterTypeEnumConverter.toEnum(outBufferToJSON.readInt())
                         const value = outBufferToJSON.readString()
-                        const hasSubParameters = outBufferToJSON.readInt() === 1
+                        const hasSubParameters = !(outBufferToJSON.readInt() === 0)
 
-                        let parameter: unknown
-                        switch (paramType) {
-                          case ParameterType.FUNCTION:
-                            parameter = {
-                              name: value,
-                              type: paramType,
-                              statementType: StatementType.CALL,
-                              statement: {} as unknown as Statement
-                            } satisfies FunctionCall
-                            break
-
-                          case ParameterType.VALUE:
-                            parameter = {
-                              type: paramType,
-                              value
-                            } satisfies LiteralParameter
-                            break
-
-                          case ParameterType.INVALID:
-                            parameter = {
-                              type: paramType
-                            }
-                            break
-
-                          case ParameterType.PRESET:
-                            parameter = {
-                              type: paramType,
-                              presetName: value
-                            } satisfies PresetParameter
-                            break
-
-                          case ParameterType.VARIABLE:
-                            parameter = {
-                              type: paramType,
-                              value
-                            } satisfies VariableParameter
-                            break
+                        const parameter: Parameter = {
+                          type: paramType,
+                          value,
+                          statement: undefined,
+                          arrayIndex: undefined
                         }
 
                         if (hasSubParameters) {
-                          const functionCall = parameter as FunctionCall
-                          functionCall.statementType = StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt())
-                          functionCall.statement.name = outBufferToJSON.readString()
-                          functionCall.statement.parameters = []
+                          parameter.statement = {
+                            type: StatementTypeEnumConverter.toEnum(outBufferToJSON.readInt()),
+                            isEnabled: true,
+                            name: outBufferToJSON.readString(),
+                            parameters: [] as Parameter[]
+                          } satisfies Statement
                           const beginParams = outBufferToJSON.readInt() !== 0
-                          const subParamCount = TriggerDataRegistry.getParameterCount(functionCall.statementType, functionCall.statement.name)
+                          const subParamCount = TriggerDataRegistry.getParameterCount(parameter.statement.type, parameter.statement.name)
                           if (subParamCount == null) {
-                            throw new Error('Missing parameter count for function ' + functionCall.statement.name)
+                            throw new Error('Missing parameter count for function ' + parameter.statement.name)
                           }
 
-                          readParams(functionCall.statement, subParamCount, false)
+                          readParams(parameter.statement, subParamCount, false)
                         }
 
                         if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
@@ -648,20 +596,21 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                           isArray = false
                         }
                         if (isArray) {
-                          readParams(parameter as ArrayVariableParameter, 1, true)
+                          readParams(parameter, 1, true)
                         }
 
                         if (arrayIndex) {
-                          (parent as ArrayVariableParameter).arrayIndex = parameter as Parameter
-                        } else if ((parent as FunctionCall).statement != null) {
-                          (parent as FunctionCall).statement.parameters.push(parameter as Parameter)
+                          (parent as Parameter).arrayIndex = parameter
+                        } else if ((parent as Parameter).statement != null) {
+                          ((parent as Parameter).statement as Statement).parameters.push(parameter)
                         } else {
-                          (parent as Statement).parameters.push(parameter as Parameter)
+                          (parent as Statement).parameters.push(parameter)
                         }
                       }
                     }
                     const statement: Statement = {
                       name,
+                      type: functionType,
                       isEnabled,
                       parameters: []
                     }
@@ -692,12 +641,9 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                         (content as NestingStatement).statements = []
                       }
                       if ((content as NestingStatement).statements[group] != null) {
-                        ((content as NestingStatement).statements[group].statements).push(statement)
+                        (content as NestingStatement).statements[group].push(statement)
                       } else {
-                        ((content as NestingStatement).statements[group]) = {
-                          statements: [statement],
-                          type: functionType
-                        }
+                        ((content as NestingStatement).statements[group]) = [statement]
                       }
                     }
                   }
