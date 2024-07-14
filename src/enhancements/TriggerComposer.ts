@@ -47,7 +47,22 @@ async function populateParentDetails (parent: TriggerContainer, file: DirectoryT
 }
 
 function generateTriggerOrder (parent: TriggerContainer): string[] {
-  return parent.children.map(it => it.name)
+  const commentCounts: Record<string, number> = {}
+
+  return parent.children.map(it => {
+    it.name = it.name.replaceAll('/', '-')
+    it.name = it.name.replaceAll('\\', '-')
+    if (it.contentType === ContentType.COMMENT) {
+      if (commentCounts[it.name] != null) {
+        const count = commentCounts[it.name] + 1
+        commentCounts[it.name] = count
+        it.name = `${it.name}_${count}`
+      } else {
+        commentCounts[it.name] = 1
+      }
+    }
+    return it.name
+  })
 }
 
 type OrderedTriggerContainer = TriggerContainer & { order: string[] }
@@ -102,6 +117,8 @@ const TriggerComposer = {
     const triggerContentMap = new Map<TriggerContainer, Map<string, TriggerContent[]>>()
     triggerContentMap.set(result, new Map<string, TriggerContent[]>())
 
+    const commentCounters = new Map<TriggerContainer, Record<string, number>>()
+
     if (input.children == null) {
       return result
     }
@@ -132,7 +149,7 @@ const TriggerComposer = {
           tasks.push(populateParentDetails(containerParent, file))
         } else if (file.extension === EnhancementManager.guiExtension) {
           const element = {
-            name: file.name.substring(0, file.name.indexOf('.')),
+            name: file.name.substring(0, file.name.lastIndexOf('.')),
             contentType: ContentType.TRIGGER,
             actions: [],
             arrayLength: 0,
@@ -147,11 +164,11 @@ const TriggerComposer = {
             runOnMapInit: true,
             type: ''
           } satisfies GUITrigger | GlobalVariable
-          // containerParent.children.push(element)
           if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
             triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
           } else {
             triggerContentMap.get(containerParent)?.set(element.name, [element])
+            containerParent.children.push(element)
           }
           tasks.push(populateGUIContent(element, file))
         } else if (file.extension === EnhancementManager.scriptExtension) {
@@ -159,26 +176,38 @@ const TriggerComposer = {
             tasks.push(populateCustomScript(result as unknown as CustomScript, file))
           } else {
             const element = {
-              name: file.name.substring(0, file.name.indexOf('.')),
+              name: file.name.substring(0, file.name.lastIndexOf('.')),
               contentType: ContentType.CUSTOM_SCRIPT,
               script: '',
               description: '',
               isEnabled: true
             } satisfies CustomScript
-            // containerParent.children.push(element)
             if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
               triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
             } else {
               triggerContentMap.get(containerParent)?.set(element.name, [element])
+              containerParent.children.push(element)
             }
             tasks.push(populateCustomScript(element, file))
           }
         } else if (file.extension === EnhancementManager.commentExtension) {
           const element = {
-            name: file.name.substring(0, file.name.indexOf('.')),
+            name: file.name.substring(0, file.name.lastIndexOf('.')),
             contentType: ContentType.COMMENT,
             comment: ''
           } satisfies TriggerComment
+          if (!commentCounters.has(containerParent)) {
+            commentCounters.set(containerParent, { [element.name]: 1 })
+          } else {
+            const commentCounts = commentCounters.get(containerParent) as Record<string, number>
+            if (commentCounts[element.name] != null) {
+              const count = commentCounts[element.name] + 1
+              commentCounters[element.name] = count
+              element.name = `${element.name}_${count}`
+            } else {
+              commentCounts[element.name] = 1
+            }
+          }
           containerParent.children.push(element)
           tasks.push(populateComment(element, file))
         }
@@ -197,9 +226,13 @@ const TriggerComposer = {
     for (const [container, contentMap] of triggerContentMap) {
       for (const [, contents] of contentMap) {
         if (contents.length > 1) {
+          let injectedRef: CustomScript | GUITrigger | ScriptedTrigger | undefined
           let script: CustomScript | undefined
           let trigger: GUITrigger | ScriptedTrigger | undefined
           for (const content of contents) {
+            if (injectedRef == null) {
+              injectedRef = content as ScriptedTrigger
+            }
             switch (content.contentType) {
               case ContentType.TRIGGER:
               case ContentType.TRIGGER_SCRIPTED:
@@ -210,13 +243,8 @@ const TriggerComposer = {
                 break
             }
             if (script != null && trigger != null) {
-              (trigger as ScriptedTrigger).script = script.script;
-              (trigger as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
-              container.children.push(trigger as TriggerContent)
-            } else if (script != null) {
-              container.children.push(script as TriggerContent)
-            } else if (trigger != null) {
-              container.children.push(trigger as TriggerContent)
+              (injectedRef as ScriptedTrigger).script = script.script;
+              (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
             }
           }
         } else {
@@ -240,8 +268,8 @@ const TriggerComposer = {
       const exportObj: Record<string, unknown> = {
         contentType: content.contentType
       }
-      content.name.replace('/', '-') // Let's hope someone didn't use exact name but with slash and minus symbol, otherwise hello collision
-      content.name.replace('\\', '-')
+      content.name = content.name.replaceAll('/', '-') // Let's hope someone didn't use exact name but with slash and minus symbol, otherwise hello collision
+      content.name = content.name.replaceAll('\\', '-')
       switch (content.contentType) {
         case ContentType.HEADER:
           exportObj.description = (content as MapHeader).description

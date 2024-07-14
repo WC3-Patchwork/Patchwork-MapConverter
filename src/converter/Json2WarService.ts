@@ -50,34 +50,38 @@ async function exportImportsFile (data: Import[], output: string): Promise<void>
   }
 }
 
-function getAllWithProperty (roots: TriggerContainer[], propertyName: string): TriggerContent[] {
-  const triggerStack: TriggerContent[] = [...roots.reverse()]
+function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
+  const triggerStack: TriggerContent[] = [root]
   const result: TriggerContent[] = []
   while (triggerStack.length > 0) {
     const currentTrigger = triggerStack.pop()
     if (currentTrigger == null) continue
-
-    if ((currentTrigger as unknown as Record<string, unknown>)[propertyName] != null) {
-      result.push(currentTrigger)
-    }
     switch (currentTrigger.contentType) {
       case ContentType.HEADER:
+        result.push(currentTrigger)
+      // eslint-disable-next-line no-fallthrough
       case ContentType.LIBRARY:
       case ContentType.CATEGORY:
         triggerStack.push(...(currentTrigger as TriggerContainer).children.reverse())
+        break
+      case ContentType.CUSTOM_SCRIPT:
+      case ContentType.TRIGGER:
+      case ContentType.TRIGGER_SCRIPTED:
+        result.push(currentTrigger)
+        break
     }
   }
 
   return result
 }
 
-async function exportTriggers (triggersJson: TriggerContainer[], output: string): Promise<void> {
+async function exportTriggers (triggersJson: TriggerContainer, output: string): Promise<void> {
   const tasks: Array<Promise<unknown>> = []
   const triggerTranslator = TriggersTranslator.getInstance()
   const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
   const triggerAndScript: TriggerTranslatorOutput = {
-    roots: triggersJson,
-    scriptReferences: getAllWithProperty(triggersJson, 'description') as ScriptContent[]
+    roots: [triggersJson],
+    scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
   }
 
   const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
@@ -109,7 +113,7 @@ async function exportTriggers (triggersJson: TriggerContainer[], output: string)
 async function processTriggers (input: string, output: string): Promise<void> {
   log.info('Reading triggers.json file')
   const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
-  await exportTriggers(buffer, output)
+  await exportTriggers(buffer[0], output)
 }
 
 const Json2WarService = {
@@ -135,7 +139,7 @@ const Json2WarService = {
           log.debug('ComposeTriggers requested')
           promises.push((async (): Promise<void> => {
             const triggerJson = await TriggerComposer.composeTriggerJson(file)
-            await exportTriggers([triggerJson], outputPath)
+            await exportTriggers(triggerJson, outputPath)
           })())
 
           continue // skip triggers

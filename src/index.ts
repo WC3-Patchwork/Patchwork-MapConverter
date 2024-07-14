@@ -11,6 +11,7 @@ import EnhancementManager from './enhancements/EnhancementManager'
 import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
 import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
+import fs from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -74,7 +75,7 @@ program
     } else {
       EnhancementManager.mapHeaderFilename = options.mapHeader as string
     }
-    if (options.triggerData != null) {
+    if (options.triggerData != null && fs.existsSync(options.triggerData as string)) {
       TriggerDataRegistry.loadTriggerData(options.triggerData as string)
     }
   })
