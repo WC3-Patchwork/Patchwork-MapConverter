@@ -3,11 +3,12 @@ import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Unit } from '../data/Unit'
 import { type Translator } from './Translator'
+import { type UnitSet } from '../data/UnitSet'
 
 export class UnitsTranslator implements Translator<Unit[]> {
   private static instance: UnitsTranslator
 
-  private constructor () {}
+  private constructor () { }
 
   public static getInstance (): UnitsTranslator {
     if (this.instance == null) {
@@ -62,14 +63,15 @@ export class UnitsTranslator implements Translator<Unit[]> {
       outBufferToWar.addInt(unit.hitpoints) // hitpoints
       outBufferToWar.addInt(unit.mana != null ? unit.mana : 0) // mana
 
-      // if(unit.droppedItemSets.length === 0) { // needs to be -1 if no item sets
-      outBufferToWar.addInt(-1)
-      // }
-      // else {
-      //    outBuffer.addInt(unit.droppedItemSets.length); // # item sets
-      // }
-      // UNSUPPORTED: dropped items
-      outBufferToWar.addInt(0) // dropped item sets
+      outBufferToWar.addInt(unit.randomItemSetPtr)
+      outBufferToWar.addInt(unit.droppedItemSets.length)
+      for (const itemSet of unit.droppedItemSets) {
+        outBufferToWar.addInt(itemSet.items.length)
+        for (const item of itemSet.items) {
+          outBufferToWar.addChars(item.itemId)
+          outBufferToWar.addInt(item.chance)
+        }
+      }
 
       // Gold amount
       // Required if unit is a gold mine
@@ -104,11 +106,30 @@ export class UnitsTranslator implements Translator<Unit[]> {
         outBufferToWar.addInt(ability.level)
       })
 
-      outBufferToWar.addInt(0)
-      outBufferToWar.addInt(1)
+      // Random
+      outBufferToWar.addInt(unit.random.type)
+      switch (unit.random.type) {
+        case 0:
+          outBufferToWar.addByte(unit.random.level as number)
+          outBufferToWar.addByte(0) // Unknown - apparently it's part of level ^
+          outBufferToWar.addByte(0) // Unknown - apparently it's part of level ^
+          outBufferToWar.addByte(unit.random.itemClass as number)
+          break
+        case 1:
+          outBufferToWar.addInt(unit.random.groupIndex as number)
+          outBufferToWar.addInt(unit.random.columnIndex as number)
+          break
+        case 2:
+          outBufferToWar.addInt((unit.random.unitSet as UnitSet).length)
+          for (const spawnableUnit of (unit.random.unitSet as UnitSet)) {
+            outBufferToWar.addChars(spawnableUnit.unitId)
+            outBufferToWar.addInt(spawnableUnit.chance)
+          }
+          break
+      }
 
       outBufferToWar.addInt(unit.color != null ? unit.color : unit.player) // custom color, defaults to owning player
-      outBufferToWar.addInt(0) // outBuffer.addInt(unit.waygate); // UNSUPPORTED - waygate
+      outBufferToWar.addInt(unit.waygate) // waygate
       outBufferToWar.addInt(unit.id) // id
     })
 
@@ -141,9 +162,20 @@ export class UnitsTranslator implements Translator<Unit[]> {
         player: 0,
         hitpoints: -1,
         mana: -1,
+        randomItemSetPtr: -1,
+        droppedItemSets: [],
         gold: 0,
         targetAcquisition: -1,
+        random: {
+          type: -1,
+          level: undefined,
+          itemClass: undefined,
+          groupIndex: undefined,
+          columnIndex: undefined,
+          unitSet: undefined
+        },
         color: -1,
+        waygate: -1,
         id: -1
       }
 
@@ -170,14 +202,17 @@ export class UnitsTranslator implements Translator<Unit[]> {
       unit.mana = outBufferToJSON.readInt() // -1 = use default, 0 = unit doesn't have mana
 
       if (subVersion !== 9) { // not RoC
-        const droppedItemSetPtr = outBufferToJSON.readInt()
+        unit.randomItemSetPtr = outBufferToJSON.readInt()
       }
       const numDroppedItemSets = outBufferToJSON.readInt()
       for (let j = 0; j < numDroppedItemSets; j++) {
+        unit.droppedItemSets.push({ items: [] })
         const numDroppableItems = outBufferToJSON.readInt()
         for (let k = 0; k < numDroppableItems; k++) {
-          outBufferToJSON.readChars(4) // Item ID
-          outBufferToJSON.readInt() // % chance to drop
+          unit.droppedItemSets[j].items.push({
+            itemId: outBufferToJSON.readChars(4), // Item ID
+            chance: outBufferToJSON.readInt() // % chance to drop
+          })
         }
       }
 
@@ -213,36 +248,39 @@ export class UnitsTranslator implements Translator<Unit[]> {
         })
       }
 
-      const randFlag = outBufferToJSON.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
-      if (randFlag === 0) {
+      unit.random.type = outBufferToJSON.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
+      if (unit.random.type === 0) {
         // 0 = Any neutral passive building/item, in this case we have
         //   byte[3]: level of the random unit/item,-1 = any (this is actually interpreted as a 24-bit number)
         //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
         //   r is also 0 for non random units/items so we have these 4 bytes anyway (even if the id wasnt uDNR or iDNR)
-        outBufferToJSON.readByte()
-        outBufferToJSON.readByte()
-        outBufferToJSON.readByte()
-        outBufferToJSON.readByte()
-      } else if (randFlag === 1) {
+        unit.random.level = outBufferToJSON.readByte()
+        outBufferToJSON.readByte() // unknown
+        outBufferToJSON.readByte() // unknown
+        unit.random.itemClass = outBufferToJSON.readByte()
+      } else if (unit.random.type === 1) {
         // 1 = random unit from random group (defined in the w3i), in this case we have
         //   int: unit group number (which group from the global table)
         //   int: position number (which column of this group)
         //   the column should of course have the item flag set (in the w3i) if this is a random item
-        outBufferToJSON.readInt()
-        outBufferToJSON.readInt()
-      } else if (randFlag === 2) {
+        unit.random.groupIndex = outBufferToJSON.readInt()
+        unit.random.columnIndex = outBufferToJSON.readInt()
+      } else if (unit.random.type === 2) {
         // 2 = random unit from custom table, in this case we have
         //   int: number "n" of different available units
         //   then we have n times a random unit structure
         const numDiffAvailUnits = outBufferToJSON.readInt()
+        unit.random.unitSet = []
         for (let k = 0; k < numDiffAvailUnits; k++) {
-          outBufferToJSON.readChars(4) // Unit ID
-          outBufferToJSON.readInt() // % chance
+          unit.random.unitSet.push({
+            unitId: outBufferToJSON.readChars(4), // Unit ID
+            chance: outBufferToJSON.readInt() // % chance
+          })
         }
       }
 
       unit.color = outBufferToJSON.readInt()
-      outBufferToJSON.readInt() // UNSUPPORTED: waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
+      unit.waygate = outBufferToJSON.readInt() // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
       unit.id = outBufferToJSON.readInt()
 
       result.push(unit)

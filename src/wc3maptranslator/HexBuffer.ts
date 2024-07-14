@@ -25,6 +25,12 @@ export class HexBuffer {
   private readonly _buffer: string[] = []
 
   public addString (str: string): void {
+    this.addStringNoNewline(str)
+    this.addNullTerminator()
+  }
+
+  // as opposed to addChar(s) it can handle any unicode char instead of blindly converting to ascii, thus loosing data.
+  public addStringNoNewline (str: string): void {
     // Write each char to the buffer
     // "ascii" | "utf8" | "utf-8" | "utf16le" | "ucs2"
     // | "ucs-2" | "base64" | "latin1" | "binary" | "hex"
@@ -33,7 +39,6 @@ export class HexBuffer {
     for (let i = 0; i < buf.length; i++) {
       this._buffer.push('0x' + buf[i].toString(16))
     }
-    this.addNullTerminator()
   }
 
   public addNewLine (): void {

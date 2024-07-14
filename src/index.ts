@@ -11,6 +11,7 @@ import EnhancementManager from './enhancements/EnhancementManager'
 import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
 import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
+import fs from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -28,6 +29,7 @@ program
   .option('-ct, --compose-triggers', 'unpack/compile triggers into/from binary/fs+json representation, following options apply only if this is enabled:')
   .addOption(new Option('-sf, --sourceFolder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
   .addOption(new Option('-cse, --custom-script-extension <extension>', 'What file extension will be given to all custom scripts').default(EnhancementManager.scriptExtension))
+  .addOption(new Option('-dis, --disabled-extension <extension>', 'What suffix will file\'s extension get when custom script is disabled').default(EnhancementManager.disabledExtension))
   .addOption(new Option('-ge, --gui-extension <extension>', 'What file extension will be given to GUI elements (Triggers and Variables)').default(EnhancementManager.guiExtension))
   .addOption(new Option('-cie, --container-info-extension <extension', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
   .addOption(new Option('-ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
@@ -65,6 +67,7 @@ program
     }
 
     if ((options.customScriptExtension as string).startsWith('.')) EnhancementManager.scriptExtension = options.customScriptExtension as string
+    if ((options.disabledExtension as string).startsWith('.')) EnhancementManager.disabledExtension = options.disabledExtension as string
     if ((options.guiExtension as string).startsWith('.')) EnhancementManager.guiExtension = options.guiExtension as string
     if ((options.containerInfoExtension as string).startsWith('.')) EnhancementManager.containerInfoExtension = options.containerInfoExtension as string
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
@@ -74,8 +77,9 @@ program
     } else {
       EnhancementManager.mapHeaderFilename = options.mapHeader as string
     }
-
-    TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+    if (options.triggerData != null && fs.existsSync(options.triggerData as string)) {
+      TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+    }
   })
 
 program

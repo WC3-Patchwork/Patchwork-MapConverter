@@ -33,7 +33,7 @@ export class StringsTranslator implements Translator<Record<string, string>> {
       outBufferToWar.addNewLine()
       outBufferToWar.addChars('{')
       outBufferToWar.addNewLine()
-      outBufferToWar.addChars(stringsJson[key] as unknown as string)
+      outBufferToWar.addStringNoNewline(stringsJson[key] as unknown as string)
       outBufferToWar.addNewLine()
       outBufferToWar.addChars('}')
       outBufferToWar.addNewLine()

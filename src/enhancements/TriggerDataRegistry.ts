@@ -33,6 +33,7 @@ function convertToSectionRowData (section: TriggerDataSections, key: string, val
 }
 
 const registry = new Map<TriggerDataSections, Record<string, number | undefined>>()
+let loaded = false
 
 const TriggerDataRegistry = {
   loadTriggerData: function (triggerDataFilePath: string) {
@@ -62,10 +63,14 @@ const TriggerDataRegistry = {
         }
       }
     }
+    loaded = true
   },
 
   getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number | undefined {
     let sectionRegistry: Record<string, number | undefined> | undefined
+    if (!loaded) {
+      throw new Error('TriggerData has not been provided, therefore GUI triggers cannot be converted!')
+    }
     switch (classification) {
       case StatementType.EVENT:
       case TriggerDataSections.TRIGGER_EVENTS:

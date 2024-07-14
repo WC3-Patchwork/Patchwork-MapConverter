@@ -1,4 +1,6 @@
 import { type angle } from '../CommonInterfaces'
+import { ItemSet } from './ItemSet'
+import { UnitSet } from './UnitSet'
 
 interface Unit {
   type: string
@@ -13,9 +15,13 @@ interface Unit {
   player: number
   hitpoints: number
   mana: number
+  randomItemSetPtr: number
+  droppedItemSets: ItemSet[]
   gold: number
   targetAcquisition: number // (-1 = normal, -2 = camp),
+  random: RandomSpawn
   color: number
+  waygate: number
   id: number
 }
 
@@ -35,6 +41,15 @@ interface Abilities {
   ability: string // Ability ID
   active: boolean // autocast active? 0=no, 1=active
   level: number
+}
+
+interface RandomSpawn {
+  type: number,
+  level: number | undefined,
+  itemClass: number | undefined,
+  groupIndex: number | undefined,
+  columnIndex: number | undefined,
+  unitSet: UnitSet | undefined
 }
 
 export type { Unit, Hero, Inventory, Abilities }

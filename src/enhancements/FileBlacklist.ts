@@ -22,7 +22,7 @@ const FileBlacklist = {
   },
 
   isDirectoryTreeBlacklisted: function (path: DirectoryTree): boolean {
-    return this.isNameBlacklisted(`${path.path}${path.name}${path.extension != null ? path.extension : ''}`)
+    return this.isNameBlacklisted(path.name) || this.isNameBlacklisted(`${path.path}${path.name}`)
   },
 
   isNameBlacklisted: function (path: string): boolean {

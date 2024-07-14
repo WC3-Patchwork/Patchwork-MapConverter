@@ -24,18 +24,18 @@ interface MapFlags {
   hideMinimapInPreview: boolean // 0x0001: 1=hide minimap in preview screens
   modifyAllyPriorities: boolean // 0x0002: 1=modify ally priorities
   isMeleeMap: boolean // 0x0004: 1=melee map
-  // 0x0008: 1=playable map size was large and has never been reduced to medium (?)
+  nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: boolean // 0x0008: 1=playable map size was large and has never been reduced to medium (?)
   maskedPartiallyVisible: boolean // 0x0010: 1=masked area are partially visible
   fixedPlayerSetting: boolean // 0x0020: 1=fixed player setting for custom forces
   useCustomForces: boolean // 0x0040: 1=use custom forces
   useCustomTechtree: boolean // 0x0080: 1=use custom techtree
   useCustomAbilities: boolean // 0x0100: 1=use custom abilities
   useCustomUpgrades: boolean // 0x0200: 1=use custom upgrades
-  // 0x0400: 1=map properties menu opened at least once since map creation (?)
+  mapPropertiesMenuOpenedAtLeastOnce: boolean // 0x0400: 1=map properties menu opened at least once since map creation (?)
   waterWavesOnCliffShores: boolean // 0x0800: 1=show water waves on cliff shores
   waterWavesOnRollingShores: boolean // 0x1000: 1=show water waves on rolling shores
-  // 0x2000: 1=unknown
-  // 0x4000: 1=unknown
+  useTerrainFog: boolean// 0x2000: 1=yes
+  tftRequired: boolean // 0x4000: 1=yes
   useItemClassificationSystem: boolean // 0x8000: 1=use item classification system
   enableWaterTinting: boolean // 0x10000
   useAccurateProbabilityForCalculations: boolean // 0x20000
@@ -82,17 +82,23 @@ interface Info {
   editorVersion: number
   scriptLanguage: ScriptLanguage
   supportedModes: SupportedModes
+  gameDataVersion: number
   map: Map
   camera: PlayableCamera
+  gameDataSet: number
   prologue: Prologue
   loadingScreen: LoadingScreen
   fog: Fog
-  globalWeather: string
+  globalWeather: number
   customSoundEnvironment: string
-  customLightEnv: string
+  customLightEnv: number
   water: number[] // R G B A
   players: Player[]
   forces: Force[]
+  upgrades: UpgradeAvailable[]
+  techBlacklist: TechUnavailable[]
+  randomUnitTables: RandomUnitTable[]
+  randomItemTables: RandomTable[]
 }
 
 interface PlayerStartingPosition {
@@ -108,6 +114,10 @@ interface Player {
 
   name: string
   startingPos: PlayerStartingPosition
+  allyLowPriorities: number
+  allyHighPriorities: number
+  enemyLowPriorities: number
+  enermyHighPriorities: number
 }
 
 interface ForceFlags {
@@ -125,6 +135,41 @@ interface Force {
   name: string
 }
 
+interface UpgradeAvailable {
+  playerFlags: number
+  upgradeId: string
+  level: number
+  availability: Availability
+}
+
+interface TechUnavailable {
+  playerFlags: number
+  techId: string
+}
+
+interface RandomTable {
+  id: number
+  name: string
+  rows: ObjectPool[]
+}
+
+interface ObjectPool {
+  type: number
+  objects: RandomObject[]
+}
+
+interface RandomObject {
+  objectId: string
+  chance: number
+}
+
+interface RandomUnitTable {
+  id: number
+  name: string
+  positions: number[]
+  chances: Array<{ chance: number, unitIds: string[] }>
+}
+
 enum ScriptLanguage {
   JASS = 0,
   Lua = 1
@@ -134,6 +179,12 @@ enum SupportedModes {
   SD = 1,
   HD = 2,
   Both = 3
+}
+
+enum Availability {
+  UNAVAILABLE = 0,
+  AVAILABLE = 1,
+  RESEARCHED = 2
 }
 
 export {

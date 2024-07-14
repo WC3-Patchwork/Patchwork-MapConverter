@@ -13,6 +13,7 @@ function * TreeIterator<NODE> (root: NODE, getChildNodes: (parent: NODE) => NODE
     } else { // copy
       childParentPath = childParentPath.map(it => it)
     }
+
     childParentPath.push(node)
     if (children != null) {
       for (const child of children) {

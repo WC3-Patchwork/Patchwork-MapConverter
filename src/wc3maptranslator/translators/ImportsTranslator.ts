@@ -50,7 +50,7 @@ export class ImportsTranslator implements Translator<Import[]> {
       )
 
       // Temporary: always start the file path with war3mapImported\ until other file support is added
-      if (!importedFile.path.startsWith('war3mapImported\\') && importedFile.type === ImportType.Custom) {
+      if (!importedFile.path.startsWith('war3mapImported\\') && importedFile.type === ImportType.Standard) {
         importedFile.path = 'war3mapImported\\' + importedFile.path
       }
 
