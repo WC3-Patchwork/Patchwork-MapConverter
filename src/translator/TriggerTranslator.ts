@@ -291,10 +291,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             ecaCount = (currentTrigger as GUITrigger).events.length +
               (currentTrigger as GUITrigger).conditions.length +
               (currentTrigger as GUITrigger).actions.length
-            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
+            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0)
             outBufferToWar.addInt(0) // is custom script
-            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
-            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1) // run on map init
+            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0)
+            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1)
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(ecaCount)
 
@@ -357,10 +357,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, -1)
           } else if (currentTrigger.contentType === ContentType.TRIGGER_SCRIPTED) {
-            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0) // not enabled
+            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0)
             outBufferToWar.addInt(1) // is custom script
-            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0) // initially off
-            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1) // run on map init
+            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0)
+            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1)
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(0)
           }

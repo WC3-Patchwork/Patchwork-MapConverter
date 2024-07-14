@@ -6,6 +6,7 @@ const EnhancementManager = {
   ignoreFilelist: 'patchwork.ignore',
   composeTriggers: false,
   scriptExtension: '.lua',
+  disabledExtension: '.disabled',
   guiExtension: '.json',
   containerInfoExtension: '.ini',
   commentExtension: '.txt',

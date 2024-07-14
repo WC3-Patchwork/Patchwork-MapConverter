@@ -35,7 +35,6 @@ async function populateGUIContent (element: TriggerContent, child: DirectoryTree
 
 async function populateCustomScript (element: CustomScript, child: DirectoryTree): Promise<void> {
   element.script = await readFile(child.path, 'utf8')
-  element.isEnabled = true
 }
 
 async function populateParentDetails (parent: TriggerContainer, file: DirectoryTree): Promise<void> {
@@ -134,6 +133,13 @@ const TriggerComposer = {
         throw new Error('Something went wrong 2')
       }
 
+      const scriptDisabled = file.extension === EnhancementManager.disabledExtension
+      if (scriptDisabled) {
+        const pos1 = file.name.lastIndexOf(EnhancementManager.disabledExtension)
+        file.name = file.name.substring(0, pos1)
+        file.extension = file.name.substring(file.name.lastIndexOf('.'), pos1)
+      }
+
       if (file.type === 'directory' && file !== input) {
         const container = {
           name: file.name,
@@ -180,7 +186,7 @@ const TriggerComposer = {
               contentType: ContentType.CUSTOM_SCRIPT,
               script: '',
               description: '',
-              isEnabled: true
+              isEnabled: !scriptDisabled
             } satisfies CustomScript
             if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
               triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
@@ -303,7 +309,7 @@ const TriggerComposer = {
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.commentExtension}`), (content as TriggerComment).comment, 'utf8'))
           break
         case ContentType.CUSTOM_SCRIPT:
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.scriptExtension}${((content as CustomScript).isEnabled) ? ('') : (EnhancementManager.disabledExtension)}`), (content as ScriptContent).script, 'utf8'))
           break
         case ContentType.VARIABLE:
           exportObj.type = (content as GlobalVariable).type
