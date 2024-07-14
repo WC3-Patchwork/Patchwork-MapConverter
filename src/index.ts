@@ -87,7 +87,6 @@ program
   .description('convert Warcraft III binaries to JSON')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .addArgument(new Argument('<trigger-data-filepath>', 'WE\'s trigger data ini file location required for converting WTG file.').default('triggerdata.txt').argOptional())
   .action(async (input: string, output: string) => {
     try {
       await War2JsonService.convert(input, output)
