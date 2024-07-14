@@ -18,6 +18,7 @@ import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInter
 import { HexBuffer } from '../wc3maptranslator/HexBuffer'
 import { W3Buffer } from '../wc3maptranslator/W3Buffer'
 import { type Translator } from '../wc3maptranslator/translators'
+import { type ScriptedTrigger } from './data/content/ScriptedTrigger'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
@@ -294,7 +295,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0)
             outBufferToWar.addInt(0) // is custom script
             outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0)
-            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1)
+            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 1 : 0)
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(ecaCount)
 
@@ -357,10 +358,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).events, -1)
             writeStatements(currentTrigger as GUITrigger, (currentTrigger as GUITrigger).conditions, -1)
           } else if (currentTrigger.contentType === ContentType.TRIGGER_SCRIPTED) {
-            outBufferToWar.addInt((currentTrigger as GUITrigger).isEnabled ? 1 : 0)
+            outBufferToWar.addInt((currentTrigger as ScriptedTrigger).isEnabled ? 1 : 0)
             outBufferToWar.addInt(1) // is custom script
-            outBufferToWar.addInt((currentTrigger as GUITrigger).initiallyOff ? 1 : 0)
-            outBufferToWar.addInt((currentTrigger as GUITrigger).runOnMapInit ? 0 : 1)
+            outBufferToWar.addInt(0) // initially off
+            outBufferToWar.addInt((currentTrigger as ScriptedTrigger).runOnMapInit ? 1 : 0)
             outBufferToWar.addInt(parentId)
             outBufferToWar.addInt(0)
           }
@@ -522,18 +523,19 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
             isEnabled = outBufferToJSON.readInt() === 1
             isCustomScript = outBufferToJSON.readInt() === 1
             initiallyOff = outBufferToJSON.readInt() === 1
-            runOnMapInit = outBufferToJSON.readInt() === 0
+            runOnMapInit = outBufferToJSON.readInt() === 1
             parentElementId = outBufferToJSON.readInt()
             elementRelations.set(elementId, parentElementId)
             ecaCount = outBufferToJSON.readInt()
 
             if (type === ContentType.TRIGGER) {
               if (isCustomScript) {
-                const script = {
+                const script: ScriptedTrigger = {
                   name,
                   contentType: ContentType.TRIGGER_SCRIPTED,
                   description,
                   isEnabled,
+                  runOnMapInit,
                   script: ''
                 }
                 content[elementId] = script

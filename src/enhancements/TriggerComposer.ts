@@ -165,11 +165,11 @@ const TriggerComposer = {
             initiallyOff: false,
             initialValue: '',
             isArray: false,
-            isEnabled: true,
+            isEnabled: false,
             isInitialized: false,
-            runOnMapInit: true,
+            runOnMapInit: false,
             type: ''
-          } satisfies GUITrigger | GlobalVariable
+          } satisfies GUITrigger | GlobalVariable | ScriptedTrigger
           if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
             triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
           } else {
