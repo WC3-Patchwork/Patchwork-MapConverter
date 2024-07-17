@@ -249,6 +249,7 @@ const TriggerComposer = {
                 break
             }
             if (script != null && trigger != null) {
+              (injectedRef as ScriptedTrigger).isEnabled = trigger.isEnabled;
               (injectedRef as ScriptedTrigger).script = script.script;
               (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
             }
