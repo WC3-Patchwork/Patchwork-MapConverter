@@ -50,7 +50,7 @@ export class W3Buffer {
     }
 
     return string.map((ch) => {
-      if (ch === 0x0) return '0'
+      // if (ch === 0x0) return '0' //Curse spell has a "Crs" field, whose 4th byte is probably a 0x0, and not a "0", causing the editor to just ignore this change when converting back...
       return String.fromCharCode(ch)
     }).join('')
   }
