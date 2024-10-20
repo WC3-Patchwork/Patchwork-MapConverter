@@ -1,31 +1,31 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Unit } from '../data/Unit'
+import { RandomSpawn, type Unit } from '../data/Unit'
 import { type Translator } from './Translator'
 import { type UnitSet } from '../data/UnitSet'
 
 export class UnitsTranslator implements Translator<Unit[]> {
   private static instance: UnitsTranslator
 
-  private constructor () { }
+  private constructor() { }
 
-  public static getInstance (): UnitsTranslator {
+  public static getInstance(): UnitsTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (units: Unit[]): WarResult {
+  public static jsonToWar(units: Unit[]): WarResult {
     return this.getInstance().jsonToWar(units)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<Unit[]> {
+  public static warToJson(buffer: Buffer): JsonResult<Unit[]> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (unitsJson: Unit[]): WarResult {
+  public jsonToWar(unitsJson: Unit[]): WarResult {
     const outBufferToWar = new HexBuffer()
 
     /*
@@ -34,12 +34,12 @@ export class UnitsTranslator implements Translator<Unit[]> {
     outBufferToWar.addChars('W3do')
     outBufferToWar.addInt(9)
     outBufferToWar.addInt(11)
-    outBufferToWar.addInt(unitsJson.length) // number of units
+    outBufferToWar.addInt(unitsJson?.length || 0) // number of units
 
     /*
          * Body
          */
-    unitsJson.forEach((unit) => {
+    unitsJson?.forEach((unit) => {
       outBufferToWar.addChars(unit.type) // type
       outBufferToWar.addInt(unit.variation != null ? unit.variation : 0) // variation
       outBufferToWar.addFloat(unit.position[0]) // position x
@@ -64,14 +64,14 @@ export class UnitsTranslator implements Translator<Unit[]> {
       outBufferToWar.addInt(unit.mana != null ? unit.mana : 0) // mana
 
       outBufferToWar.addInt(unit.randomItemSetPtr)
-      outBufferToWar.addInt(unit.droppedItemSets.length)
-      for (const itemSet of unit.droppedItemSets) {
-        outBufferToWar.addInt(itemSet.items.length)
-        for (const item of itemSet.items) {
+      outBufferToWar.addInt(unit.droppedItemSets?.length || 0)
+      unit.droppedItemSets?.forEach(itemSet => {
+        outBufferToWar.addInt(itemSet.items?.length || 0)
+        itemSet.items?.forEach(item => {
           outBufferToWar.addChars(item.itemId)
           outBufferToWar.addInt(item.chance)
-        }
-      }
+        })
+      })
 
       // Gold amount
       // Required if unit is a gold mine
@@ -91,16 +91,16 @@ export class UnitsTranslator implements Translator<Unit[]> {
 
       // Inventory - - -
       if (unit.inventory == null) unit.inventory = []
-      outBufferToWar.addInt(unit.inventory.length) // # items in inventory
-      unit.inventory.forEach((item) => {
+      outBufferToWar.addInt(unit.inventory?.length || 0) // # items in inventory
+      unit.inventory?.forEach(item => {
         outBufferToWar.addInt(item.slot - 1) // zero-index item slot
         outBufferToWar.addChars(item.type)
       })
 
       // Modified abilities - - -
       if (unit.abilities == null) unit.abilities = []
-      outBufferToWar.addInt(unit.abilities.length) // # modified abilities
-      unit.abilities.forEach((ability) => {
+      outBufferToWar.addInt(unit.abilities?.length || 0) // # modified abilities
+      unit.abilities?.forEach((ability) => {
         outBufferToWar.addChars(ability.ability) // ability string
         outBufferToWar.addInt(+ability.active) // 0 = not active, 1 = active
         outBufferToWar.addInt(ability.level)
@@ -120,11 +120,11 @@ export class UnitsTranslator implements Translator<Unit[]> {
           outBufferToWar.addInt(unit.random.columnIndex as number)
           break
         case 2:
-          outBufferToWar.addInt((unit.random.unitSet as UnitSet).length)
-          for (const spawnableUnit of (unit.random.unitSet as UnitSet)) {
+          outBufferToWar.addInt((unit.random.unitSet as UnitSet)?.length || 0)
+          unit.random.unitSet?.forEach(spawnableUnit => {
             outBufferToWar.addChars(spawnableUnit.unitId)
             outBufferToWar.addInt(spawnableUnit.chance)
-          }
+          })
           break
       }
 
@@ -139,7 +139,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Unit[]> {
+  public warToJson(buffer: Buffer): JsonResult<Unit[]> {
     const result: Unit[] = []
     const outBufferToJSON = new W3Buffer(buffer)
 
@@ -168,12 +168,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
         targetAcquisition: -1,
         random: {
           type: -1,
-          level: undefined,
-          itemClass: undefined,
-          groupIndex: undefined,
-          columnIndex: undefined,
-          unitSet: undefined
-        },
+        } as RandomSpawn,
         color: -1,
         waygate: -1,
         id: -1

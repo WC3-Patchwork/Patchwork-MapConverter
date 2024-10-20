@@ -31,12 +31,12 @@ export class CamerasTranslator implements Translator<Camera[]> {
          * Header
          */
     outBufferToWar.addInt(0) // file version
-    outBufferToWar.addInt(cameras.length) // number of cameras
+    outBufferToWar.addInt(cameras?.length || 0) // number of cameras
 
     /*
          * Body
          */
-    cameras.forEach((camera) => {
+    cameras?.forEach((camera) => {
       outBufferToWar.addFloat(camera.target.x)
       outBufferToWar.addFloat(camera.target.y)
       outBufferToWar.addFloat(camera.offsetZ)

@@ -31,12 +31,12 @@ export class RegionsTranslator implements Translator<Region[]> {
          * Header
          */
     outBufferToWar.addInt(5) // file version
-    outBufferToWar.addInt(regionsJson.length) // number of regions
+    outBufferToWar.addInt(regionsJson?.length || 0) // number of regions
 
     /*
          * Body
          */
-    regionsJson.forEach((region) => {
+    regionsJson?.forEach(region => {
       // Position
       // Note that the .w3x guide has these coords wrong - the guide swaps bottom and right, but this is incorrect; bottom should be written before right
       outBufferToWar.addFloat(region.position.left)

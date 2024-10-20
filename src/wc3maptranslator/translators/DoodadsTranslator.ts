@@ -44,12 +44,12 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     outBufferToWar.addChars('W3do') // file id
     outBufferToWar.addInt(8) // file version
     outBufferToWar.addInt(11) // subversion 0x0B
-    outBufferToWar.addInt(doodadsJson.length) // num of trees
+    outBufferToWar.addInt(doodadsJson?.length || 0) // num of trees
 
     /*
          * Body
          */
-    doodadsJson.forEach((tree) => {
+    doodadsJson?.forEach((tree) => {
       outBufferToWar.addChars(tree.type)
       outBufferToWar.addInt(tree.variation != null ? tree.variation : 0) // optional - default value 0
       outBufferToWar.addFloat(tree.position[0])
@@ -87,29 +87,29 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
 
       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
       outBufferToWar.addInt(tree.randomItemSetPtr)
-      outBufferToWar.addInt(tree.droppedItemSets.length)
-      for (const itemSet of tree.droppedItemSets) {
+      outBufferToWar.addInt(tree.droppedItemSets?.length || 0)
+      tree?.droppedItemSets?.forEach(itemSet => {
         // Write the item set
-        outBufferToWar.addInt(itemSet.items.length);
-        for (const item of itemSet.items) {
+        outBufferToWar.addInt(itemSet.items?.length || 0);
+        itemSet.items?.forEach(item => {
           outBufferToWar.addChars(item.itemId)
           outBufferToWar.addInt(item.chance)
-        }
-      }
+        })
+      })
       outBufferToWar.addInt(tree.id)
     })
 
     /*
-         * Footer
-         */
+      * Footer
+      */
     outBufferToWar.addInt(0) // special doodad format number, fixed at 0x00
-    outBufferToWar.addInt(specialDoodadsJson.length) // number of special doodads
-    for (const specialDoodad of specialDoodadsJson) {
+    outBufferToWar.addInt(specialDoodadsJson?.length || 0) // number of special doodads
+    specialDoodadsJson?.forEach(specialDoodad => {
       outBufferToWar.addChars(specialDoodad.type)
       outBufferToWar.addInt(specialDoodad.position[0]) //x
       outBufferToWar.addInt(specialDoodad.position[1]) //y
       outBufferToWar.addInt(specialDoodad.position[2]) //z
-    }
+    })
 
     return {
       errors: [],

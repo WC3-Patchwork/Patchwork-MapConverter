@@ -572,10 +572,8 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
                         const parameter: Parameter = {
                           type: paramType,
-                          value,
-                          statement: undefined,
-                          arrayIndex: undefined
-                        }
+                          value
+                        } as Parameter
 
                         if (hasSubParameters) {
                           parameter.statement = {

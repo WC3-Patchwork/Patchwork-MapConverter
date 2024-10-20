@@ -12,6 +12,7 @@ import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
 import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
 import fs from 'fs'
+import { SupplementTranslatorRecord } from './converter/TranslatorRecord'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -26,6 +27,8 @@ program
   .addOption(new Option('-imp, --imports-folder-name <importsFolderName>', 'map project imports folder name for smart-imports').default(EnhancementManager.importFolder))
   .addOption(new Option('-td, --trigger-data <triggerData>', 'TriggerData.txt file location for reading triggers file.').default(path.join('./', EnhancementManager.triggerDataPath)))
   .addOption(new Option('--ignore <blacklist>', 'Specify a blacklist location for which files to ignore').default(path.join('./', EnhancementManager.ignoreFilelist)))
+  .addOption(new Option('-mde, --map-data-extension <extension>', 'File extension given/read (depending on operation) for map data files (w3u, w3d, etc..)').default(EnhancementManager.mapDataExtension))
+  .option('-p, --prettify', 'Output textual format should be prettified if format converter supports it.')
   .option('-ct, --compose-triggers', 'unpack/compile triggers into/from binary/fs+json representation, following options apply only if this is enabled:')
   .addOption(new Option('-sf, --sourceFolder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
   .addOption(new Option('-cse, --custom-script-extension <extension>', 'What file extension will be given to all custom scripts').default(EnhancementManager.scriptExtension))
@@ -71,6 +74,9 @@ program
     if ((options.guiExtension as string).startsWith('.')) EnhancementManager.guiExtension = options.guiExtension as string
     if ((options.containerInfoExtension as string).startsWith('.')) EnhancementManager.containerInfoExtension = options.containerInfoExtension as string
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
+    if ((options.mapDataExtension as string).startsWith('.')) EnhancementManager.mapDataExtension = options.mapDataExtension as string
+
+    if (options.prettify === true) EnhancementManager.prettify = true
 
     if (/\\|\//.test(options.mapHeader as string)) {
       throw new Error(`Invalid mapHeader '${options.mapHeader as string}' must not be a path!`)
@@ -102,6 +108,7 @@ program
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .action(async (input: string, output: string) => {
     try {
+      SupplementTranslatorRecord(EnhancementManager.mapDataExtension)
       await Json2WarService.convert(input, output)
     } catch (exception) {
       log.fatal(exception)

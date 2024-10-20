@@ -17,13 +17,14 @@ import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
 import { type Import } from '../wc3maptranslator/data'
 import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
+import { FormatConverters } from './formats/FormatConverters'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
 async function processFile<T> (input: string, translator: Translator<T>, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Processing', input)
-  const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as T
+  const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as T
   const result = translator.jsonToWar(buffer)
   if (result.errors != null && result.errors.length > 0) {
     for (const error of result.errors) {
@@ -111,8 +112,8 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
 }
 
 async function processTriggers (input: string, output: string): Promise<void> {
-  log.info('Reading triggers.json file')
-  const buffer = JSON.parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
+  log.info('Reading triggers file')
+  const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
   await exportTriggers(buffer[0], output)
 }
 
@@ -155,20 +156,20 @@ const Json2WarService = {
       } else {
         let translator: Translator<unknown> | null = null
 
-        if (!EnhancementManager.composeTriggers && file.name.endsWith('triggers.json')) {
+        if (!EnhancementManager.composeTriggers && file.name.endsWith(`triggers${EnhancementManager.mapDataExtension}`)) {
           promises.push(processTriggers(file.path, outputPath))
           continue
         }
 
         for (const [extension, thisTranslator] of Object.entries(translatorRecord)) {
-          if (file.name.includes(extension)) {
+          if (file.name.endsWith(extension)) {
             translator = thisTranslator
             break
           }
         }
         let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
         if (translator != null) {
-          outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove .json extension
+          outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove final extension
 
           if (!EnhancementManager.smartImport || !(translator instanceof ImportsTranslator)) {
             promises.push(processFile(file.path, translator, outputFile))

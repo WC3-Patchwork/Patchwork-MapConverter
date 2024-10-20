@@ -52,4 +52,4 @@ interface RandomSpawn {
   unitSet: UnitSet | undefined
 }
 
-export type { Unit, Hero, Inventory, Abilities }
+export type { Unit, Hero, Inventory, Abilities, RandomSpawn }

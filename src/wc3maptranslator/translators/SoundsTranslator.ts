@@ -32,12 +32,12 @@ export class SoundsTranslator implements Translator<Sound[]> {
          * Header
          */
     outBufferToWar.addInt(3) // file version
-    outBufferToWar.addInt(soundsJson.length) // number of sounds
+    outBufferToWar.addInt(soundsJson?.length || 0) // number of sounds
 
     /*
          * Body
          */
-    soundsJson.forEach((sound) => {
+    soundsJson?.forEach((sound) => {
       outBufferToWar.addString(sound.name) // e.g. gg_snd_HumanGlueScreenLoop1
       outBufferToWar.addString(sound.path) // e.g. Sound\Ambient\HumanGlueScreenLoop1.wav
 

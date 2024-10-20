@@ -39,12 +39,12 @@ export class ImportsTranslator implements Translator<Import[]> {
          * Header
          */
     outBufferToWar.addInt(1) // file version
-    outBufferToWar.addInt(imports.length) // number of imports
+    outBufferToWar.addInt(imports?.length || 0) // number of imports
 
     /*
          * Body
          */
-    imports.forEach((importedFile) => {
+    imports?.forEach((importedFile) => {
       outBufferToWar.addByte(
         importedFile.type === ImportType.Custom ? 13 : 5
       )

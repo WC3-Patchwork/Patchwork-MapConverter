@@ -8,6 +8,8 @@ const EnhancementManager = {
   scriptExtension: '.lua',
   disabledExtension: '.disabled',
   guiExtension: '.json',
+  mapDataExtension: '.json',
+  prettify: false,
   containerInfoExtension: '.ini',
   commentExtension: '.txt',
   mapHeaderFilename: 'header'

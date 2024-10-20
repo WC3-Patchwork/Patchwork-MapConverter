@@ -8,24 +8,24 @@ import { FogType, type Force, type Info, type Player, ScriptLanguage, SupportedM
 export class InfoTranslator implements Translator<Info> {
   private static instance: InfoTranslator
 
-  private constructor () { }
+  private constructor() { }
 
-  public static getInstance (): InfoTranslator {
+  public static getInstance(): InfoTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar (info: Info): WarResult {
+  public static jsonToWar(info: Info): WarResult {
     return this.getInstance().jsonToWar(info)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<Info> {
+  public static warToJson(buffer: Buffer): JsonResult<Info> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (infoJson: Info): WarResult {
+  public jsonToWar(infoJson: Info): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addInt(31) // file version, 0x1F
@@ -141,8 +141,8 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addInt(infoJson.gameDataVersion)
 
     // Players
-    outBufferToWar.addInt(infoJson.players.length)
-    infoJson.players.forEach((player) => {
+    outBufferToWar.addInt(infoJson.players?.length || 0)
+    infoJson.players?.forEach((player) => {
       outBufferToWar.addInt(player.playerNum)
       outBufferToWar.addInt(player.type)
       outBufferToWar.addInt(player.race)
@@ -157,8 +157,8 @@ export class InfoTranslator implements Translator<Info> {
     })
 
     // Forces
-    outBufferToWar.addInt(infoJson.forces.length)
-    infoJson.forces.forEach((force) => {
+    outBufferToWar.addInt(infoJson.forces?.length || 0)
+    infoJson.forces?.forEach((force) => {
       // Calculate flags
       let forceFlags = 0
       if (force.flags.allied) forceFlags |= 0x0001
@@ -174,64 +174,59 @@ export class InfoTranslator implements Translator<Info> {
     })
 
     // Struct: upgrade avail.
-    outBufferToWar.addInt(infoJson.upgrades.length)
-    for (const upgrade of infoJson.upgrades) {
+    outBufferToWar.addInt(infoJson.upgrades?.length || 0)
+    infoJson.upgrades?.forEach(upgrade => {
       outBufferToWar.addInt(upgrade.playerFlags)
       outBufferToWar.addChars(upgrade.upgradeId)
       outBufferToWar.addInt(upgrade.level)
       outBufferToWar.addInt(upgrade.availability)
-    }
+    })
 
     // Struct: tech avail.
-    outBufferToWar.addInt(infoJson.techBlacklist.length)
-    for (const tech of infoJson.techBlacklist) {
+    outBufferToWar.addInt(infoJson.techBlacklist?.length || 0)
+    infoJson.techBlacklist?.forEach(tech => {
       outBufferToWar.addInt(tech.playerFlags)
       outBufferToWar.addChars(tech.techId)
-    }
+    })
 
     // Struct: random unit table
-    outBufferToWar.addInt(infoJson.randomUnitTables.length)
-    for (const randomUnitTable of infoJson.randomUnitTables) {
+    outBufferToWar.addInt(infoJson.randomUnitTables?.length || 0)
+    infoJson.randomUnitTables?.forEach(randomUnitTable => {
       outBufferToWar.addInt(randomUnitTable.id)
       outBufferToWar.addString(randomUnitTable.name)
 
-      outBufferToWar.addInt(randomUnitTable.positions.length)
-      for (const position of randomUnitTable.positions) {
-        outBufferToWar.addInt(position)
-      }
+      outBufferToWar.addInt(randomUnitTable.positions?.length || 0)
+      randomUnitTable.positions?.forEach(position => outBufferToWar.addInt(position))
 
-      outBufferToWar.addInt(randomUnitTable.chances.length)
-      for (const chance of randomUnitTable.chances) {
+      outBufferToWar.addInt(randomUnitTable.chances?.length || 0)
+      randomUnitTable.chances?.forEach(chance => {
         outBufferToWar.addInt(chance.chance)
-
-        for (const unitId of chance.unitIds) {
-          outBufferToWar.addChars(unitId)
-        }
-      }
-    }
+        chance.unitIds.forEach(unitId => outBufferToWar.addChars(unitId)) //Amount of units must match amount of positions
+      })
+    })
 
     // Struct: random item table
-    outBufferToWar.addInt(infoJson.randomItemTables.length)
-    for (const randomItemTable of infoJson.randomItemTables) {
+    outBufferToWar.addInt(infoJson.randomItemTables?.length || 0)
+    infoJson.randomItemTables?.forEach(randomItemTable => {
       outBufferToWar.addInt(randomItemTable.id)
       outBufferToWar.addString(randomItemTable.name)
 
-      outBufferToWar.addInt(randomItemTable.rows.length)
-      for (const randomItemPool of randomItemTable.rows) {
-        outBufferToWar.addInt(randomItemPool.objects.length)
-        for (const randomItem of randomItemPool.objects) {
+      outBufferToWar.addInt(randomItemTable.rows?.length || 0)
+      randomItemTable.rows?.forEach(randomItemPool => {
+        outBufferToWar.addInt(randomItemPool.objects?.length || 0)
+        randomItemPool.objects?.forEach(randomItem => {
           outBufferToWar.addInt(randomItem.chance)
           outBufferToWar.addChars(randomItem.objectId)
-        }
-      }
-    }
+        })
+      })
+    })
     return {
       errors: [],
       buffer: outBufferToWar.getBuffer()
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Info> {
+  public warToJson(buffer: Buffer): JsonResult<Info> {
     const result: Info = {
       map: {
         name: '',

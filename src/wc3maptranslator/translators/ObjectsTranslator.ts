@@ -55,9 +55,13 @@ export class ObjectsTranslator implements Translator<ObjectModificationTable> {
     outBufferToWar.addInt(2) // file version
 
     const generateTableFromJson = (tableType: TableType, tableData: object): void => { // create "original" or "custom" table
-      Object.keys(tableData).forEach((defKey) => {
-        const obj = tableData[defKey] as []
-
+      if (!tableData) {
+        outBufferToWar.addInt(0)
+        return
+      }
+      const data = Object.entries(tableData)
+      outBufferToWar.addInt(data.length)
+      data.forEach(([defKey, obj]) => {
         // Original and new object ids
         if (tableType === TableType.original) {
           outBufferToWar.addChars(defKey)
@@ -69,9 +73,9 @@ export class ObjectsTranslator implements Translator<ObjectModificationTable> {
         }
 
         // Number of modifications made to this object
-        outBufferToWar.addInt(obj.length)
+        outBufferToWar.addInt(obj?.length || 0)
 
-        obj.forEach((mod: Modification) => {
+        obj?.forEach((mod: Modification) => {
           let modType: number
 
           // Modification id (e.g. unam = name; reference MetaData lookups)
@@ -130,16 +134,7 @@ export class ObjectsTranslator implements Translator<ObjectModificationTable> {
       })
     }
 
-    /*
-         * Original table
-         */
-    outBufferToWar.addInt(Object.keys(json.original).length)
     generateTableFromJson(TableType.original, json.original)
-
-    /*
-         * Custom table
-         */
-    outBufferToWar.addInt(Object.keys(json.custom).length) // # entry modifications
     generateTableFromJson(TableType.custom, json.custom)
 
     return {

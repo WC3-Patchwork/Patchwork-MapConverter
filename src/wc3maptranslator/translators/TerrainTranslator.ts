@@ -47,16 +47,16 @@ export class TerrainTranslator implements Translator<Terrain> {
         /*
          * Tiles
          */
-        outBufferToWar.addInt(terrainJson.tilePalette.length);
-        terrainJson.tilePalette.forEach((tile) => {
+        outBufferToWar.addInt(terrainJson.tilePalette?.length || 0);
+        terrainJson.tilePalette?.forEach((tile) => {
             outBufferToWar.addChars(tile);
         });
 
         /*
          * Cliffs
          */
-        outBufferToWar.addInt(terrainJson.cliffTilePalette.length);
-        terrainJson.cliffTilePalette.forEach((cliffTile) => {
+        outBufferToWar.addInt(terrainJson.cliffTilePalette?.length || 0);
+        terrainJson.cliffTilePalette?.forEach((cliffTile) => {
             outBufferToWar.addChars(cliffTile);
         });
 
@@ -91,7 +91,6 @@ export class TerrainTranslator implements Translator<Terrain> {
             customTileset: false,
             tilePalette: [],
             cliffTilePalette: [],
-            map: undefined
         };
 
         rows.groundHeight.reverse();
