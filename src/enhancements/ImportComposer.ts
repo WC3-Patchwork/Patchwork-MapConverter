@@ -2,6 +2,7 @@ import { type DirectoryTree } from 'directory-tree'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import path from 'path'
 import { type Import, ImportType } from '../wc3maptranslator/data'
+import { FileBlacklist } from './FileBlacklist'
 
 const log = LoggerFactory.createLogger('ImportComposer')
 
@@ -17,6 +18,7 @@ const ImportComposer = {
     while (fileStack.length > 0) {
       const file = fileStack.pop()
       if (file == null) break
+      if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       if (file.type === 'directory') {
         const children = file.children
