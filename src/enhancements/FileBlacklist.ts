@@ -15,6 +15,10 @@ const FileBlacklist = {
     log.info('Loading blacklist from', blacklistFilePath)
     const blacklistFileContent = readFileSync(blacklistFilePath, { encoding: 'utf8' })
 
+    if (blacklistFileContent == null || blacklistFileContent == ""){
+      return;
+    }
+
     // eslint-disable-next-line no-control-regex
     for (const line of blacklistFileContent.split(/\u000D\u000A|[\u000A\u000B\u000C\u000D\u0085\u2028\u2029]/)) { // \R pattern
       blacklist.push(new RegExp(line))
