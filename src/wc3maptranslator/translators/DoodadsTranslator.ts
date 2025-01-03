@@ -5,15 +5,6 @@ import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
 import { SpecialDoodad, type Doodad } from '../data/Doodad'
 
-enum flag {
-  // 0= invisible and non-solid tree
-  // 1= visible but non-solid tree
-  // 2= normal tree (visible and solid)
-  undefined = 0,
-  visible = 1,
-  solid = 2
-}
-
 export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]> {
   private static instance: DoodadsTranslator
 
@@ -72,17 +63,11 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
 
       outBufferToWar.addChars(tree.skinId)
 
-      // Tree flags
-      /* | Visible | Solid | Flag value |
-               |   no    |  no   |     0      |
-               |  yes    |  no   |     1      |
-               |  yes    |  yes  |     2      | */
-      let treeFlag = 2 // default: normal tree
-      if (tree.flags == null) tree.flags = { visible: true, solid: true } // defaults if no flags are specified
-      if (!tree.flags.visible && !tree.flags.solid) treeFlag = 0
-      else if (tree.flags.visible && !tree.flags.solid) treeFlag = 1
-      else if (tree.flags.visible && tree.flags.solid) treeFlag = 2
-      // Note: invisible and solid is not an option
+      if (tree.flags == null) tree.flags = { inUnplayableArea: false, notUsedInScript: true, fixedZ: false } // defaults if no flags are specified
+      let treeFlag = 0
+      if (tree.flags.fixedZ) treeFlag |= 0x00000100
+      if (tree.flags.notUsedInScript) treeFlag |= 0x00000010
+      if (tree.flags.inUnplayableArea) treeFlag |= 0x00000001
       outBufferToWar.addByte(treeFlag)
 
       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
@@ -134,7 +119,7 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
         angle: -1,
         scale: [0, 0, 0],
         skinId: '',
-        flags: { visible: true, solid: true },
+        flags: { inUnplayableArea: false, notUsedInScript: true, fixedZ: false },
         life: -1,
         randomItemSetPtr: 0,
         droppedItemSets: [],
@@ -155,10 +140,11 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
       doodad.scale = [outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat()] // X Y Z scaling
       doodad.skinId = outBufferToJSON.readChars(4)
 
-      const flags: flag = outBufferToJSON.readByte()
+      const flags = outBufferToJSON.readByte()
       doodad.flags = {
-        visible: flags === flag.visible || flags === flag.solid,
-        solid: flags === flag.solid
+        fixedZ: !!(flags & 0x00000100),
+        notUsedInScript: !!(flags & 0x00000010),
+        inUnplayableArea: !!(flags & 0x00000001),
       }
 
       doodad.life = outBufferToJSON.readByte() // as a %

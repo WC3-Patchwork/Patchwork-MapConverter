@@ -16,8 +16,9 @@ interface Doodad {
 }
 
 interface DoodadFlag {
-  visible: boolean
-  solid: boolean
+  inUnplayableArea: boolean
+  notUsedInScript: boolean
+  fixedZ: boolean
 }
 
 interface SpecialDoodad {
