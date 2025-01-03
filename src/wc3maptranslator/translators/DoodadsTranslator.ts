@@ -65,9 +65,9 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
 
       if (tree.flags == null) tree.flags = { inUnplayableArea: false, notUsedInScript: true, fixedZ: false } // defaults if no flags are specified
       let treeFlag = 0
-      if (tree.flags.fixedZ) treeFlag |= 0x00000100
-      if (tree.flags.notUsedInScript) treeFlag |= 0x00000010
-      if (tree.flags.inUnplayableArea) treeFlag |= 0x00000001
+      if (tree.flags.fixedZ) treeFlag |= 0x04
+      if (tree.flags.notUsedInScript) treeFlag |= 0x02
+      if (tree.flags.inUnplayableArea) treeFlag |= 0x01
       outBufferToWar.addByte(treeFlag)
 
       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
@@ -142,9 +142,9 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
 
       const flags = outBufferToJSON.readByte()
       doodad.flags = {
-        fixedZ: !!(flags & 0x00000100),
-        notUsedInScript: !!(flags & 0x00000010),
-        inUnplayableArea: !!(flags & 0x00000001),
+        fixedZ: !!(flags & 0x04),
+        notUsedInScript: !!(flags & 0x02),
+        inUnplayableArea: !!(flags & 0x01),
       }
 
       doodad.life = outBufferToJSON.readByte() // as a %
