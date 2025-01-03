@@ -17,6 +17,7 @@ import { readFile } from 'fs/promises'
 import { type CustomScript } from '../translator/data/content/CustomScript'
 import { type ScriptedTrigger } from '../translator/data/content/ScriptedTrigger'
 import { FileBlacklist } from './FileBlacklist'
+import { FormatConverters } from '../converter/formats/FormatConverters'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
@@ -26,7 +27,7 @@ async function populateComment(element: TriggerComment, child: DirectoryTree): P
 
 // handles both GUI trigger and Variable
 async function populateGUIContent(element: TriggerContent, child: DirectoryTree): Promise<void> {
-  const trigger: unknown = JSON.parse(await readFile(child.path, 'utf8'))
+  const trigger: unknown = FormatConverters[EnhancementManager.guiExtension].parse(await readFile(child.path, 'utf8'))
   for (const [key, value] of Object.entries(trigger as JSON)) {
     if (key === 'children') continue
     if (value == null || value === '') continue
@@ -303,12 +304,12 @@ const TriggerComposer = {
           exportObj.events = (content as GUITrigger).events
           exportObj.conditions = (content as GUITrigger).conditions
           exportObj.actions = (content as GUITrigger).actions
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), JSON.stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
           break
         case ContentType.TRIGGER_SCRIPTED:
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'));
           (content as ScriptedTrigger).script = ''
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), JSON.stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
           break
         case ContentType.COMMENT:
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.commentExtension}`), (content as TriggerComment).comment, 'utf8'))
@@ -322,7 +323,7 @@ const TriggerComposer = {
           exportObj.initialValue = (content as GlobalVariable).initialValue
           exportObj.isArray = (content as GlobalVariable).isArray
           exportObj.arrayLength = (content as GlobalVariable).arrayLength
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), JSON.stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
           break
       }
     }
