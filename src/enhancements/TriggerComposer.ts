@@ -47,12 +47,24 @@ async function populateParentDetails(parent: TriggerContainer, file: DirectoryTr
   }
 }
 
+function safeReplaceTriggerName(name: string): string {
+  return name
+    .replaceAll('/', '-')
+    .replaceAll('\\', '-')
+    .replaceAll(':', ';')
+    .replaceAll('*', '+')
+    .replaceAll('?', '!')
+    .replaceAll('"', '\'')
+    .replaceAll('<', '(')
+    .replaceAll('>', ')')
+    .replaceAll('|', '_')
+}
+
 function generateTriggerOrder(parent: TriggerContainer): string[] {
   const commentCounts: Record<string, number> = {}
 
   return parent.children.map(it => {
-    it.name = it.name.replaceAll('/', '-')
-    it.name = it.name.replaceAll('\\', '-')
+    it.name = safeReplaceTriggerName(it.name)
     if (it.contentType === ContentType.COMMENT) {
       if (commentCounts[it.name] != null) {
         const count = commentCounts[it.name] + 1
@@ -280,8 +292,7 @@ const TriggerComposer = {
       const exportObj: Record<string, unknown> = {
         contentType: content.contentType
       }
-      content.name = content.name.replaceAll('/', '-') // Let's hope someone didn't use exact name but with slash and minus symbol, otherwise hello collision
-      content.name = content.name.replaceAll('\\', '-')
+      content.name = safeReplaceTriggerName(content.name)
       switch (content.contentType) {
         case ContentType.HEADER:
           exportObj.description = (content as MapHeader).description
