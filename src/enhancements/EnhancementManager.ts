@@ -12,7 +12,9 @@ const EnhancementManager = {
   prettify: false,
   containerInfoExtension: '.ini',
   commentExtension: '.txt',
-  mapHeaderFilename: 'header'
+  mapHeaderFilename: 'header',
+  chunkifyMapData: false,
+  chunkFileExtension: '.json'
 }
 
 export default EnhancementManager
