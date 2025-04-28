@@ -3,7 +3,7 @@ import { LoggerFactory } from '../logging/LoggerFactory'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
 import { translatorRecord } from './TranslatorRecord'
 import { copyFileWithDirCreation } from './FileCopier'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile } from 'fs/promises'
 import EnhancementManager from '../enhancements/EnhancementManager'
 import ImportComposer from '../enhancements/ImportComposer'
 import { type TriggerTranslatorOutput, TriggersTranslator } from '../translator/TriggerTranslator'
@@ -86,7 +86,7 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
   }
 
   const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
-  tasks.push(writeFile(path.join(output, 'war3map.wtg'), triggerResult.buffer)
+  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wtg'), triggerResult.buffer)
     .then(() => triggerLog.info('Finished exporting triggers.')))
 
   const scriptTranslator = CustomScriptsTranslator.getInstance()
@@ -105,7 +105,7 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
   }
 
   const scriptResult = scriptTranslator.jsonToWar(scriptArg)
-  tasks.push(writeFile(path.join(output, 'war3map.wct'), scriptResult.buffer)
+  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wct'), scriptResult.buffer)
     .then(() => scriptLog.info('Finished exporting custom scripts.')))
 
   await Promise.all(tasks)

@@ -1,7 +1,7 @@
 {
   "name": "patchwork-mapconverter",
   "displayName": "Patchwork Map Converter",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
   "main": "./build/index.js",
   "bin": "./build/index.js",
