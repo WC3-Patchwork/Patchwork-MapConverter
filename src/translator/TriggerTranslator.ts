@@ -394,7 +394,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
       const libraryCount = outBufferToJSON.readInt()
       const deletedLibraryCount = outBufferToJSON.readInt()
-      for (let i = 0; i < deletedHeaderCount; i++) {
+      for (let i = 0; i < deletedLibraryCount; i++) {
         const libraryId = outBufferToJSON.readInt()
       }
 
