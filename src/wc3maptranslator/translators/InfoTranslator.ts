@@ -28,7 +28,7 @@ export class InfoTranslator implements Translator<Info> {
   public jsonToWar(infoJson: Info): WarResult {
     const outBufferToWar = new HexBuffer()
 
-    outBufferToWar.addInt(31) // file version, 0x1F
+    outBufferToWar.addInt(33) // format version
     outBufferToWar.addInt(infoJson.saves != null ? infoJson.saves : 0)
     outBufferToWar.addInt(infoJson.editorVersion != null ? infoJson.editorVersion : 0)
 
@@ -81,10 +81,10 @@ export class InfoTranslator implements Translator<Info> {
       if (infoJson.map.flags.enableWaterTinting) flags |= 0x10000
       if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x20000
       if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x40000
-      // 0x80000
-      // 0x100000
-      // 0x200000
-      // 0x400000
+      if (infoJson.map.flags.disableDenyIcon) flags |= 0x80000
+      if (infoJson.map.flags.forceDefaultCameraZoom) flags |= 0x100000
+      if (infoJson.map.flags.forceMaxCameraZoom) flags |= 0x200000
+      if (infoJson.map.flags.forceMinCameraZoom) flags |= 0x400000
       // 0x800000
       // 8 -unknown bits?
     }
@@ -139,6 +139,9 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addInt(infoJson.scriptLanguage)
     outBufferToWar.addInt(infoJson.supportedModes)
     outBufferToWar.addInt(infoJson.gameDataVersion)
+    outBufferToWar.addInt(infoJson.forcedDefaultCamDistance)
+    outBufferToWar.addInt(infoJson.forcedMaxCamDistance)
+    outBufferToWar.addInt(infoJson.forcedMinCamDistance)
 
     // Players
     outBufferToWar.addInt(infoJson.players?.length || 0)
@@ -257,7 +260,11 @@ export class InfoTranslator implements Translator<Info> {
           useItemClassificationSystem: false, // 0x8000: 1=use item classification system
           enableWaterTinting: false, // 0x10000
           useAccurateProbabilityForCalculations: false, // 0x20000
-          useCustomAbilitySkins: false // 0x40000
+          useCustomAbilitySkins: false, // 0x40000
+          disableDenyIcon: false, //0x80000
+          forceDefaultCameraZoom: false, // 0x100000
+          forceMaxCameraZoom: false, // 0x200000
+          forceMinCameraZoom: false // 0x400000
         }
       },
       loadingScreen: {
@@ -290,6 +297,9 @@ export class InfoTranslator implements Translator<Info> {
       editorVersion: 0,
       scriptLanguage: ScriptLanguage.JASS,
       supportedModes: SupportedModes.Both,
+      forcedDefaultCamDistance: 1250,
+      forcedMaxCamDistance: 1250,
+      forcedMinCamDistance: 1250,
       gameVersion: {
         major: 0,
         minor: 0,
@@ -360,7 +370,11 @@ export class InfoTranslator implements Translator<Info> {
       useItemClassificationSystem: !!(flags & 0x8000),
       enableWaterTinting: !!(flags & 0x10000),
       useAccurateProbabilityForCalculations: !!(flags & 0x20000),
-      useCustomAbilitySkins: !!(flags & 0x40000)
+      useCustomAbilitySkins: !!(flags & 0x40000),
+      disableDenyIcon: !!(flags & 0x80000),
+      forceDefaultCameraZoom: !!(flags & 0x100000),
+      forceMaxCameraZoom: !!(flags & 0x200000),
+      forceMinCameraZoom: !!(flags & 0x400000)
     }
 
     result.map.mainTileType = outBufferToJSON.readChars()
@@ -396,6 +410,13 @@ export class InfoTranslator implements Translator<Info> {
     result.scriptLanguage = outBufferToJSON.readInt()
     result.supportedModes = outBufferToJSON.readInt()
     result.gameDataVersion = outBufferToJSON.readInt()
+    if (fileVersion >= 32){
+      result.forcedDefaultCamDistance = outBufferToJSON.readInt()
+      result.forcedMaxCamDistance = outBufferToJSON.readInt()
+    }
+    if (fileVersion >= 33){
+      result.forcedMinCamDistance = outBufferToJSON.readInt()
+    }
 
     // Struct: players
     const numPlayers = outBufferToJSON.readInt()

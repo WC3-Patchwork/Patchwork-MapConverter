@@ -40,6 +40,10 @@ interface MapFlags {
   enableWaterTinting: boolean // 0x10000
   useAccurateProbabilityForCalculations: boolean // 0x20000
   useCustomAbilitySkins: boolean // 0x40000
+  disableDenyIcon: boolean //0x80000
+  forceDefaultCameraZoom: boolean // 0x100000
+  forceMaxCameraZoom: boolean // 0x200000
+  forceMinCameraZoom: boolean // 0x400000
 }
 
 interface LoadingScreen {
@@ -83,6 +87,9 @@ interface Info {
   scriptLanguage: ScriptLanguage
   supportedModes: SupportedModes
   gameDataVersion: number
+  forcedDefaultCamDistance: number
+  forcedMaxCamDistance: number
+  forcedMinCamDistance: number
   map: Map
   camera: PlayableCamera
   gameDataSet: number
