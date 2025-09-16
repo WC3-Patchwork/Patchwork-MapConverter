@@ -19,7 +19,7 @@
     "Patchwork"
   ],
   "author": "InsanityAI",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@commander-js/extra-typings": "^11.0.0",
     "@eslint/create-config": "^0.4.5",
