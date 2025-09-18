@@ -1,9 +1,9 @@
 interface ItemSet {
-  items: DroppableItem[]
+  items: DroppableItem[] | undefined
 }
 
 interface DroppableItem {
-  itemId: string,
+  itemId: string
   chance: number
 }
 

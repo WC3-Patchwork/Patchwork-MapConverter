@@ -572,8 +572,10 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
 
                         const parameter: Parameter = {
                           type: paramType,
-                          value
-                        } as Parameter
+                          value,
+                          statement: undefined,
+                          arrayIndex: undefined
+                        } satisfies Parameter
 
                         if (hasSubParameters) {
                           parameter.statement = {
@@ -584,10 +586,6 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                           } satisfies Statement
                           const beginParams = outBufferToJSON.readInt() !== 0
                           const subParamCount = TriggerDataRegistry.getParameterCount(parameter.statement.type, parameter.statement.name)
-                          if (subParamCount == null) {
-                            throw new Error('Missing parameter count for function ' + parameter.statement.name)
-                          }
-
                           readParams(parameter.statement, subParamCount, false)
                         }
 

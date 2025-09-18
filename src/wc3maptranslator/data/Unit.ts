@@ -1,27 +1,30 @@
-import { type angle } from '../CommonInterfaces'
-import { ItemSet } from './ItemSet'
-import { UnitSet } from './UnitSet'
+import { type vector3, type angle } from '../CommonInterfaces'
+import { type ItemSet } from './ItemSet'
+import { type UnitSet } from './UnitSet'
 
 interface Unit {
   type: string
   variation: number
-  position: number[]
+  position: vector3
   rotation: angle
-  scale: number[]
-  skin: string
-  hero: Hero
-  inventory: Inventory[]
-  abilities: Abilities[]
+  scale: vector3 | undefined
+  skin: string | undefined
+  flags: number
   player: number
+  byte1: number
+  byte2: number
   hitpoints: number
-  mana: number
+  mana: number | undefined
   randomItemSetPtr: number
-  droppedItemSets: ItemSet[]
-  gold: number
-  targetAcquisition: number // (-1 = normal, -2 = camp),
-  random: RandomSpawn
-  color: number
-  waygate: number
+  droppedItemSets: ItemSet[] | undefined
+  gold: number | undefined
+  targetAcquisition: number | undefined // (-1 = normal, -2 = camp),
+  hero: Hero | undefined
+  inventory: Inventory[] | undefined
+  abilities: Abilities[] | undefined
+  random: RandomSpawn | undefined
+  color: number | undefined
+  waygate: number | undefined
   id: number
 }
 
@@ -44,11 +47,11 @@ interface Abilities {
 }
 
 interface RandomSpawn {
-  type: number,
-  level: number | undefined,
-  itemClass: number | undefined,
-  groupIndex: number | undefined,
-  columnIndex: number | undefined,
+  type: number
+  level: number | undefined
+  itemClass: number | undefined
+  groupIndex: number | undefined
+  columnIndex: number | undefined
   unitSet: UnitSet | undefined
 }
 

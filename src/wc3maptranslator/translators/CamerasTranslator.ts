@@ -40,7 +40,7 @@ export class CamerasTranslator implements Translator<Camera[]> {
       outBufferToWar.addFloat(camera.target.x)
       outBufferToWar.addFloat(camera.target.y)
       outBufferToWar.addFloat(camera.offsetZ)
-      outBufferToWar.addFloat(camera.rotation != null ? camera.rotation : 0) // optional
+      outBufferToWar.addFloat(camera.rotation != null ? camera.rotation : 0)
       outBufferToWar.addFloat(camera.aoa)
       outBufferToWar.addFloat(camera.distance)
       outBufferToWar.addFloat(camera.roll != null ? camera.roll : 0)
@@ -62,8 +62,8 @@ export class CamerasTranslator implements Translator<Camera[]> {
     const result: Camera[] = []
     const outBufferToJSON = new W3Buffer(buffer)
 
-    const fileVersion = outBufferToJSON.readInt() // File version
-    const numCameras = outBufferToJSON.readInt() // # of cameras
+    const fileVersion = outBufferToJSON.readInt()
+    const numCameras = outBufferToJSON.readInt()
 
     for (let i = 0; i < numCameras; i++) {
       const camera: Camera = {

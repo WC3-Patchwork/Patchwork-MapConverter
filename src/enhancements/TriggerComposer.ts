@@ -21,25 +21,25 @@ import { FormatConverters } from '../converter/formats/FormatConverters'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
-async function populateComment(element: TriggerComment, child: DirectoryTree): Promise<void> {
+async function populateComment (element: TriggerComment, child: DirectoryTree): Promise<void> {
   element.comment = await readFile(child.path, 'utf8')
 }
 
 // handles both GUI trigger and Variable
-async function populateGUIContent(element: TriggerContent, child: DirectoryTree): Promise<void> {
-  const trigger: unknown = FormatConverters[EnhancementManager.guiExtension].parse(await readFile(child.path, 'utf8'))
-  for (const [key, value] of Object.entries(trigger as JSON)) {
+async function populateGUIContent (element: TriggerContent, child: DirectoryTree): Promise<void> {
+  const trigger = FormatConverters[EnhancementManager.guiExtension].parse(await readFile(child.path, 'utf8')) as TriggerContent
+  for (const [key, value] of Object.entries(trigger)) {
     if (key === 'children') continue
     if (value == null || value === '') continue
     element[key] = value as unknown
   }
 }
 
-async function populateCustomScript(element: CustomScript, child: DirectoryTree): Promise<void> {
+async function populateCustomScript (element: CustomScript, child: DirectoryTree): Promise<void> {
   element.script = await readFile(child.path, 'utf8')
 }
 
-async function populateParentDetails(parent: TriggerContainer, file: DirectoryTree): Promise<void> {
+async function populateParentDetails (parent: TriggerContainer, file: DirectoryTree): Promise<void> {
   const record = ini.parse(await readFile(file.path, 'utf8'))
   for (const [key, value] of Object.entries(record)) {
     if (key === 'children') continue // ignore children entry, that one is handled internally (shouldn't exist anyways)
@@ -47,7 +47,7 @@ async function populateParentDetails(parent: TriggerContainer, file: DirectoryTr
   }
 }
 
-function safeReplaceTriggerName(name: string): string {
+function safeReplaceTriggerName (name: string): string {
   return name
     .replaceAll('/', '-')
     .replaceAll('\\', '-')
@@ -60,7 +60,7 @@ function safeReplaceTriggerName(name: string): string {
     .replaceAll('|', '_')
 }
 
-function generateTriggerOrder(parent: TriggerContainer): string[] {
+function generateTriggerOrder (parent: TriggerContainer): string[] {
   const commentCounts: Record<string, number> = {}
 
   return parent.children.map(it => {
@@ -79,7 +79,7 @@ function generateTriggerOrder(parent: TriggerContainer): string[] {
 }
 
 type OrderedTriggerContainer = TriggerContainer & { order: string[] }
-function sortTriggerContent(root: OrderedTriggerContainer): void {
+function sortTriggerContent (root: OrderedTriggerContainer): void {
   let newChildrenOrder = new Array(root.order != null ? root.order.length : 0) as TriggerContent[]
   const unspecifiedChildren: TriggerContent[] = []
   const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {

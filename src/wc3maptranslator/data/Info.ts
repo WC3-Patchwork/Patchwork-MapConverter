@@ -40,7 +40,7 @@ interface MapFlags {
   enableWaterTinting: boolean // 0x10000
   useAccurateProbabilityForCalculations: boolean // 0x20000
   useCustomAbilitySkins: boolean // 0x40000
-  disableDenyIcon: boolean //0x80000
+  disableDenyIcon: boolean // 0x80000
   forceDefaultCameraZoom: boolean // 0x100000
   forceMaxCameraZoom: boolean // 0x200000
   forceMinCameraZoom: boolean // 0x400000
@@ -100,12 +100,12 @@ interface Info {
   customSoundEnvironment: string
   customLightEnv: number
   water: number[] // R G B A
-  players: Player[]
-  forces: Force[]
-  upgrades: UpgradeAvailable[]
-  techBlacklist: TechUnavailable[]
-  randomUnitTables: RandomUnitTable[]
-  randomItemTables: RandomTable[]
+  players: Player[] | undefined
+  forces: Force[] | undefined
+  upgrades: UpgradeAvailable[] | undefined
+  techBlacklist: TechUnavailable[] | undefined
+  randomUnitTables: RandomUnitTable[] | undefined
+  randomItemTables: RandomTable[] | undefined
 }
 
 interface PlayerStartingPosition {
@@ -138,7 +138,7 @@ interface ForceFlags {
 
 interface Force {
   flags: ForceFlags
-  players: number // UNSUPPORTED: (bit "x"=1 --> player "x" is in this force)
+  players: number[] // 0-based player indices
   name: string
 }
 
@@ -157,12 +157,12 @@ interface TechUnavailable {
 interface RandomTable {
   id: number
   name: string
-  rows: ObjectPool[]
+  rows: ObjectPool[] | undefined
 }
 
 interface ObjectPool {
   type: number
-  objects: RandomObject[]
+  objects: RandomObject[] | undefined
 }
 
 interface RandomObject {
@@ -173,7 +173,7 @@ interface RandomObject {
 interface RandomUnitTable {
   id: number
   name: string
-  positions: number[]
+  positions: number[] | undefined
   chances: Array<{ chance: number, unitIds: string[] }>
 }
 
@@ -198,5 +198,6 @@ export {
   type Map, type GameVersion, type PlayableCamera, type MapFlags,
   type LoadingScreen, FogType, type PlayableMapArea, type Prologue,
   type Info, type PlayerStartingPosition, type Player, type ForceFlags,
-  type Force, ScriptLanguage, SupportedModes
+  type Force, ScriptLanguage, SupportedModes, type UpgradeAvailable, type TechUnavailable,
+  type RandomTable, type RandomUnitTable, type ObjectPool, type RandomObject
 }

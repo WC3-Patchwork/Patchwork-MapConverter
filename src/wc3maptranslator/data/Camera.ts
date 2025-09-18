@@ -1,7 +1,7 @@
 import { type angle } from '../CommonInterfaces'
 
 interface Camera {
-  target: CameraTarget
+  target: CameraTarget // TODO: turn to vector2
   offsetZ: number
   rotation: angle
   aoa: angle // angle of attack

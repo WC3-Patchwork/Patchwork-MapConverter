@@ -2,6 +2,8 @@
  * @type angle - An angle is measured in degrees, 0 <= angle < 360
  */
 export type angle = number
+export type vector2 = [number, number]
+export type vector3 = [number, number, number]
 
 // TranslationError is reserved for future use in case
 // additional constraints are added to translated output,
