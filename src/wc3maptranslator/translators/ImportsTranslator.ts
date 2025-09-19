@@ -33,53 +33,40 @@ export class ImportsTranslator implements Translator<Import[]> {
   }
 
   public jsonToWar (imports: Import[]): WarResult {
-    const outBufferToWar = new HexBuffer()
+    const output = new HexBuffer()
 
-    /*
-         * Header
-         */
-    outBufferToWar.addInt(1) // file version
-    outBufferToWar.addInt(imports.length) // number of imports
-
-    /*
-         * Body
-         */
+    output.addInt(1) // file version
+    output.addInt(imports.length) // number of imports
     imports?.forEach((importedFile) => {
-      outBufferToWar.addByte(
+      output.addByte(
         importedFile.type === ImportType.Custom ? 13 : 5
       )
 
       // Temporary: always start the file path with war3mapImported\ until other file support is added
       if (!importedFile.path.startsWith('war3mapImported\\') && importedFile.type === ImportType.Standard) {
-        importedFile.path = 'war3mapImported\\' + importedFile.path
+        importedFile.path = `war3mapImported\\${importedFile.path}`
       }
-
-      outBufferToWar.addString(importedFile.path)
+      output.addString(importedFile.path)
     })
 
     return {
       errors: [],
-      buffer: outBufferToWar.getBuffer()
+      buffer: output.getBuffer()
     }
   }
 
   public warToJson (buffer: Buffer): JsonResult<Import[]> {
     const result: Import[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
+    const input = new W3Buffer(buffer)
 
-    const fileVersion = outBufferToJSON.readInt() // File version
-    const numImports = outBufferToJSON.readInt() // # of imports
+    const fileVersion = input.readInt() // File version
+    const numImports = input.readInt() // # of imports
 
     for (let i = 0; i < numImports; i++) {
-      const typeValue = outBufferToJSON.readByte()
-      const type = typeEnum[typeValue] as unknown as ImportType
-
-      const importedFile = {
-        type, // 5 or 8= standard path, 10 or 13: custom path
-        path: outBufferToJSON.readString() // e.g. "war3mapImported\mysound.wav"
+      result[i] = {
+        type: typeEnum[input.readByte()] as unknown as ImportType, // 5 or 8= standard path, 10 or 13: custom path
+        path: input.readString() // e.g. "war3mapImported\mysound.wav"
       }
-
-      result.push(importedFile)
     }
 
     return {

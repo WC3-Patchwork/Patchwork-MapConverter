@@ -1,9 +1,21 @@
 /**
- * @type angle - An angle is measured in degrees, 0 <= angle < 360
+ * @type An angle is measured in degrees, 0 <= angle < 360
  */
 export type angle = number
+
+/**
+ * @type a string with only 4 chars, signifies a unique identifier of objects
+ */
+export type FourCC = string
+
+export type integer = number
 export type vector2 = [number, number]
 export type vector3 = [number, number, number]
+
+/**
+ * @type ARGB format
+ */
+export type color = [number, number, number, number]
 
 // TranslationError is reserved for future use in case
 // additional constraints are added to translated output,

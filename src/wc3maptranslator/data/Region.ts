@@ -1,10 +1,12 @@
+import { type color } from '../CommonInterfaces'
+
 interface Region {
   position: Rect
   name: string
   id: number
   weatherEffect: string
   ambientSound: string
-  color: number[]
+  color: color
 }
 
 interface Rect {

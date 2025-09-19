@@ -1,20 +1,15 @@
-import { type angle } from '../CommonInterfaces'
+import { type angle, type vector3 } from '../CommonInterfaces'
 
 interface Camera {
-  target: CameraTarget // TODO: turn to vector2
-  offsetZ: number
-  rotation: angle
-  aoa: angle // angle of attack
+  target: vector3
+  rotation: angle | undefined
+  angleOfAttack: angle
   distance: number
-  roll: number
-  fov: angle // field of view
+  roll: number | undefined
+  fieldOfView: angle
   farClipping: number
+  float1: number // TODO: identify this mistery 100 value float
   name: string
 }
 
-interface CameraTarget {
-  x: number
-  y: number
-}
-
-export type { Camera, CameraTarget }
+export type { Camera }
