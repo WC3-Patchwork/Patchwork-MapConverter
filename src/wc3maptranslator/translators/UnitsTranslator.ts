@@ -1,10 +1,13 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
+import { type WarResult, type JsonResult, type integer } from '../CommonInterfaces'
 import { type Inventory, type Hero, type RandomSpawn, type Unit, type Abilities } from '../data/Unit'
 import { type Translator } from './Translator'
 import { type UnitSet } from '../data/UnitSet'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+
+const log = LoggerFactory.createLogger('UnitsTranslator')
 
 export class UnitsTranslator implements Translator<Unit[]> {
   private static instance: UnitsTranslator
@@ -18,15 +21,15 @@ export class UnitsTranslator implements Translator<Unit[]> {
     return this.instance
   }
 
-  public static jsonToWar (units: Unit[]): WarResult {
-    return this.getInstance().jsonToWar(units)
+  public static jsonToWar (units: Unit[], version: [integer, integer]): WarResult {
+    return this.getInstance().jsonToWar(units, version)
   }
 
   public static warToJson (buffer: Buffer): JsonResult<Unit[]> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar (unitsJson: Unit[]): WarResult {
+  public jsonToWar (unitsJson: Unit[], [fileVersion, subVersion]: [integer, integer]): WarResult {
     const outBufferToWar = new HexBuffer()
 
     /*
@@ -127,44 +130,59 @@ export class UnitsTranslator implements Translator<Unit[]> {
   }
 
   public warToJson (buffer: Buffer): JsonResult<Unit[]> {
+    const errors: Error[] = []
     const result: Unit[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
+    const input = new W3Buffer(buffer)
 
-    const fileId = outBufferToJSON.readChars(4) // W3do for doodad file
-    const fileVersion = outBufferToJSON.readInt() // File version = 7
-    const subVersion = outBufferToJSON.readInt() // 0B 00 00 00
-    const numUnits = outBufferToJSON.readInt() // # of units
+    const fileId = input.readChars(4)
+    if (fileId !== 'W3do') {
+      log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3do', will attempt parsing...`)
+    }
 
+    const fileVersion = input.readInt()
+    if (fileVersion !== 7 && fileVersion !== 8) {
+      log.warn(`Unknown preplaced units file format version '${fileVersion}', expected 7 or 8, will attempt parsing...`)
+    }
+
+    const subVersion = input.readInt()
+    if (subVersion !== 9 && subVersion !== 11) {
+      log.warn(`Unknown preplaced units file format subversion '${fileVersion}', expected 9 or 11, will attempt parsing...`)
+    }
+
+    const numUnits = input.readInt() // # of units
     for (let i = 0; i < numUnits; i++) {
       result[i] = {
-        type: outBufferToJSON.readChars(4), // (iDNR = random item, uDNR = random unit)
-        variation: outBufferToJSON.readInt(),
-        position: [outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat()], // X Y Z coords
-        rotation: outBufferToJSON.readFloat(),
-        scale: [outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat()], // X Y Z scaling
-        skin: this.getUnitSkin(outBufferToJSON, fileVersion),
-        flags: outBufferToJSON.readByte(),
-        player: outBufferToJSON.readInt(), // (player1 = 0, 16=neutral passive); note: wc3 patch now has 24 max players
-        byte1: outBufferToJSON.readByte(), // unknown
-        byte2: outBufferToJSON.readByte(), // unknown
-        hitpoints: outBufferToJSON.readInt(), // -1 = use default
-        mana: outBufferToJSON.readInt(), // -1 = use default, 0 = unit doesn't have mana
-        randomItemSetPtr: this.getRandomItemSetPtr(outBufferToJSON, subVersion),
-        droppedItemSets: this.getDroppedItemSets(outBufferToJSON),
-        gold: outBufferToJSON.readInt(),
-        targetAcquisition: outBufferToJSON.readFloat(), // (-1 = normal, -2 = camp)
-        hero: this.getHeroStats(outBufferToJSON, subVersion),
-        inventory: this.getInventory(outBufferToJSON),
-        abilities: this.getAbilities(outBufferToJSON),
-        random: this.getRandomDropTable(outBufferToJSON),
-        color: outBufferToJSON.readInt(),
-        waygate: outBufferToJSON.readInt(), // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
-        id: outBufferToJSON.readInt()
+        type: input.readChars(4), // (iDNR = random item, uDNR = random unit)
+        variation: input.readInt(),
+        position: [input.readFloat(), input.readFloat(), input.readFloat()], // X Y Z coords
+        rotation: input.readFloat(),
+        scale: [input.readFloat(), input.readFloat(), input.readFloat()], // X Y Z scaling
+        skin: this.getUnitSkin(input, fileVersion),
+        flags: input.readByte(),
+        player: input.readShort(), // (player1 = 0, 16=neutral passive); note: wc3 patch now has 24 max players
+        // the following 4 bytes are flags??
+        flags1: input.readByte(), // unknown
+        flags2: input.readByte(), // unknown
+        flags1: input.readByte(), // unknown
+        flags2: input.readByte(), // unknown
+        hitpoints: input.readInt(), // -1 = use default
+        mana: input.readInt(), // -1 = use default, 0 = unit doesn't have mana
+        randomItemSetPtr: this.getRandomItemSetPtr(input, subVersion),
+        droppedItemSets: this.getDroppedItemSets(input),
+        gold: input.readInt(),
+        targetAcquisition: input.readFloat(), // (-1 = normal, -2 = camp)
+        hero: this.getHeroStats(input, subVersion),
+        inventory: this.getInventory(input),
+        abilities: this.getAbilities(input),
+        random: this.getRandomDropTable(input),
+        color: input.readInt(),
+        waygate: input.readInt(), // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
+        id: input.readInt()
       }
     }
 
     return {
-      errors: [],
+      errors,
       json: result
     }
   }
