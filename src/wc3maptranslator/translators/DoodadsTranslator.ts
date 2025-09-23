@@ -5,20 +5,20 @@ import { type integer, type vector3 } from '../CommonInterfaces'
 import { type SpecialDoodad, type Doodad } from '../data/Doodad'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
 
-export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], [doodadFormatVersion, doodadFormatSubversion, specialDoodadFormatVersion, editorVersion]: [integer, integer, integer, integer]): Buffer {
+export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], [formatVersion, formatSubversion, specialDoodadFormatVersion, editorVersion]: [integer, integer, integer, integer]): Buffer {
   const output = new HexBuffer()
-  if (doodadFormatVersion < 9) {
-    throw new Error(`Unknown doodad format version=${doodadFormatVersion}, expected below 9`)
+  if (formatVersion < 9) {
+    throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
 
-  if (doodadFormatSubversion < 12) {
-    throw new Error(`Unknown doodad format subversion=${doodadFormatSubversion}, expected below 12`)
+  if (formatSubversion < 12) {
+    throw new Error(`Unknown doodad format subversion=${formatSubversion}, expected below 12`)
   }
 
   output.addChars('W3do')
-  output.addInt(doodadFormatVersion)
-  if (doodadFormatVersion > 4) {
-    output.addInt(doodadFormatSubversion)
+  output.addInt(formatVersion)
+  if (formatVersion > 4) {
+    output.addInt(formatSubversion)
   }
 
   output.addInt(doodads?.length ?? 0)
@@ -37,7 +37,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
       output.addChars(doodad.skinId ?? doodad.type)
     }
 
-    if (doodadFormatVersion > 5) {
+    if (formatVersion > 5) {
       const flags = doodad.flags ?? { inUnplayableArea: false, notUsedInScript: true, fixedZ: false }
       let flagValue = 0
       if (flags.fixedZ) flagValue |= 0x04
@@ -48,7 +48,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
 
     output.addByte(doodad.life ?? 100)
 
-    if (doodadFormatVersion > 6) {
+    if (formatVersion > 6) {
       output.addInt(doodad.randomItemSetPtr ?? -1)
       output.addInt(doodad.droppedItemSets?.length ?? 0)
       doodad.droppedItemSets?.forEach(itemSet => {
@@ -60,12 +60,12 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
       })
     }
 
-    if (doodadFormatVersion > 3) {
+    if (formatVersion > 3) {
       output.addInt(doodad.id ?? 0)
     }
   })
 
-  if (doodadFormatVersion > 2) {
+  if (formatVersion > 2) {
     output.addInt(specialDoodadFormatVersion)
     output.addInt(specialDoodads?.length || 0)
     specialDoodads?.forEach(specialDoodad => {

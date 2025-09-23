@@ -1,4 +1,4 @@
-import { type vector3, type angle } from '../CommonInterfaces'
+import { type vector3, type angle, type integer, type color } from '../CommonInterfaces'
 import { type ItemSet } from './ItemSet'
 import { type UnitSet } from './UnitSet'
 
@@ -6,13 +6,11 @@ interface Unit {
   type: string
   variation: number
   position: vector3
-  rotation: angle
+  angle: angle
   scale: vector3 | undefined
   skin: string | undefined
-  flags: number
-  player: number
-  byte1: number
-  byte2: number
+  flags: UnitFlag
+  player: integer
   hitpoints: number
   mana: number | undefined
   randomItemSetPtr: number
@@ -23,9 +21,14 @@ interface Unit {
   inventory: Inventory[] | undefined
   abilities: Abilities[] | undefined
   random: RandomSpawn | undefined
-  color: number | undefined
-  waygate: number | undefined
-  id: number
+  playerColor: integer | undefined
+  waygate: integer | undefined
+  id: integer | undefined
+}
+
+interface UnitFlag {
+  isUprooted: boolean
+  fixedZ: boolean
 }
 
 interface Hero {
