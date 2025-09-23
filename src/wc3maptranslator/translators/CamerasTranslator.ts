@@ -1,77 +1,72 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Translator } from './Translator'
+import { type integer } from '../CommonInterfaces'
 import { type Camera } from '../data/Camera'
+import { LoggerFactory } from '../../logging/LoggerFactory'
 
-export class CamerasTranslator implements Translator<Camera[]> {
-  private static instance: CamerasTranslator
+const log = LoggerFactory.createLogger('CamerasTranslator')
 
-  private constructor () { }
+export function jsonToWar (cameras: Camera[], [formatVersion, editorVersion]: [integer, integer]): Buffer {
+  if (formatVersion !== 0) {
+    throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
+  }
+  const output = new HexBuffer()
 
-  public static getInstance (): CamerasTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
+  output.addInt(formatVersion) // file version
+  output.addInt(cameras?.length ?? 0) // number of cameras
+  cameras?.forEach((camera) => {
+    output.addFloat(camera.targetX)
+    output.addFloat(camera.targetY)
+    output.addFloat(camera.offsetZ)
+    output.addFloat(camera.rotation)
+    output.addFloat(camera.angleOfAttack)
+    output.addFloat(camera.distance)
+    output.addFloat(camera.roll)
+    output.addFloat(camera.fieldOfView)
+    output.addFloat(camera.farClipping)
+    output.addFloat(camera.nearClipping)
+    if (editorVersion >= 6071) { // if editor version is 1.30+
+      output.addFloat(camera.localPitch ?? 0)
+      output.addFloat(camera.localYaw ?? 0)
+      output.addFloat(camera.localRoll ?? 0)
     }
-    return this.instance
+    output.addString(camera.name)
+  })
+
+  return output.getBuffer()
+}
+
+export function warToJson (buffer: Buffer, editorVersion: integer): Camera[] {
+  const input = new W3Buffer(buffer)
+  const fileVersion = input.readInt()
+  if (fileVersion !== 0) {
+    log.warn(`Unknown camera file format version ${fileVersion} will attempt at reading...`)
   }
 
-  public static jsonToWar (cameras: Camera[]): WarResult {
-    return this.getInstance().jsonToWar(cameras)
-  }
-
-  public static warToJson (buffer: Buffer): JsonResult<Camera[]> {
-    return this.getInstance().warToJson(buffer)
-  }
-
-  public jsonToWar (cameras: Camera[]): WarResult {
-    const output = new HexBuffer()
-
-    output.addInt(0) // file version
-    output.addInt(cameras?.length ?? 0) // number of cameras
-    cameras?.forEach((camera) => {
-      output.addFloat(camera.target[0])
-      output.addFloat(camera.target[1])
-      output.addFloat(camera.target[2])
-      output.addFloat(camera.rotation ?? 0)
-      output.addFloat(camera.angleOfAttack)
-      output.addFloat(camera.distance)
-      output.addFloat(camera.roll ?? 0)
-      output.addFloat(camera.fieldOfView)
-      output.addFloat(camera.farClipping)
-      output.addFloat(camera.float1)
-      output.addString(camera.name)
-    })
-
-    return {
-      errors: [],
-      buffer: output.getBuffer()
+  const result: Camera[] = []
+  const numCameras = input.readInt()
+  for (let i = 0; i < numCameras; i++) {
+    const targetX = input.readFloat()
+    const targetY = input.readFloat()
+    const offsetZ = input.readFloat()
+    const rotation = input.readFloat()
+    const angleOfAttack = input.readFloat()
+    const distance = input.readFloat()
+    const roll = input.readFloat()
+    const fieldOfView = input.readFloat()
+    const farClipping = input.readFloat()
+    const nearClipping = input.readFloat()
+    let localPitch = 0
+    let localYaw = 0
+    let localRoll = 0
+    if (editorVersion >= 6071) { // if editor version is 1.30+
+      localPitch = input.readFloat()
+      localYaw = input.readFloat()
+      localRoll = input.readFloat()
     }
+    const name = input.readString()
+    result[i] = { targetX, targetY, offsetZ, rotation, angleOfAttack, distance, roll, fieldOfView, farClipping, nearClipping, localPitch, localRoll, localYaw, name }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Camera[]> {
-    const result: Camera[] = []
-    const input = new W3Buffer(buffer)
-
-    const fileVersion = input.readInt()
-    const numCameras = input.readInt()
-    for (let i = 0; i < numCameras; i++) {
-      result[i] = {
-        target: [input.readFloat(), input.readFloat(), input.readFloat()],
-        rotation: input.readFloat(),
-        angleOfAttack: input.readFloat(),
-        distance: input.readFloat(),
-        roll: input.readFloat(),
-        fieldOfView: input.readFloat(),
-        farClipping: input.readFloat(),
-        float1: input.readFloat(),
-        name: input.readString()
-      }
-    }
-
-    return {
-      errors: [],
-      json: result
-    }
-  }
+  return result
 }
