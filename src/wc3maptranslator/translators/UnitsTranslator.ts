@@ -1,14 +1,14 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult, type integer } from '../CommonInterfaces'
-import { type Inventory, type Hero, type RandomSpawn, type Unit, type Abilities } from '../data/Unit'
+import { type vector3, type integer } from '../CommonInterfaces'
+import { type Inventory, type Hero, type RandomSpawn, type Unit, type Abilities, type UnitFlag } from '../data/Unit'
 import { type UnitSet } from '../data/UnitSet'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
 import { LoggerFactory } from '../../logging/LoggerFactory'
 
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
-export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, editorVersion]: [integer, integer, integer]): WarResult {
+export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, editorVersion]: [integer, integer, integer]): Buffer {
   const output = new HexBuffer()
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
@@ -44,7 +44,7 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
     output.addShort(unit.player)
     output.addInt(unit.flags.isUprooted ? 1 : 0)
     output.addInt(unit.hitpoints ?? -1)
-    output.addInt(unit.mana ?? -1)
+    output.addInt(unit.mana ?? 0)
 
     if (formatSubversion >= 11) {
       output.addInt(unit.randomItemSetPtr)
@@ -98,10 +98,10 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
           output.addInt(spawnableUnit.chance)
         })
       } else {
-        // Random
         output.addInt(unit.random?.type ?? -1)
         switch (unit.random?.type) {
           case 0:
+            // reminder: Little-Endian
             output.addInt(((unit.random.level as integer) & 0x00FFFFFFFF) |
         ((unit.random.itemClass as integer) ?? 0) & 0xFF00000000)
             break
@@ -130,15 +130,10 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
     }
   })
 
-  return {
-    errors: [],
-    buffer: output.getBuffer()
-  }
+  return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): JsonResult<Unit[]> {
-  const errors: Error[] = []
-  const result: Unit[] = []
+export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
   const input = new W3Buffer(buffer)
 
   const fileId = input.readChars(4)
@@ -146,176 +141,204 @@ export function warToJson (buffer: Buffer): JsonResult<Unit[]> {
     log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3do', will attempt parsing...`)
   }
 
-  const fileVersion = input.readInt()
-  if (fileVersion !== 7 && fileVersion !== 8) {
-    log.warn(`Unknown preplaced units file format version '${fileVersion}', expected 7 or 8, will attempt parsing...`)
+  const formatVersion = input.readInt()
+  if (formatVersion < 9) {
+    log.warn(`Unknown preplaced units file format version '${formatVersion}', expected less than 9, will attempt parsing...`)
   }
 
-  const subVersion = input.readInt()
-  if (subVersion !== 9 && subVersion !== 11) {
-    log.warn(`Unknown preplaced units file format subversion '${fileVersion}', expected 9 or 11, will attempt parsing...`)
+  const formatSubversion = input.readInt()
+  if (formatSubversion < 12) {
+    log.warn(`Unknown preplaced units file format subversion '${formatVersion}', expected less than 12, will attempt parsing...`)
   }
 
-  const numUnits = input.readInt() // # of units
-  for (let i = 0; i < numUnits; i++) {
-    result[i] = {
-      type: input.readChars(4), // (iDNR = random item, uDNR = random unit)
-      variation: input.readInt(),
-      position: [input.readFloat(), input.readFloat(), input.readFloat()], // X Y Z coords
-      angle: input.readFloat(),
-      scale: [input.readFloat(), input.readFloat(), input.readFloat()], // X Y Z scaling
-      skin: this.getUnitSkin(input, fileVersion),
-      flags: input.readByte(),
-      player: input.readShort(), // (player1 = 0, 16=neutral passive); note: wc3 patch now has 24 max players
-      // the following 4 bytes are flags??
-      flags1: input.readByte(), // unknown
-      flags2: input.readByte(), // unknown
-      flags1: input.readByte(), // unknown
-      flags2: input.readByte(), // unknown
-      hitpoints: input.readInt(), // -1 = use default
-      mana: input.readInt(), // -1 = use default, 0 = unit doesn't have mana
-      randomItemSetPtr: this.getRandomItemSetPtr(input, subVersion),
-      droppedItemSets: this.getDroppedItemSets(input),
-      gold: input.readInt(),
-      targetAcquisition: input.readFloat(), // (-1 = normal, -2 = camp)
-      hero: this.getHeroStats(input, subVersion),
-      inventory: this.getInventory(input),
-      abilities: this.getAbilities(input),
-      random: this.getRandomDropTable(input),
-      color: input.readInt(),
-      waygate: input.readInt(), // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
-      id: input.readInt()
+  const result: Unit[] = []
+  const unitCount = input.readInt()
+  for (let i = 0; i < unitCount; i++) {
+    const type = input.readChars(4)
+    const variation = input.readInt()
+    const position = [input.readFloat(), input.readFloat(), input.readFloat()] as vector3 // X Y Z coords
+    const angle = input.readFloat()
+    const scale = [input.readFloat(), input.readFloat(), input.readFloat()] as vector3 // X Y Z scaling
+
+    let skin: string
+    if (editorVersion >= 6089) {
+      skin = input.readChars(4)
+    } else {
+      skin = type
     }
-  }
 
-  return {
-    errors,
-    json: result
-  }
-}
-
-function getUnitSkin (outBufferToJSON: W3Buffer, fileVersion: number): string | undefined {
-  if (fileVersion > 7) {
-    return outBufferToJSON.readChars(4)
-  }
-}
-
-function getRandomItemSetPtr (outBufferToJSON: W3Buffer, subVersion: number): number {
-  if (subVersion !== 9) { // not RoC
-    return outBufferToJSON.readInt()
-  } else {
-    return -1
-  }
-}
-
-function getDroppedItemSets (outBufferToJSON: W3Buffer): ItemSet[] {
-  const itemSets: ItemSet[] = []
-  const numDroppedItemSets = outBufferToJSON.readInt()
-  for (let j = 0; j < numDroppedItemSets; j++) {
-    const items: DroppableItem[] = []
-    itemSets[j] = { items }
-    const numDroppableItems = outBufferToJSON.readInt()
-    for (let k = 0; k < numDroppableItems; k++) {
-      items[k] = {
-        itemId: outBufferToJSON.readChars(4), // Item ID
-        chance: outBufferToJSON.readInt() // % chance to drop
-      }
+    const flags: UnitFlag = { fixedZ: false, isUprooted: false }
+    if (formatVersion > 5) {
+      const flagsValue = input.readByte()
+      flags.fixedZ = !!(flagsValue & 0x04)
     }
-  }
-  return itemSets
-}
+    const player = input.readShort()
+    flags.isUprooted = !!(input.readInt() & 0x01)
+    const hitpoints = input.readInt()
+    const mana = input.readInt()
 
-function getHeroStats (outBufferToJSON: W3Buffer, subVersion: number): Hero {
-  if (subVersion !== 9) { // Not-RoC version
-    return {
-      level: outBufferToJSON.readInt(), // non-hero units = 1
-      str: outBufferToJSON.readInt(),
-      agi: outBufferToJSON.readInt(),
-      int: outBufferToJSON.readInt()
+    let randomItemSetPtr: integer
+    if (formatSubversion >= 11) {
+      randomItemSetPtr = input.readInt()
+    } else {
+      randomItemSetPtr = -1
     }
-  } else {
-    return {
-      level: outBufferToJSON.readInt(), // non-hero units = 1
-      str: 1,
-      agi: 1,
-      int: 1
-    }
-  }
-}
 
-function getInventory (outBufferToJSON: W3Buffer): Inventory[] {
-  const inventory: Inventory[] = []
-  const numItemsInventory = outBufferToJSON.readInt()
-  for (let j = 0; j < numItemsInventory; j++) {
-    inventory.push({
-      slot: outBufferToJSON.readInt() + 1, // the int is 0-based, but json format wants 1-6
-      type: outBufferToJSON.readChars(4) // Item ID
-    })
-  }
-  return inventory
-}
-
-function getAbilities (outBufferToJSON: W3Buffer): Abilities[] {
-  const abilities: Abilities[] = []
-  const numModifiedAbil = outBufferToJSON.readInt()
-  for (let j = 0; j < numModifiedAbil; j++) {
-    abilities.push({
-      ability: outBufferToJSON.readChars(4), // Ability ID
-      active: outBufferToJSON.readInt() === 1, // autocast active? 0=no, 1=active
-      level: outBufferToJSON.readInt()
-    })
-  }
-  return abilities
-}
-
-function getRandomDropTable (outBufferToJSON: W3Buffer): RandomSpawn | undefined {
-  const randomType = outBufferToJSON.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
-  if (randomType === 0) {
-    // 0 = Any neutral passive building/item, in this case we have
-    //   byte[3]: level of the random unit/item,-1 = any (this is actually interpreted as a 24-bit number)
-    //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
-    //   r is also 0 for non random units/items so we have these 4 bytes anyway (even if the id wasnt uDNR or iDNR)
-    return {
-      type: randomType,
-      level: (outBufferToJSON.readShort() << 8) | outBufferToJSON.readByte(),
-      itemClass: outBufferToJSON.readByte(),
-      groupIndex: undefined,
-      columnIndex: undefined,
-      unitSet: undefined
-    } satisfies RandomSpawn
-  } else if (randomType === 1) {
-    // 1 = random unit from random group (defined in the w3i), in this case we have
-    //   int: unit group number (which group from the global table)
-    //   int: position number (which column of this group)
-    //   the column should of course have the item flag set (in the w3i) if this is a random item
-    return {
-      type: randomType,
-      level: undefined,
-      itemClass: undefined,
-      groupIndex: outBufferToJSON.readInt(),
-      columnIndex: outBufferToJSON.readInt(),
-      unitSet: undefined
-    } satisfies RandomSpawn
-  } else if (randomType === 2) {
-    // 2 = random unit from custom table, in this case we have
-    //   int: number "n" of different available units
-    //   then we have n times a random unit structure
-    const unitSet: UnitSet = []
-    const numDiffAvailUnits = outBufferToJSON.readInt()
-    for (let k = 0; k < numDiffAvailUnits; k++) {
-      unitSet[k] = {
-        unitId: outBufferToJSON.readChars(4), // Unit ID
-        chance: outBufferToJSON.readInt() // % chance
+    const droppedItemSets: ItemSet[] = []
+    if (formatSubversion !== 0) {
+      const numDroppedItemSets = input.readInt()
+      for (let j = 0; j < numDroppedItemSets; j++) {
+        const items: DroppableItem[] = []
+        droppedItemSets[j] = { items }
+        const numDroppableItems = input.readInt()
+        for (let k = 0; k < numDroppableItems; k++) {
+          items[k] = {
+            itemId: input.readChars(4), // Item ID
+            chance: input.readInt() // % chance to drop
+          }
+        }
       }
     }
 
-    return {
-      type: randomType,
-      level: undefined,
-      itemClass: undefined,
-      groupIndex: undefined,
-      columnIndex: undefined,
-      unitSet
-    } satisfies RandomSpawn
+    let gold: integer
+    if (formatSubversion >= 2) {
+      gold = input.readInt()
+    } else {
+      gold = 0
+    }
+
+    let targetAcquisition: number
+    if (formatSubversion >= 3) {
+      targetAcquisition = input.readFloat() // (-1 = normal, -2 = camp)
+    } else {
+      targetAcquisition = -1
+    }
+
+    let level: integer
+    let str: integer
+    let agi: integer
+    let int: integer
+    const inventory: Inventory[] = []
+    const abilities: Abilities[] = []
+    if (formatSubversion >= 5) {
+      level = input.readInt()
+      if (formatSubversion >= 10) {
+        str = input.readInt()
+        agi = input.readInt()
+        int = input.readInt()
+      } else {
+        str = 1; agi = 1; int = 1
+      }
+
+      const numItemsInventory = input.readInt()
+      for (let j = 0; j < numItemsInventory; j++) {
+        inventory[j] = {
+          slot: input.readInt() + 1, // the int is 0-based, but json format wants 1-6
+          type: input.readChars(4) // Item ID
+        }
+      }
+
+      const numModifiedAbil = input.readInt()
+      for (let j = 0; j < numModifiedAbil; j++) {
+        abilities[j] = {
+          ability: input.readChars(4), // Ability ID
+          active: input.readInt() === 1, // autocast active? 0=no, 1=active
+          level: input.readInt()
+        }
+      }
+    } else {
+      level = 1; str = 1; agi = 1; int = 1
+    }
+    const hero = { level, str, agi, int } satisfies Hero
+
+    let random: RandomSpawn | undefined
+    let playerColor: integer
+    let waygate: integer
+    if (formatSubversion > 6) {
+      let randomType: integer
+      let randomUnitSet: UnitSet | undefined
+      let randomLevel: integer | undefined
+      let itemClass: integer | undefined
+      let groupIndex: integer | undefined
+      let columnIndex: integer | undefined
+      if (formatSubversion < 8) {
+        const randomUnitCount = input.readInt()
+        randomUnitSet = []
+        for (let j = 0; j < randomUnitCount; j++) {
+          randomUnitSet[j] = {
+            unitId: input.readChars(4), // Unit ID
+            chance: input.readInt() // % chance
+          }
+        }
+        randomType = 2
+      } else {
+        randomType = input.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
+        let unitSetCount
+        switch (randomType) {
+          case 0:
+            // 0 = Any neutral passive building/item, in this case we have
+            //   byte[3]: level of the random unit/item,-1 = any (this is actually interpreted as a 24-bit number)
+            //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
+            //   r is also 0 for non random units/items so we have these 4 bytes anyway (even if the id wasnt uDNR or iDNR)
+            randomLevel = input.readInt()
+            itemClass = randomLevel & 0xFF000000
+            randomLevel &= 0x00FFFFFFFF
+            break
+          case 1:
+            // 1 = random unit from random group (defined in the w3i), in this case we have
+            //   int: unit group number (which group from the global table)
+            //   int: position number (which column of this group)
+            //   the column should of course have the item flag set (in the w3i) if this is a random item
+            groupIndex = input.readInt()
+            columnIndex = input.readInt()
+            break
+          case 2:
+            // 2 = random unit from custom table, in this case we have
+            //   int: number "n" of different available units
+            //   then we have n times a random unit structure
+            randomUnitSet = []
+            unitSetCount = input.readInt()
+            for (let j = 0; j < unitSetCount; j++) {
+              randomUnitSet[j] = {
+                unitId: input.readChars(4), // Unit ID
+                chance: input.readInt() // % chance
+              }
+            }
+            break
+        }
+      }
+
+      if (randomType > 0) {
+        random = {
+          type: randomType,
+          level: randomLevel,
+          itemClass,
+          groupIndex,
+          columnIndex,
+          unitSet: randomUnitSet
+        } satisfies RandomSpawn
+      }
+
+      if (formatSubversion >= 9) {
+        playerColor = input.readInt()
+        waygate = input.readInt() // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
+      } else {
+        playerColor = player
+        waygate = -1
+      }
+    } else {
+      playerColor = player
+      waygate = -1
+    }
+
+    let id: integer
+    if (formatSubversion > 3) {
+      id = input.readInt()
+    } else {
+      id = 0
+    }
+    result[i] = { type, variation, position, angle, scale, skin, flags, player, hitpoints, mana, randomItemSetPtr, droppedItemSets, gold, targetAcquisition, hero, inventory, abilities, random, playerColor, waygate, id }
   }
+
+  return result
 }
