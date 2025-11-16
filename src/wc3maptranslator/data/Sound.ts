@@ -23,7 +23,6 @@ interface Sound {
   animationGroup: string
   animationSetFilepath: string
   animationSetFilepathIsMapRelative: boolean
-  unknown: integer // TODO: figure out what this is
 }
 
 interface FadeRate {
