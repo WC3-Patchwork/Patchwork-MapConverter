@@ -7,7 +7,7 @@ import { CameraDefaults } from '../default/Camera'
 
 const log = LoggerFactory.createLogger('CamerasTranslator')
 
-export function jsonToWar (cameras: Camera[], [formatVersion, editorVersion]: [integer, integer]): Buffer {
+export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVersion: integer): Buffer {
   if (formatVersion !== 0) {
     throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
   }

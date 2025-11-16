@@ -9,7 +9,7 @@ import { DoodadDefaults } from '../default/Doodad'
 
 const log = LoggerFactory.createLogger('DoodadsTranslator')
 
-export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], [formatVersion, formatSubversion, specialDoodadFormatVersion, editorVersion]: [integer, integer, integer, integer]): Buffer {
+export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], formatVersion: integer, formatSubversion: integer, specialDoodadFormatVersion: integer, editorVersion: integer): Buffer {
   const output = new HexBuffer()
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
