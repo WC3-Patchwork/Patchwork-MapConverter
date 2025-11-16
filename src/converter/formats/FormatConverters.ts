@@ -1,11 +1,8 @@
-import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type FormatConverter } from './FormatConverter'
 import { JSONConverter } from './JSONConverter'
 import { TOMLConverter } from './TOMLConverter'
 // import { XMLConverter } from './XMLConverter'
 import { YAMLConverter } from './YAMLConverter'
-
-const log = LoggerFactory.createLogger('FormatConverters')
 
 export const FormatConverters: Record<string, FormatConverter> = {
   '.json': JSONConverter,

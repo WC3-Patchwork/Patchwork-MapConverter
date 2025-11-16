@@ -10,7 +10,7 @@ import { mergeBoolRecords } from '../Util'
 
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
-export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, editorVersion]: [integer, integer, integer]): Buffer {
+export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversion: integer, editorVersion: integer): Buffer {
   if (formatVersion < 9) {
     throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
   }

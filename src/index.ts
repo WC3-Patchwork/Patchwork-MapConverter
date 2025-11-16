@@ -114,7 +114,6 @@ program
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .action(async (input: string, output: string) => {
     try {
-      SupplementTranslatorRecord(EnhancementManager.mapDataExtension)
       await Json2WarService.convert(input, output)
     } catch (exception) {
       log.fatal(exception)

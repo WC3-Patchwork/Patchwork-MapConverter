@@ -34,13 +34,3 @@ export type color = string
 export interface TranslationError {
   message: string
 }
-
-export interface WarResult {
-  buffer: Buffer
-  errors?: TranslationError[]
-}
-
-export interface JsonResult<T = object> {
-  json: T
-  errors?: TranslationError[]
-}

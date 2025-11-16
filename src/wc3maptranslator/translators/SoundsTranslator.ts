@@ -38,12 +38,12 @@ const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc, it
   return acc
 }, {}) as Record<string, integer>
 
-export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
-  if (fileVersion > 3 || fileVersion < 1) {
-    throw new Error(`Unknown sound file format version ${fileVersion}`)
+export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer {
+  if (formatVersion > 3 || formatVersion < 1) {
+    throw new Error(`Unknown sound file format version ${formatVersion}`)
   }
   const output = new HexBuffer()
-  output.addInt(fileVersion)
+  output.addInt(formatVersion)
   output.addInt(soundsJson.length ?? 0)
   soundsJson?.forEach((sound) => {
     let flagsValue = 0
@@ -75,7 +75,7 @@ export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
     output.addFloat(sound['3d']?.cone?.orientation?.at(1) ?? SoundDefaults['3d'].cone.orientation[1])
     output.addFloat(sound['3d']?.cone?.orientation?.at(2) ?? SoundDefaults['3d'].cone.orientation[2])
 
-    if (fileVersion > 1) {
+    if (formatVersion > 1) {
       const assetFlags = sound.assetFlags ?? 0
 
       output.addString(sound.name)
@@ -91,7 +91,7 @@ export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
       output.addString(sound.animationGroup ?? SoundDefaults.animationGroup)
       output.addString(sound.animationSetFilepath ?? SoundDefaults.animationSetFilepath)
 
-      if (fileVersion > 2) {
+      if (formatVersion > 2) {
         output.addInt(+(sound.animationSetFilepathIsMapRelative ?? SoundDefaults.animationSetFilepathIsMapRelative))
       }
     }
@@ -103,9 +103,9 @@ export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
 export function warToJson (buffer: Buffer): Sound[] {
   const result: Sound[] = []
   const input = new W3Buffer(buffer)
-  const fileVersion = input.readInt()
-  if (fileVersion > 3) {
-    log.warn(`Unsupported sound file format version ${fileVersion}, will attempt at parsing...`)
+  const formatVersion = input.readInt()
+  if (formatVersion > 3) {
+    log.warn(`Unsupported sound file format version ${formatVersion}, will attempt at parsing...`)
   }
 
   const soundCount = input.readInt()
@@ -145,7 +145,7 @@ export function warToJson (buffer: Buffer): Sound[] {
     let animationSetFilepath = ''
     let animationSetFilepathIsMapRelative = true
 
-    if (fileVersion > 1) {
+    if (formatVersion > 1) {
       name = input.readString()
       labelSLK = input.readString()
       path = input.readString()
@@ -159,7 +159,7 @@ export function warToJson (buffer: Buffer): Sound[] {
       animationGroup = input.readString()
       animationSetFilepath = input.readString()
 
-      if (fileVersion > 2) {
+      if (formatVersion > 2) {
         // Note: This field is true for older file formats, but editor generates sounds with this field as false by default
         animationSetFilepathIsMapRelative = !!input.readInt()
       }

@@ -7,16 +7,6 @@ enum ModificationType {
   STRING = 'STRING' // 3
 }
 
-enum FileTypeExtension {
-  units = 'w3u',
-  items = 'w3t',
-  destructables = 'w3b',
-  doodads = 'w3d',
-  abilities = 'w3a',
-  buffs = 'w3h',
-  upgrades = 'w3q'
-}
-
 enum ObjectType {
   Units = 'units',
   Items = 'items',
@@ -49,4 +39,4 @@ interface ObjectModificationTable {
   custom?: Record<FourCC, ObjectData>
 }
 
-export { ModificationType, type ObjectData, FileTypeExtension, ObjectType, type Modification, type ObjectModificationTable }
+export { ModificationType, type ObjectData, ObjectType, type Modification, type ObjectModificationTable }

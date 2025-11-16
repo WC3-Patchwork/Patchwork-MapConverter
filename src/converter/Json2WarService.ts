@@ -1,13 +1,10 @@
 import path from 'path'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
-import { translatorRecord } from './TranslatorRecord'
 import { copyFileWithDirCreation } from './FileCopier'
 import { readFile } from 'fs/promises'
 import EnhancementManager from '../enhancements/EnhancementManager'
 import ImportComposer from '../enhancements/ImportComposer'
-import { type TriggerTranslatorOutput, TriggersTranslator } from '../translator/TriggerTranslator'
-import { CustomScriptsTranslator } from '../translator/CustomScriptsTranslator'
 import { type TriggerContainer } from '../translator/data/TriggerContainer'
 import { ContentType, type TriggerContent } from '../translator/data/content/TriggerContent'
 import { type ScriptContent } from '../translator/data/properties/ScriptContent'
@@ -16,39 +13,28 @@ import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
 import { type Asset } from '../wc3maptranslator/data'
-import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
+import { AssetsTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
+import { TranslatorManager } from './TranslatorManager'
+import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
+import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
-async function processFile<T> (input: string, translator: Translator<T>, output: string): Promise<void> {
-  const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
+async function processFile (input: string, translator: ((json: object) => Buffer), output: string): Promise<void> {
+  const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   asyncLog.info('Processing', input)
-  const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as T
-  const result = translator.jsonToWar(buffer)
-  if (result.errors != null && result.errors.length > 0) {
-    for (const error of result.errors) {
-      asyncLog.error(error)
-    }
-  } else {
-    await WriteAndCreatePath(output, result.buffer)
-    asyncLog.info('Finished processing', output)
-  }
+  const data = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as object
+  await WriteAndCreatePath(output, translator(data))
+  asyncLog.info('Finished processing', output)
 }
 
 async function exportImportsFile (data: Asset[], output: string): Promise<void> {
-  const translator = ImportsTranslator.getInstance()
-  const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
+  const asyncLog = log.getSubLogger({ name: `AssetsTranslator-${translatorCount++}` }) // TODO: move this log
   asyncLog.info('Exporting generated war3map.imp file.')
-  const result = translator.jsonToWar(data)
-  if (result.errors != null && result.errors.length > 0) {
-    for (const error of result.errors) {
-      asyncLog.error(error)
-    }
-  } else {
-    await WriteAndCreatePath(output, result.buffer)
-    asyncLog.info('Finished exporting', output)
-  }
+  const buffer = AssetsTranslator.jsonToWar(data, profile.impFormatVersion)
+  await WriteAndCreatePath(output, buffer)
+  asyncLog.info('Finished exporting', output)
 }
 
 function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
@@ -78,19 +64,17 @@ function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
 
 async function exportTriggers (triggersJson: TriggerContainer, output: string): Promise<void> {
   const tasks: Array<Promise<unknown>> = []
-  const triggerTranslator = TriggersTranslator.getInstance()
-  const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
+  const triggerLog = log.getSubLogger({ name: `${TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   const triggerAndScript: TriggerTranslatorOutput = {
     roots: [triggersJson],
     scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
   }
 
-  const triggerResult = triggerTranslator.jsonToWar(triggerAndScript)
-  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wtg'), triggerResult.buffer)
+  const triggerBuffer = TriggersTranslator.jsonToWar(triggerAndScript, profile.wtgFormatVersion, profile.wtgFormatSubversion)
+  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wtg'), triggerBuffer)
     .then(() => triggerLog.info('Finished exporting triggers.')))
 
-  const scriptTranslator = CustomScriptsTranslator.getInstance()
-  const scriptLog = log.getSubLogger({ name: `${scriptTranslator.constructor.name}-${translatorCount++}` })
+  const scriptLog = log.getSubLogger({ name: `${CustomScriptsTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
 
   const scriptArg: { headerComments: string[], scripts: string[] } = { headerComments: [], scripts: [] }
   for (const trigger of triggerAndScript.scriptReferences) {
@@ -104,8 +88,8 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
     }
   }
 
-  const scriptResult = scriptTranslator.jsonToWar(scriptArg)
-  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wct'), scriptResult.buffer)
+  const scriptBuffer = CustomScriptsTranslator.jsonToWar(scriptArg, profile.wctFormatVersion)
+  tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wct'), scriptBuffer)
     .then(() => scriptLog.info('Finished exporting custom scripts.')))
 
   await Promise.all(tasks)
@@ -154,24 +138,17 @@ const Json2WarService = {
           }
         }
       } else {
-        let translator: Translator<unknown> | null = null
-
         if (!EnhancementManager.composeTriggers && file.name.endsWith(`triggers${EnhancementManager.mapDataExtension}`)) {
           promises.push(processTriggers(file.path, outputPath))
           continue
         }
 
-        for (const [extension, thisTranslator] of Object.entries(translatorRecord)) {
-          if (file.name.endsWith(extension)) {
-            translator = thisTranslator
-            break
-          }
-        }
+        const translator = TranslatorManager.FindAppropriateTranslationMethodText2Binary(file.name, profile)
         let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
         if (translator != null) {
           outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove final extension
 
-          if (!EnhancementManager.smartImport || !(translator instanceof ImportsTranslator)) {
+          if (!EnhancementManager.smartImport || !(translator instanceof AssetsTranslator)) {
             promises.push(processFile(file.path, translator, outputFile))
           }
         } else {

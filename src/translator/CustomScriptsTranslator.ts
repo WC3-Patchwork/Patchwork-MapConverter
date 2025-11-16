@@ -1,92 +1,65 @@
-import { type WarResult, type JsonResult } from '../wc3maptranslator/CommonInterfaces'
+import { type integer } from '../wc3maptranslator/CommonInterfaces'
 import { HexBuffer } from '../wc3maptranslator/HexBuffer'
 import { W3Buffer } from '../wc3maptranslator/W3Buffer'
-import { type Translator } from '../wc3maptranslator/translators'
 
-export class CustomScriptsTranslator implements Translator<{ headerComments: string[], scripts: string[] }> {
-  private static instance: CustomScriptsTranslator | null = null
+// expecting first string to belong to header
+export function jsonToWar (json: { headerComments: string[], scripts: string[] }, formatVersion: integer): Buffer {
+  const output = new HexBuffer()
 
-  private constructor () {}
+  // format version
+  output.addByte(0x04)
+  output.addByte(0x00)
+  output.addByte(0x00)
+  output.addByte(0x80)
+  // Note: minInt + offset?
 
-  public static getInstance (): CustomScriptsTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
-    }
-    return this.instance
+  output.addInt(json.headerComments.length)
+  for (let i = 0; i < json.headerComments.length; i++) {
+    output.addString(json.headerComments[i])
   }
 
-  public static jsonToWar (json: { headerComments: string[], scripts: string[] }): WarResult {
-    return this.getInstance().jsonToWar(json)
-  }
+  for (let i = 0; i < json.scripts.length; i++) {
+    const script = json.scripts[i]
 
-  public static warToJson (buffer: Buffer): JsonResult< { headerComments: string[], scripts: string[] }> {
-    return this.getInstance().warToJson(buffer)
-  }
-
-  // expecting first string to belong to header
-  public jsonToWar (json: { headerComments: string[], scripts: string[] }): WarResult {
-    const outBufferToWar = new HexBuffer()
-
-    // format version
-    outBufferToWar.addByte(0x04)
-    outBufferToWar.addByte(0x00)
-    outBufferToWar.addByte(0x00)
-    outBufferToWar.addByte(0x80)
-
-    outBufferToWar.addInt(json.headerComments.length)
-    for (let i = 0; i < json.headerComments.length; i++) {
-      outBufferToWar.addString(json.headerComments[i])
-    }
-
-    for (let i = 0; i < json.scripts.length; i++) {
-      const script = json.scripts[i]
-
-      if (script == null || script.length === 0) {
-        outBufferToWar.addInt(0) // size
-      } else {
-        const buf = Buffer.from(script, 'utf-8')
-        outBufferToWar.addInt(buf.length + 1) // + nul char
-        for (let i = 0; i < buf.length; i++) {
-          outBufferToWar.addByte(buf[i])
-        }
-        outBufferToWar.addByte(0) // nul char
+    if (script == null || script.length === 0) {
+      output.addInt(0) // size
+    } else {
+      const buf = Buffer.from(script, 'utf-8')
+      output.addInt(buf.length + 1) // + nul char
+      for (let i = 0; i < buf.length; i++) {
+        output.addByte(buf[i])
       }
-    }
-
-    return {
-      buffer: outBufferToWar.getBuffer(),
-      errors: []
+      output.addByte(0) // nul char
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<{ headerComments: string[], scripts: string[] }> {
-    const headerComments: string[] = []
-    const scripts: string[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
+  return output.getBuffer()
+}
 
-    const formatVersion = outBufferToJSON.readInt() // 04 00 00 80
+export function warToJson (buffer: Buffer): { headerComments: string[], scripts: string[] } {
+  const headerComments: string[] = []
+  const scripts: string[] = []
+  const input = new W3Buffer(buffer)
 
-    const headerCommentsCount = outBufferToJSON.readInt() // 01 00 00 00 Header comments count?
-    for (let i = 0; i < headerCommentsCount; i++) {
-      headerComments.push(outBufferToJSON.readString())
-    }
+  const formatVersion = input.readInt() // 04 00 00 80 - minInt + offset?
 
-    try {
-      do {
-        const lengthWithNulChar = outBufferToJSON.readInt()
-        if (lengthWithNulChar === 0) {
-          scripts.push('')
-          continue // skip
-        }
-        scripts.push(outBufferToJSON.readString())
-      } while (true)
-    } catch (e) {
-      // catch EOF
-    }
-
-    return {
-      json: { headerComments, scripts },
-      errors: []
-    }
+  const headerCommentsCount = input.readInt() // 01 00 00 00 Header comments count?
+  for (let i = 0; i < headerCommentsCount; i++) {
+    headerComments.push(input.readString())
   }
+
+  try {
+    do {
+      const lengthWithNulChar = input.readInt()
+      if (lengthWithNulChar === 0) {
+        scripts.push('')
+        continue // skip
+      }
+      scripts.push(input.readString())
+    } while (true)
+  } catch (e) {
+    // catch EOF
+  }
+
+  return { headerComments, scripts }
 }
