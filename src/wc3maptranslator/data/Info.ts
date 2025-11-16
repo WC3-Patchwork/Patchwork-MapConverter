@@ -57,9 +57,9 @@ interface LoadingScreen {
 }
 
 enum FogType {
-  Linear = 0,
-  Exponential1 = 1,
-  Exponential2 = 2
+  LINEAR = 'LINEAR',
+  EXPONENTIAL1 = 'EXPONENTIAL1',
+  EXPONENTIAL2 = 'EXPONENTIAL2'
 }
 
 interface Fog {
@@ -67,7 +67,7 @@ interface Fog {
   startHeight: number
   endHeight: number
   density: number
-  color: number[] // R G B A
+  color: [integer, integer, integer, integer] // R G B A
 }
 
 interface PlayableMapArea {
@@ -87,7 +87,7 @@ interface Info {
   gameVersion: GameVersion
   editorVersion: number
   scriptLanguage: ScriptLanguage
-  assetMode: SupportedModes
+  assetMode: SupportedMode
   mapDataVersion: number
   forcedDefaultCamDistance: number
   forcedMaxCamDistance: number
@@ -101,7 +101,7 @@ interface Info {
   globalWeatherEffect: number
   customSoundEnvironment: string
   customLightEnvironment: number
-  waterColor: number[] // R G B A
+  waterColor: [integer, integer, integer, integer] // R G B A
   players: Player[] | undefined
   forces: Force[] | undefined
   upgrades: UpgradeAvailable[] | undefined
@@ -117,9 +117,9 @@ interface PlayerStartingPosition {
 }
 
 interface Player {
-  slotId: number
-  type: number // 1=Human, 2=Computer, 3=Neutral, 4=Rescuable
-  race: number // 1=Human, 2=Orc, 3=Undead, 4=Night Elf
+  slotId: integer
+  type: PlayerType
+  race: Race
 
   name: string
   startLocation: PlayerStartingPosition
@@ -127,6 +127,21 @@ interface Player {
   allyHighPriorities: PlayerList
   enemyLowPriorities: PlayerList
   enemyHighPriorities: PlayerList
+}
+
+enum Race {
+  HUMAN = 'HUMAN',
+  ORC = 'ORC',
+  UNDEAD = 'UNDEAD',
+  NIGHT_ELF = 'NIGHT_ELF',
+  RANDOM = 'RANDOM'
+}
+
+enum PlayerType {
+  HUMAN = 'HUMAN',
+  COMPUTER = 'COMPUTER',
+  NEUTRAL = 'NEUTRAL',
+  RESCUABLE = 'RESCUABLE'
 }
 
 interface ForceFlags {
@@ -149,7 +164,7 @@ interface Force {
 interface UpgradeAvailable {
   players: PlayerList
   upgradeId: string
-  level: number
+  level: integer
   state: ResearchState
 }
 
@@ -159,7 +174,7 @@ interface TechUnavailable {
 }
 
 interface ItemTable {
-  id: number
+  id: integer
   name: string
   table: ObjectChance[][] | undefined
 }
@@ -170,38 +185,43 @@ interface ObjectChance {
 }
 
 interface RandomGroup {
-  id: number
+  id: integer
   name: string
-  positions: number[] | undefined
   sets: RandomGroupSet[]
 }
 
 interface RandomGroupSet {
-  chance: number
+  type: RandomGroupSetType
+  chance: integer
   objects: string[]
 }
 
-enum ScriptLanguage {
-  JASS = 0,
-  Lua = 1
+enum RandomGroupSetType {
+  ANY_UNIT = 'ANY_UNIT',
+  ANY_BUILDING = 'ANY_BUILDING',
+  ANY_ITEM = 'ANY_ITEM'
 }
 
-enum SupportedModes {
-  SD = 1,
-  HD = 2,
-  Both = 3
+enum ScriptLanguage {
+  JASS = 'JASS',
+  LUA = 'LUA'
+}
+
+interface SupportedMode {
+  SD: boolean
+  HD: boolean
 }
 
 enum ResearchState {
-  UNAVAILABLE = 0,
-  AVAILABLE = 1,
-  RESEARCHED = 2
+  UNAVAILABLE = 'UNAVAILABLE',
+  AVAILABLE = 'AVAILABLE',
+  RESEARCHED = 'RESEARCHED'
 }
 
 export {
-  type Map, type GameVersion, type PlayableCamera, type MapFlags,
-  type LoadingScreen, FogType, type PlayableMapArea, type Prologue,
+  type Map, type GameVersion, type PlayableCamera, type MapFlags, PlayerType, Race, RandomGroupSetType,
+  type LoadingScreen, FogType, type PlayableMapArea, type Prologue, ResearchState,
   type Info, type PlayerStartingPosition, type Player, type ForceFlags, type PlayerList,
-  type Force, ScriptLanguage, SupportedModes, type UpgradeAvailable, type TechUnavailable,
+  type Force, ScriptLanguage, type SupportedMode, type UpgradeAvailable, type TechUnavailable,
   type ItemTable as RandomTable, type RandomGroup, type RandomGroupSet, type ObjectChance
 }
