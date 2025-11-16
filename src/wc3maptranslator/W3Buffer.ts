@@ -15,6 +15,12 @@ export class W3Buffer {
     return int
   }
 
+  public readUint (): number {
+    const uint: number = this._buffer.readUInt32LE(this._offset)
+    this._offset += 4
+    return uint
+  }
+
   public readShort (): number {
     const int: number = this._buffer.readInt16LE(this._offset)
     this._offset += 2

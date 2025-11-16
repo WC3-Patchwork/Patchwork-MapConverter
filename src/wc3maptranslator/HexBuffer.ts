@@ -1,12 +1,12 @@
 import ieee754 from 'ieee754'
 import IntN from 'intn'
 
-const intToHex = (intV: number, isShort: boolean): string[] => {
+const intToHex = (intV: number, isShort: boolean, unsigned: boolean): string[] => {
   // Creates a new 32-bit integer from the given number
   const intSize = isShort ? 16 : 32
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-  const intNSize = new IntN(intSize)
+  const intNSize = new IntN(intSize, unsigned)
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
   const byteNum = intNSize.fromInt(intV).bytes
 
@@ -57,7 +57,11 @@ export class HexBuffer {
   }
 
   public addInt (int: number, isShort = false): void {
-    this._buffer.push(...intToHex(int, isShort))
+    this._buffer.push(...intToHex(int, isShort, false))
+  }
+
+  public addUInt (int: number, isShort = false): void {
+    this._buffer.push(...intToHex(int, isShort, true))
   }
 
   public addShort (short: number): void {

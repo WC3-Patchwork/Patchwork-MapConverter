@@ -18,6 +18,9 @@ import { HexBuffer } from '../wc3maptranslator/HexBuffer'
 import { W3Buffer } from '../wc3maptranslator/W3Buffer'
 import { type ScriptedTrigger } from './data/content/ScriptedTrigger'
 import { type integer } from '../wc3maptranslator/CommonInterfaces'
+import { LoggerFactory } from '../logging/LoggerFactory'
+
+const log = LoggerFactory.createLogger('TriggersTranslator')
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
@@ -362,347 +365,478 @@ export function warToJson (buffer: Buffer): TriggerTranslatorOutput {
 
   try {
     const fileId = input.readChars(4) // WTG!
-    const formatVersion = input.readInt() // 04 00 00 80
-    const gameVersion = input.readInt() // 4 = Roc, 7 = TFT
-
-    const headerCount = input.readInt() // always 1..?
-    const deletedHeaderCount = input.readInt() //  Includes both existing and deleted headers. (Map script headers?)
-    for (let i = 0; i < deletedHeaderCount; i++) {
-      const headerId = input.readInt() // always 0..?
+    if (fileId !== 'WTG!') {
+      log.warn(`Mismatched file format magic number, found '${fileId}', expected 'WTG!', will attempt parsing...`)
     }
 
-    const libraryCount = input.readInt()
-    const deletedLibraryCount = input.readInt()
-    for (let i = 0; i < deletedLibraryCount; i++) {
-      const libraryId = input.readInt()
+    const formatVersion = input.readUint() // 04 00 00 80
+    if (formatVersion < 0 || formatVersion > 2147483652) {
+      log.warn(`Unknown terrain file format version '${formatVersion}', expected value [3, 2147483652], will attempt parsing...`)
     }
 
-    const triggerCategoryCount = input.readInt()
-    const deletedCategoryCount = input.readInt()
-    for (let i = 0; i < deletedCategoryCount; i++) { // trigger categories
-      const categoryId = input.readInt()
+    let formatSubversion: integer
+    if (formatVersion > 2147483647) {
+      formatSubversion = input.readInt() // 4 = Roc, 7 = TFT
+    } else {
+      formatSubversion = 0x7FFFFFFF
     }
-
-    const triggerCount = input.readInt()
-    const deletedTriggerCount = input.readInt()
-    for (let i = 0; i < deletedTriggerCount; i++) {
-      const triggerId = input.readInt()
-    }
-
-    const triggerCommentCount = input.readInt()
-    const deletedTriggerCommentCount = input.readInt()
-    for (let i = 0; i < deletedTriggerCommentCount; i++) {
-      const triggerCommentId = input.readInt()
-    }
-
-    const customScriptCount = input.readInt()
-    const deletedCustomScriptCount = input.readInt()
-    for (let i = 0; i < deletedCustomScriptCount; i++) {
-      const customScriptId = input.readInt()
-    }
-
-    const variableCount = input.readInt()
-    const deletedVariableCount = input.readInt()
-    for (let i = 0; i < deletedVariableCount; i++) {
-      const variableId = input.readInt()
-    }
-
-    input.readInt() // unknown
-    input.readInt() // unknown
-    const triggerDefinitionVersion = input.readInt() // 1 for RoC?, 2 for TFT?
 
     const elementRelations = new Map<number, number>()
     const containers: Record<number, TriggerContainer> = {}
     const content: Record<number, TriggerContent> = {}
     const customScripts: Array<ScriptContent | null> = []
     const allGlobalVariables: Record<number, GlobalVariable> = {}
-    const existingVariablesCount = input.readInt()
-    for (let i = 0; i < existingVariablesCount; i++) {
-      const globalVariable: GlobalVariable = {
-        name: '',
-        contentType: ContentType.VARIABLE,
-        type: '',
-        isArray: false,
-        arrayLength: 0,
-        isInitialized: false,
-        initialValue: ''
-      }
-      globalVariable.name = input.readString()
-      globalVariable.type = input.readString()
-      input.readInt() // unknown, always 1?
-      globalVariable.isArray = input.readInt() === 1
-      if (gameVersion === 7) {
-        globalVariable.arrayLength = input.readInt()
-      }
-      globalVariable.isInitialized = input.readInt() === 1
-      globalVariable.initialValue = input.readString()
-      const variableId = input.readInt() // last byte 06?
+    const loadGlobals = function (): void {
+      const variableFormatVersion = input.readInt() // [0, 2]
+      const existingVariablesCount = input.readInt()
+      for (let i = 0; i < existingVariablesCount; i++) {
+        const globalVariable: GlobalVariable = {
+          name: '',
+          contentType: ContentType.VARIABLE,
+          type: '',
+          userDefined: true,
+          isArray: false,
+          arrayLength: 0,
+          isInitialized: false,
+          initialValue: ''
+        }
+        globalVariable.name = input.readString()
+        globalVariable.type = input.readString()
+        globalVariable.userDefined = !!input.readInt() // always 1?
+        globalVariable.isArray = input.readInt() === 1
+        if (variableFormatVersion >= 2) {
+          globalVariable.arrayLength = input.readInt()
+        } else {
+          globalVariable.arrayLength = 1
+        }
+        if (variableFormatVersion !== 0) {
+          globalVariable.isInitialized = !!input.readInt()
+        }
 
-      allGlobalVariables[variableId] = globalVariable
-      content[variableId] = globalVariable
-      elementRelations.set(variableId, input.readInt())
+        globalVariable.initialValue = input.readString()
+
+        if (variableFormatVersion === 0) {
+          globalVariable.isInitialized = globalVariable.initialValue.length > 0
+        }
+
+        if (formatVersion >= 2147483648) {
+          const variableId = input.readInt() // last byte 06?
+          allGlobalVariables[variableId] = globalVariable
+          content[variableId] = globalVariable
+          elementRelations.set(variableId, input.readInt())
+        } else {
+          allGlobalVariables[i] = globalVariable
+          content[i] = globalVariable // TODO: required something?
+        }
+      }
     }
 
-    const totalElements = input.readInt()
-    for (let i = 0; i < totalElements; i++) {
-      const type = ContentTypeEnumConverter.toEnum(input.readInt())
+    const loadCategory = function (): void {
+      const categoryIndex = input.readInt()
+      const categoryName = input.readString()
+      if (formatVersion > 6) {
+        const isComment = !!input.readInt()
+      }
+      if (formatSubversion >= 0x80000000) {
+        const isExpanded = !!input.readInt()
+        const parentCategoryId = input.readInt()
+        elementRelations.set(categoryIndex, parentCategoryId)
+      }
+    }
 
-      let elementId: number
-      let name: string
-      let description: string
-      let isComment = false
-      let isExpanded = false
-      let isEnabled = false
-      let isCustomScript = false
-      let initiallyOff = false
-      let runOnMapInit = false
-      let ecaCount = 0
-      let parentElementId: number
-      let trigger: GUITrigger
+    const loadTrigger = function (): void {
+      const triggerName = input.readString()
+      const triggerDescription = input.readString()
+      let isComment: boolean
+      if (formatVersion < 5 || (isComment = !!input.readInt(), !isComment) || formatSubversion > 0x7FFFFFFF) {
+        if (formatSubversion >= 0x80000000) {
+          const triggerId = input.readInt()
+        }
+        const isEnabled = !!input.readInt()
+        const isCustomScript = !!input.readInt()
 
-      let container: unknown
+        if (formatVersion > 1) {
+          const initiallyOff = !!input.readInt()
+        }
+        if (formatVersion > 3) {
+          const runOnMapInit = !!input.readInt()
+        }
+        const parentCategoryId = input.readInt()
+        const triggerFunctionCount = input.readInt()
+        for (let i = 0; i < triggerFunctionCount; i++) {
+          const functionTypeId = input.readInt()
+          loadTriggerFunction()
+        }
+        // is trigger
+        return
+      }
+      // not trigger
+      loadTriggerComment()
+    }
 
-      switch (type) {
-        case ContentType.HEADER:
-        case ContentType.LIBRARY:
-        case ContentType.CATEGORY:
+    const loadTriggerFunction = function (): void {
+      const functionName = input.readString()
+      if (formatVersion > 2) {
+        const isEnabled = !!input.readInt()
+      }
+      const paramCount = 0 // TODO
+      for (let i = 0; i < paramCount; i++) {
+        loadTriggerFunctionParameter()
+      }
+      if (formatVersion > 5) {
+        const triggerFunctionCount = input.readInt()
+        for (let i = 0; i < triggerFunctionCount; i++) {
+          const functionTypeId = input.readInt()
+          const groupIndex = input.readInt() // if-then-else
+          loadTriggerFunction()
+        }
+      }
+    }
 
-          elementId = input.readInt()
-          name = input.readString()
-          if (gameVersion === 7) {
-            isComment = input.readInt() === 1
-          }
-          isExpanded = input.readInt() === 1
-          parentElementId = input.readInt()
+    const loadTriggerFunctionParameter = function (): void {
+      const paramType = input.readInt()
+      const paramValue = input.readString()
+      const hasSubParams = !!input.readInt()
+      if (hasSubParams) {
+        const functionTypeId = input.readInt()
+        loadTriggerFunction()
+      }
+      const isArray = !!input.readInt()
+      if (isArray) {
+        loadTriggerFunctionParameter()
+      }
+    }
 
-          elementRelations.set(elementId, parentElementId)
-          container = {
-            name,
-            isExpanded,
-            contentType: type,
-            children: []
-          }
-          containers[elementId] = container as TriggerContainer
+    const loadTriggerComment = function (): void { // it's quite identical to loadTrigger...
+      if (formatSubversion >= 0x80000000) {
+        const commentId = input.readInt()
+      }
+      const isEnabled = !!input.readInt()
+      const isCustomScript = !!input.readInt()
 
-          if (type === ContentType.HEADER) {
-            customScripts.push(container as ScriptContent)
-          }
-          break
+      if (formatVersion > 1) {
+        const initiallyOff = !!input.readInt()
+      }
+      if (formatVersion > 3) {
+        const runOnMapInit = !!input.readInt()
+      }
+      const parentCategoryId = input.readInt()
+      const triggerFunctionCount = input.readInt()
+      for (let i = 0; i < triggerFunctionCount; i++) {
+        const functionTypeId = input.readInt()
+        loadTriggerFunction()
+      }
+    }
 
-        case ContentType.TRIGGER:
-        case ContentType.COMMENT:
-        case ContentType.CUSTOM_SCRIPT:
-          name = input.readString()
+    const loadTriggerVariable = function (): void {
+      const variableId = input.readInt()
+      const variableName = input.readString()
+      const parentCategoryId = input.readInt()
+    }
 
-          description = input.readString()
-          if (gameVersion === 7) {
-            isComment = input.readInt() === 1
-          }
-          elementId = input.readInt()
-          isEnabled = input.readInt() === 1
-          isCustomScript = input.readInt() === 1
-          initiallyOff = input.readInt() === 1
-          runOnMapInit = input.readInt() === 1
-          parentElementId = input.readInt()
-          elementRelations.set(elementId, parentElementId)
-          ecaCount = input.readInt()
+    if (formatVersion < 2147483648) {
+      const triggerCategoryCount = input.readInt()
+      for (let i = 0; i < triggerCategoryCount; i++) {
+        loadCategory()
+      }
+      loadGlobals()
+      const triggerCount = input.readInt()
+      for (let i = 0; i < triggerCount; i++) {
+        loadTrigger()
+      }
+    } else {
+      // counts: headers. libraries, categories, triggers, comments, custom scripts, variables, unknown element
+      for (let i = 0; i < 8; i++) {
+        const elementCount = input.readInt()
+        for (let j = 0; j < elementCount; j++) {
+          input.readInt() // deleted element id
+        }
+      }
 
-          if (type === ContentType.TRIGGER) {
-            if (isCustomScript) {
-              const script: ScriptedTrigger = {
+      loadGlobals()
+
+      const elementCount = input.readInt()
+      for (let i = 0; i < elementCount; i++) {
+        const type = ContentTypeEnumConverter.toEnum(input.readInt())
+        switch (type) {
+          case ContentType.HEADER:
+          case ContentType.LIBRARY:
+          case ContentType.CATEGORY:
+            loadCategory()
+            break
+          case ContentType.TRIGGER:
+          case ContentType.COMMENT:
+          case ContentType.CUSTOM_SCRIPT:
+            loadTrigger()
+            break
+          case ContentType.VARIABLE:
+            loadTriggerVariable()
+            break
+        }
+      }
+
+      // old  past this point
+      const totalElements = input.readInt()
+      for (let i = 0; i < totalElements; i++) {
+        const type = ContentTypeEnumConverter.toEnum(input.readInt())
+
+        let elementId: number
+        let name: string
+        let description: string
+        let isComment = false
+        let isExpanded = false
+        let isEnabled = false
+        let isCustomScript = false
+        let initiallyOff = false
+        let runOnMapInit = false
+        let ecaCount = 0
+        let parentElementId: number
+        let trigger: GUITrigger
+
+        let container: unknown
+
+        switch (type) {
+          case ContentType.HEADER:
+          case ContentType.LIBRARY:
+          case ContentType.CATEGORY:
+
+            elementId = input.readInt()
+            name = input.readString()
+            if (gameVersion === 7) {
+              isComment = input.readInt() === 1
+            }
+            isExpanded = input.readInt() === 1
+            parentElementId = input.readInt()
+
+            elementRelations.set(elementId, parentElementId)
+            container = {
+              name,
+              isExpanded,
+              contentType: type,
+              children: []
+            }
+            containers[elementId] = container as TriggerContainer
+
+            if (type === ContentType.HEADER) {
+              customScripts.push(container as ScriptContent)
+            }
+            break
+
+          case ContentType.TRIGGER:
+          case ContentType.COMMENT:
+          case ContentType.CUSTOM_SCRIPT:
+            name = input.readString()
+
+            description = input.readString()
+            if (gameVersion === 7) {
+              isComment = input.readInt() === 1
+            }
+            elementId = input.readInt()
+            isEnabled = input.readInt() === 1
+            isCustomScript = input.readInt() === 1
+            initiallyOff = input.readInt() === 1
+            runOnMapInit = input.readInt() === 1
+            parentElementId = input.readInt()
+            elementRelations.set(elementId, parentElementId)
+            ecaCount = input.readInt()
+
+            if (type === ContentType.TRIGGER) {
+              if (isCustomScript) {
+                const script: ScriptedTrigger = {
+                  name,
+                  contentType: ContentType.TRIGGER_SCRIPTED,
+                  description,
+                  isEnabled,
+                  runOnMapInit,
+                  script: ''
+                }
+                content[elementId] = script
+                customScripts.push(script)
+              } else {
+                trigger = {
+                  name,
+                  contentType: ContentType.TRIGGER,
+                  description,
+                  isEnabled,
+                  initiallyOff,
+                  runOnMapInit,
+                  events: [],
+                  conditions: [],
+                  actions: []
+                }
+                const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
+                  for (let j = 0; j < functionCount; j++) {
+                    const functionType = StatementTypeEnumConverter.toEnum(input.readInt())
+
+                    let group = -1
+                    if (isChild) {
+                      group = input.readInt()
+                    }
+                    const name = input.readString()
+                    const isEnabled = input.readInt() === 1
+
+                    const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
+                    const readParams = (parent: Statement | Parameter, paramCount: number, arrayIndex: boolean): void => {
+                      for (let k = 0; k < paramCount; k++) {
+                        const paramType = ParameterTypeEnumConverter.toEnum(input.readInt())
+                        const value = input.readString()
+                        const hasSubParameters = !(input.readInt() === 0)
+
+                        const parameter: Parameter = {
+                          type: paramType,
+                          value,
+                          statement: undefined,
+                          arrayIndex: undefined
+                        } satisfies Parameter
+
+                        if (hasSubParameters) {
+                          parameter.statement = {
+                            type: StatementTypeEnumConverter.toEnum(input.readInt()),
+                            isEnabled: true,
+                            name: input.readString(),
+                            parameters: [] as Parameter[]
+                          } satisfies Statement
+                          const beginParams = input.readInt() !== 0
+                          const subParamCount = TriggerDataRegistry.getParameterCount(parameter.statement.type, parameter.statement.name)
+                          readParams(parameter.statement, subParamCount, false)
+                        }
+
+                        if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
+                          input.readInt()
+                        } else if (gameVersion === 7 && hasSubParameters) {
+                          input.readInt()
+                        }
+
+                        let isArray: boolean
+                        if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
+                          isArray = input.readInt() === 1
+                        } else {
+                          isArray = false
+                        }
+                        if (isArray) {
+                          readParams(parameter, 1, true)
+                        }
+
+                        if (arrayIndex) {
+                          (parent as Parameter).arrayIndex = parameter
+                        } else if ((parent as Parameter).statement != null) {
+                          ((parent as Parameter).statement as Statement).parameters.push(parameter)
+                        } else {
+                          (parent as Statement).parameters.push(parameter)
+                        }
+                      }
+                    }
+                    const statement: Statement = {
+                      name,
+                      type: functionType,
+                      isEnabled,
+                      parameters: []
+                    }
+                    if (parameterCount == null) {
+                      throw new Error('Missing parameter count for function ' + name)
+                    }
+                    readParams(statement, parameterCount, false)
+
+                    if (gameVersion === 7) {
+                      const nestedEcaCount = input.readInt()
+                      readStatements(statement, nestedEcaCount, true)
+                    }
+
+                    if ((content as GUITrigger).events != null) { // is GUITrigger
+                      switch (functionType) {
+                        case StatementType.EVENT:
+                          (content as GUITrigger).events.push(statement)
+                          break
+                        case StatementType.CONDITION:
+                          (content as GUITrigger).conditions.push(statement)
+                          break
+                        case StatementType.ACTION:
+                          (content as GUITrigger).actions.push(statement)
+                          break
+                      }
+                    } else {
+                      if ((content as NestingStatement).statements == null) {
+                        (content as NestingStatement).statements = []
+                      }
+                      if ((content as NestingStatement).statements[group] != null) {
+                        (content as NestingStatement).statements[group].push(statement)
+                      } else {
+                        ((content as NestingStatement).statements[group]) = [statement]
+                      }
+                    }
+                  }
+                }
+                readStatements(trigger, ecaCount, false)
+                content[elementId] = trigger
+                customScripts.push(null)
+              }
+            } else if (type === ContentType.COMMENT) {
+              content[elementId] = {
                 name,
-                contentType: ContentType.TRIGGER_SCRIPTED,
+                contentType: ContentType.COMMENT,
+                comment: description
+              } satisfies TriggerComment as TriggerContent
+            } else if (type === ContentType.CUSTOM_SCRIPT) {
+              const script = {
+                name,
+                contentType: ContentType.CUSTOM_SCRIPT,
                 description,
                 isEnabled,
-                runOnMapInit,
                 script: ''
               }
               content[elementId] = script
               customScripts.push(script)
-            } else {
-              trigger = {
-                name,
-                contentType: ContentType.TRIGGER,
-                description,
-                isEnabled,
-                initiallyOff,
-                runOnMapInit,
-                events: [],
-                conditions: [],
-                actions: []
-              }
-              const readStatements = (content: GUITrigger | Statement, functionCount: number, isChild: boolean): void => {
-                for (let j = 0; j < functionCount; j++) {
-                  const functionType = StatementTypeEnumConverter.toEnum(input.readInt())
-
-                  let group = -1
-                  if (isChild) {
-                    group = input.readInt()
-                  }
-                  const name = input.readString()
-                  const isEnabled = input.readInt() === 1
-
-                  const parameterCount = TriggerDataRegistry.getParameterCount(functionType, name)
-                  const readParams = (parent: Statement | Parameter, paramCount: number, arrayIndex: boolean): void => {
-                    for (let k = 0; k < paramCount; k++) {
-                      const paramType = ParameterTypeEnumConverter.toEnum(input.readInt())
-                      const value = input.readString()
-                      const hasSubParameters = !(input.readInt() === 0)
-
-                      const parameter: Parameter = {
-                        type: paramType,
-                        value,
-                        statement: undefined,
-                        arrayIndex: undefined
-                      } satisfies Parameter
-
-                      if (hasSubParameters) {
-                        parameter.statement = {
-                          type: StatementTypeEnumConverter.toEnum(input.readInt()),
-                          isEnabled: true,
-                          name: input.readString(),
-                          parameters: [] as Parameter[]
-                        } satisfies Statement
-                        const beginParams = input.readInt() !== 0
-                        const subParamCount = TriggerDataRegistry.getParameterCount(parameter.statement.type, parameter.statement.name)
-                        readParams(parameter.statement, subParamCount, false)
-                      }
-
-                      if (gameVersion === 4 && paramType === ParameterType.FUNCTION) {
-                        input.readInt()
-                      } else if (gameVersion === 7 && hasSubParameters) {
-                        input.readInt()
-                      }
-
-                      let isArray: boolean
-                      if (gameVersion !== 4 || paramType !== ParameterType.FUNCTION) {
-                        isArray = input.readInt() === 1
-                      } else {
-                        isArray = false
-                      }
-                      if (isArray) {
-                        readParams(parameter, 1, true)
-                      }
-
-                      if (arrayIndex) {
-                        (parent as Parameter).arrayIndex = parameter
-                      } else if ((parent as Parameter).statement != null) {
-                        ((parent as Parameter).statement as Statement).parameters.push(parameter)
-                      } else {
-                        (parent as Statement).parameters.push(parameter)
-                      }
-                    }
-                  }
-                  const statement: Statement = {
-                    name,
-                    type: functionType,
-                    isEnabled,
-                    parameters: []
-                  }
-                  if (parameterCount == null) {
-                    throw new Error('Missing parameter count for function ' + name)
-                  }
-                  readParams(statement, parameterCount, false)
-
-                  if (gameVersion === 7) {
-                    const nestedEcaCount = input.readInt()
-                    readStatements(statement, nestedEcaCount, true)
-                  }
-
-                  if ((content as GUITrigger).events != null) { // is GUITrigger
-                    switch (functionType) {
-                      case StatementType.EVENT:
-                        (content as GUITrigger).events.push(statement)
-                        break
-                      case StatementType.CONDITION:
-                        (content as GUITrigger).conditions.push(statement)
-                        break
-                      case StatementType.ACTION:
-                        (content as GUITrigger).actions.push(statement)
-                        break
-                    }
-                  } else {
-                    if ((content as NestingStatement).statements == null) {
-                      (content as NestingStatement).statements = []
-                    }
-                    if ((content as NestingStatement).statements[group] != null) {
-                      (content as NestingStatement).statements[group].push(statement)
-                    } else {
-                      ((content as NestingStatement).statements[group]) = [statement]
-                    }
-                  }
-                }
-              }
-              readStatements(trigger, ecaCount, false)
-              content[elementId] = trigger
-              customScripts.push(null)
             }
-          } else if (type === ContentType.COMMENT) {
-            content[elementId] = {
-              name,
-              contentType: ContentType.COMMENT,
-              comment: description
-            } satisfies TriggerComment as TriggerContent
-          } else if (type === ContentType.CUSTOM_SCRIPT) {
-            const script = {
-              name,
-              contentType: ContentType.CUSTOM_SCRIPT,
-              description,
-              isEnabled,
-              script: ''
-            }
-            content[elementId] = script
-            customScripts.push(script)
+            break
+
+          case ContentType.VARIABLE:
+            elementId = input.readInt()
+            name = input.readString() // excess data?
+            parentElementId = input.readInt()
+
+            elementRelations.set(elementId, parentElementId)
+            break
+        }
+      }
+
+      const roots: TriggerContainer[] = []
+      const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
+      // Generate data tree structure
+      for (const [elementId, parentId] of elementRelations.entries()) {
+        if (parentId === -1) {
+          if (containers[elementId] != null) {
+            roots.push(containers[elementId])
           }
-          break
+        } else {
+          let parent: TriggerContainer | undefined
+          if (containers[parentId] != null) {
+            parent = containers[parentId]
+          }
 
-        case ContentType.VARIABLE:
-          elementId = input.readInt()
-          name = input.readString() // excess data?
-          parentElementId = input.readInt()
+          let element: TriggerContainer | TriggerContent | undefined
+          if (containers[elementId] != null) {
+            element = containers[elementId]
+          } else if (content[elementId] != null) {
+            element = content[elementId]
+          }
 
-          elementRelations.set(elementId, parentElementId)
-          break
+          if (parent == null || element == null) {
+            missingElements.push({
+              foundElement: element != null,
+              foundParent: parent != null,
+              elementId,
+              parentId,
+              data: parent != null ? parent : element
+            })
+            continue
+          }
+
+          parent.children.push(element)
+        }
       }
+
+      return { roots, scriptReferences: customScripts }
     }
-
-    const roots: TriggerContainer[] = []
-    const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
-    // Generate data tree structure
-    for (const [elementId, parentId] of elementRelations.entries()) {
-      if (parentId === -1) {
-        if (containers[elementId] != null) {
-          roots.push(containers[elementId])
-        }
-      } else {
-        let parent: TriggerContainer | undefined
-        if (containers[parentId] != null) {
-          parent = containers[parentId]
-        }
-
-        let element: TriggerContainer | TriggerContent | undefined
-        if (containers[elementId] != null) {
-          element = containers[elementId]
-        } else if (content[elementId] != null) {
-          element = content[elementId]
-        }
-
-        if (parent == null || element == null) {
-          missingElements.push({
-            foundElement: element != null,
-            foundParent: parent != null,
-            elementId,
-            parentId,
-            data: parent != null ? parent : element
-          })
-          continue
-        }
-
-        parent.children.push(element)
-      }
-    }
-
-    return { roots, scriptReferences: customScripts }
   } catch (e) {
     return { roots: [], scriptReferences: [] }
     // errors: [
