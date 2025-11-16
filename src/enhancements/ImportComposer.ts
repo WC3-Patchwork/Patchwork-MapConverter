@@ -1,17 +1,17 @@
 import { type DirectoryTree } from 'directory-tree'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import path from 'path'
-import { type Import, ImportType } from '../wc3maptranslator/data'
+import { type Asset, AssetType } from '../wc3maptranslator/data'
 import { FileBlacklist } from './FileBlacklist'
 
 const log = LoggerFactory.createLogger('ImportComposer')
 
 const ImportComposer = {
 
-  composeImportRegistry: function (importsFolderTree: DirectoryTree): Import[] {
+  composeImportRegistry: function (importsFolderTree: DirectoryTree): Asset[] {
     log.info('Composing war3map.imp file from', importsFolderTree.path, 'directory')
 
-    const imports: Import[] = []
+    const imports: Asset[] = []
     const standardImportFolder = path.join(importsFolderTree.path, 'war3mapImported')
     const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [importsFolderTree]
 
@@ -31,7 +31,7 @@ const ImportComposer = {
       } else {
         imports.push({
           path: path.relative(importsFolderTree.path, file.path),
-          type: file.path.startsWith(standardImportFolder) ? ImportType.Standard : ImportType.Custom
+          type: file.path.startsWith(standardImportFolder) ? AssetType.Standard : AssetType.Custom
         })
       }
     }
@@ -39,7 +39,7 @@ const ImportComposer = {
     return imports
   },
 
-  getImportedFilePaths: function (inputPath: string, importRegistry: Import[]): string[] {
+  getImportedFilePaths: function (inputPath: string, importRegistry: Asset[]): string[] {
     log.info('Reading imported files registry')
     const importedFiles: string[] = []
 

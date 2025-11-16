@@ -13,7 +13,7 @@ import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
 import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
-import { type Import } from '../wc3maptranslator/data'
+import { type Asset } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
 
 const log = LoggerFactory.createLogger('War2Json')
@@ -34,7 +34,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function processImportsRegistry (importsFile: string): Promise<Import[]> {
+async function processImportsRegistry (importsFile: string): Promise<Asset[]> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Reading war3map.imp file.')

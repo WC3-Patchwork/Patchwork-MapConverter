@@ -15,7 +15,7 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { type Import } from '../wc3maptranslator/data'
+import { type Asset } from '../wc3maptranslator/data'
 import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
 const log = LoggerFactory.createLogger('Json2War')
@@ -36,7 +36,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
   }
 }
 
-async function exportImportsFile (data: Import[], output: string): Promise<void> {
+async function exportImportsFile (data: Asset[], output: string): Promise<void> {
   const translator = ImportsTranslator.getInstance()
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Exporting generated war3map.imp file.')
