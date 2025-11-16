@@ -18,7 +18,7 @@ async function writeData (data: unknown, output: string): Promise<void> {
 
 const TerrainChunkifier = {
   chunkifierTerrain: async function (terrain: Terrain, doodads: Doodad[], specialDoodads: SpecialDoodad[], units: Unit[], regions: Region[], cameras: Camera[], chunkSize: integer): Promise<void> {
-    const tasks: Array<Promise<void>> = []
+    const tasks: Promise<void>[] = []
     const offsetX = terrain.map.offsetX // also minX
     const offsetY = terrain.map.offsetY // also minY
     const sizeX = terrain.map.sizeX

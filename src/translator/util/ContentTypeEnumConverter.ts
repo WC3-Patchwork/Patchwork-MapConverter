@@ -23,7 +23,7 @@ reverseDictionary.set(ContentType.VARIABLE, 64)
 const ContentTypeEnumConverter = {
   toEnum: (identifier: number): ContentType => {
     if (dictionary.has(identifier)) {
-      return dictionary.get(identifier) as ContentType
+      return dictionary.get(identifier)!
     } else {
       throw new Error('Unknown ContentType for identifier: ' + String(identifier))
     }
@@ -31,7 +31,7 @@ const ContentTypeEnumConverter = {
 
   toIdentifier: (type: ContentType): number => {
     if (reverseDictionary.has(type)) {
-      return reverseDictionary.get(type) as number
+      return reverseDictionary.get(type)!
     } else {
       throw new Error('Unknown identifier for contentType: ' + String(type))
     }

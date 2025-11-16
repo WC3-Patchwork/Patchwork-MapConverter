@@ -13,7 +13,9 @@ const EnhancementManager = {
   containerInfoExtension: '.ini',
   commentExtension: '.txt',
   mapHeaderFilename: 'header',
-  generateTargetProfile: false
+  generateTargetProfile: false,
+  chunkifyMapData: false,
+  chunkFileExtension: '.json'
 }
 
 export default EnhancementManager

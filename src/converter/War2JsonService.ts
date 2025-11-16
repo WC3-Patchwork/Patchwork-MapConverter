@@ -1,22 +1,24 @@
 import { LoggerFactory } from '../logging/LoggerFactory'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile } from 'fs/promises'
 import directoryTree, { type DirectoryTree } from 'directory-tree'
 import path from 'path'
 import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
-import { type TriggerContainer } from '../translator/data/TriggerContainer'
-import { type MapHeader } from '../translator/data/MapHeader'
-import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
+import { WriteAndCreatePath }from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
-import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { type Info, type Asset, ObjectType } from '../wc3maptranslator/data'
+import { type Asset, ObjectType, Terrain, Unit, Camera, Region } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
-import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
+import {MapHeader, translators } from '../translator'
 import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator } from '../wc3maptranslator/translators'
 import { type integer } from '../wc3maptranslator/CommonInterfaces'
 import { type TargetProfile } from './Profile'
 import TreeIterator from '../util/TreeIterator'
 import { TriggerTranslatorOutput } from '../translator/TriggersTranslator'
+import { CustomScriptsTranslatorOutput } from '../translator/CustomScriptsTranslator'
+import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
+import PromiseSupplier from '../util/PromiseSupplier'
+import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
+import { TriggerComposer } from '../enhancements'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -66,38 +68,44 @@ const War2JsonService = {
   convert: async function (inputPath: string, outputPath: string, profile?: TargetProfile) {
     log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
 
+    let foundInfo = false
     let editorVersionSupplier: Promise<integer>
     let editorVersionResolver: ((version: integer) => void) | undefined
-    let editorVersionRejector: ((reason?: unknown) => void) | undefined
+    let editorVersionReject: ((reason?: unknown) => void) | undefined
     if (profile) {
       editorVersionSupplier = new Promise<integer>((resolve) => { resolve(profile.editorVersion) })
     } else {
       editorVersionSupplier = new Promise<integer>((resolve, reject) => {
         editorVersionResolver = resolve
-        editorVersionRejector = reject
+        editorVersionReject = reject
       })
     }
 
-    let importFileResolve: (assets: Asset[])=>void
-    let importFileReject: (reason: string|undefined) =>void
-    const importFilePromise = new Promise<Asset[]>((resolve, reject) => {
-      importFileResolve = resolve
-      importFileReject = reject
-    })
+    let foundTerrain = false
+    const [terrainFilePromise, terrainFileResolve, terrainFileReject] = PromiseSupplier<Terrain>()
 
-    let triggerFileResolve: (assets: TriggerTranslatorOutput)=>void
-    let triggerFileReject: (reason: string|undefined) =>void
-    const triggerFilePromise = new Promise<TriggerTranslatorOutput>((resolve, reject) => {
-      triggerFileResolve = resolve
-      triggerFileReject = reject
-    })
+    let foundUnits = false
+    const [unitsFilePromise, unitsFileResolve, unitsFileReject] = PromiseSupplier<Unit[]>()
 
-    const promises: Array<Promise<unknown>> = []
+    let foundDoodads = false
+    const [doodadsFilePromise, doodadsFileResolve, doodadsFileReject] = PromiseSupplier<DoodadsTranslatorOutput>()
 
-    let triggerFile: string | null = null
-    let customScriptFile: { input: string, output: string } | null = null
-    let foundW3i = false
-    let waitingForW3i = false
+    let foundRegions = false
+    const [regionsFilePromise, regionsFileResolve, regionsFileReject] = PromiseSupplier<Region[]>()
+
+    let foundCameras = false
+    const [camerasFilePromise, camerasFileResolve, camerasFileReject] = PromiseSupplier<Camera[]>()
+
+    let foundImports = false
+    const [importFilePromise, importFileResolve, importFileReject] = PromiseSupplier<Asset[]>()
+
+    let foundTriggers = false
+    const [triggerFilePromise, triggerFileResolve, triggerFileReject] = PromiseSupplier<TriggerTranslatorOutput>()
+
+    let foundCustomScripts = false
+    const [customScriptFilePromise, customScriptFileResolve, customScriptFileReject] = PromiseSupplier<CustomScriptsTranslatorOutput>()
+
+    const promises: Promise<unknown>[] = []
 
     for (const [parents, file] of TreeIterator<DirectoryTree>(directoryTree(inputPath, { attributes: ['type', 'extension'] }),
       (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
@@ -110,40 +118,72 @@ const War2JsonService = {
       const filename = file.name
       const outputFile = path.join(outputPath, path.relative(inputPath, file.path))
       if (filename.endsWith('.w3e')) {
-        translator = async (buffer) => {
+        foundTerrain = true
+        const handler = async (buffer: Buffer) => {
           const [terrain, formatVersion] = TerrainTranslator.warToJson(buffer)
           recordedProfile.w3eFormatVersion = formatVersion
+          terrainFileResolve(terrain)
           return terrain
         }
+        if (EnhancementManager.chunkifyMapData){
+          promises.push(parseFile(file.path, handler))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, handler))
+        }
       } else if (filename.endsWith('Units.doo')) {
-        waitingForW3i = true
-        translator = async (buffer) => {
+        foundUnits = true
+        const handler = async (buffer: Buffer) => {
           const [units, formatVersion, formatSubversion] = UnitsTranslator.warToJson(buffer, await editorVersionSupplier)
           recordedProfile.unitsDooFormatVersion = formatVersion
           recordedProfile.unitsDooFormatSubversion = formatSubversion
+          unitsFileResolve(units)
           return units
         }
+        if (EnhancementManager.chunkifyMapData){
+          promises.push(parseFile(file.path, handler))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, handler))
+        }
       } else if (filename.endsWith('.doo')) {
-        waitingForW3i = true
-        translator = async (buffer) => {
+        foundDoodads = true
+        const handler = async (buffer: Buffer) => {
           const [doodads, formatVersion, formatSubversion, specialDooFormatVersion] = DoodadsTranslator.warToJson(buffer, await editorVersionSupplier)
           recordedProfile.dooFormatVersion = formatVersion
           recordedProfile.dooFormatSubversion = formatSubversion
           recordedProfile.specialDooFormatVersion = specialDooFormatVersion
+          doodadsFileResolve(doodads)
           return doodads
         }
+        if (EnhancementManager.chunkifyMapData){
+          promises.push(parseFile(file.path, handler))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, handler))
+        }
       } else if (filename.endsWith('.w3r')) {
-        translator = async (buffer) => {
-          const [terrain, formatVersion] = RegionsTranslator.warToJson(buffer)
+        foundRegions = true
+        const handler = async (buffer: Buffer) => {
+          const [rects, formatVersion] = RegionsTranslator.warToJson(buffer)
           recordedProfile.w3rFormatVersion = formatVersion
-          return terrain
+          regionsFileResolve(rects)
+          return rects
+        }
+        if (EnhancementManager.chunkifyMapData){
+          promises.push(parseFile(file.path, handler))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, handler))
         }
       } else if (filename.endsWith('.w3c')) {
-        waitingForW3i = true
-        translator = async (buffer) => {
-          const [terrain, formatVersion] = CamerasTranslator.warToJson(buffer, await editorVersionSupplier)
+        foundCameras = true
+        const handler = async (buffer: Buffer) => {
+          const [cameras, formatVersion] = CamerasTranslator.warToJson(buffer, await editorVersionSupplier)
           recordedProfile.w3cFormatVersion = formatVersion
-          return terrain
+          camerasFileResolve(cameras)
+          return cameras
+        }
+        if (EnhancementManager.chunkifyMapData){
+          promises.push(parseFile(file.path, handler))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, handler))
         }
       } else if (filename.endsWith('.w3s')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
@@ -168,74 +208,33 @@ const War2JsonService = {
       } else if (filename.endsWith('.wts')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer: Buffer) => StringsTranslator.warToJson(buffer)))
       } else if (filename.endsWith('.wtg')) {
+        foundTriggers = true
         const handler = async (buffer: Buffer) => {
-          const [triggers, formatVersion, formatSubversion] = TriggersTranslator.warToJson(buffer)
+          const [triggers, formatVersion, formatSubversion] = translators.TriggersTranslator.warToJson(buffer)
           recordedProfile.wtgFormatVersion = formatVersion
           recordedProfile.wtgFormatSubversion = formatSubversion
-          // custom script here?
           triggerFileResolve(triggers)
           return triggers
         }
-        if (EnhancementManager.composeTriggers) {
-          promises.push(parseFile(file.path, handler))
-          promises.push((async () => TriggerComposer.explodeTriggersJsonIntoSource(outputPath, (await triggerFilePromise).root))())
-        } else {
-          await processFile(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), outputFile + EnhancementManager.mapDataExtension, handler)
-        }
-        
-        if (triggerFile != null) {
-          async function () {
-            const triggerJSON = await processTriggers(triggerFile, customScriptFile?.input)
-            async function processTriggers(triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer> {
-              const asyncLog = log.getSubLogger({ name: `${TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
-            
-              asyncLog.info('Reading war3map.wtg file.')
-              const triggerBuffer = await readFile(triggersFile)
-              const triggerJson = TriggersTranslator.warToJson(triggerBuffer)
-              asyncLog.info('Read war3map.wtg file.')
-            
-              if (customScriptsFile != null) {
-                asyncLog.info('Reading war3map.wct file.')
-                const csBuffer = await readFile(customScriptsFile)
-                const csResults = CustomScriptsTranslator.warToJson(csBuffer)
-                asyncLog.info('Read war3map.wct file, found', csResults.scripts.length, 'custom scripts.')
-            
-                // Combine custom scripts into trigger JSON
-                for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
-                  const scriptRef = triggerJson.scriptReferences[i]
-                  if (scriptRef != null) {
-                    scriptRef.script = csResults.scripts[i]
-                  }
-                }
-            
-                (triggerJson.root as MapHeader).description = csResults.headerComment
-              }
-            
-              return triggerJson.root
-            }
-            
-          }
-        } else if (customScriptFile != null) {
-          promises.push(copyFileWithDirCreation(customScriptFile.input, customScriptFile.output))
-        }
       } else if (filename.endsWith('.wct')) {
-        const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + EnhancementManager.mapDataExtension
-        customScriptFile = { input: file.path, output: outputFile }
-        translator = async (buffer) => {
-          const [customScripts, formatVersion] = CustomScriptsTranslator.warToJson(buffer)
+        foundCustomScripts = true
+        const handler = async (buffer: Buffer) => {
+          const [output, formatVersion] = translators.CustomScriptsTranslator.warToJson(buffer)
           recordedProfile.wctFormatVersion = formatVersion
-          return customScripts
+          customScriptFileResolve(output)
+          return output
         }
       } else if (filename.endsWith('.w3i')) {
-        foundW3i = true
-        translator = async (buffer) => {
+        foundInfo = true
+        promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer: Buffer) => {
           const [info, formatVersion, editorVersion] = InfoTranslator.warToJson(buffer)
           recordedProfile.w3iFormatVersion = formatVersion
           recordedProfile.editorVersion = editorVersion
           editorVersionResolver?.(editorVersion)
           return info
-        }
+        }))
       } else if (filename.endsWith('.imp')) {
+        foundImports = true
         promises.push(parseFile(file.path, async (buffer) => {
           const [assets, formatVersion] = AssetsTranslator.warToJson(buffer)
           recordedProfile.impFormatVersion = formatVersion
@@ -269,8 +268,90 @@ const War2JsonService = {
       }
     }
 
-    if (waitingForW3i && !foundW3i) {
-      editorVersionRejector?.('Editor version not supplied, nor is war3map.w3i file found.')
+    const [triggerPromise, triggerResolve, triggerReject] = PromiseSupplier<void>()
+    void Promise.allSettled([triggerFilePromise, customScriptFilePromise]).then(async ([triggers, customScripts])=>{
+      if (triggers.status === 'fulfilled'){
+        const triggerJson = triggers.value
+        if (customScripts.status === 'fulfilled'){
+          const csResult = customScripts.value
+          // Combine custom scripts into trigger JSON
+          for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
+            const scriptRef = triggerJson.scriptReferences[i]
+            if (scriptRef != null) {
+              scriptRef.script = csResult.scripts[i]
+            }
+          }
+
+          (triggerJson.root as MapHeader).description = csResult.headerComment
+        }
+
+        if (EnhancementManager.composeTriggers) {
+          await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, (await triggerFilePromise).root)
+            .then(triggerResolve, triggerReject)
+        } else {
+          await WriteAndCreatePath(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(triggerJson), { encoding: 'utf8' })
+            .then(triggerResolve, triggerReject)
+        }
+      } else {
+        if (customScripts.status === 'fulfilled'){
+          await WriteAndCreatePath(path.join(`customScripts${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(customScripts.value), { encoding: 'utf8' })
+            .then(triggerResolve, triggerReject)
+        } else {
+          triggerResolve()
+        }
+      }
+    })
+    promises.push(triggerPromise)
+
+    if (EnhancementManager.chunkifyMapData){
+      const [promise, resolve, reject] = PromiseSupplier<void>()
+      void Promise.allSettled([terrainFilePromise, unitsFilePromise,doodadsFilePromise,regionsFilePromise,camerasFilePromise]).then(async ([terrain, units, doodads, regions, cameras])=> {
+        if (terrain.status === 'rejected'){
+          return reject('Cannot chunkify if terrain is missing.')
+        }
+        const unitsVal = units.status === 'fulfilled' ? units.value : []
+        const doodadsVal = doodads.status === 'fulfilled' ? doodads.value : ({doodads: [], specialDoodads: []} as DoodadsTranslatorOutput)
+        const regionsVal = regions.status === 'fulfilled' ? regions.value : []
+        const camerasVal = cameras.status === 'fulfilled' ? cameras.value : []
+        await TerrainChunkifier.chunkifierTerrain(terrain.value, doodadsVal.doodads, doodadsVal.specialDoodads ?? [], unitsVal, regionsVal, camerasVal, EnhancementManager.chunkSize).then(resolve,reject)
+      })
+      promises.push(promise)
+    }
+
+    if (!foundInfo) {
+      editorVersionReject?.('Editor version not supplied, nor is war3map.w3i file found.')
+    }
+
+    if (!foundTerrain){
+      terrainFileReject('Terrain file not found.')
+    }
+
+    if (!foundUnits){
+      unitsFileReject('Units file not found.')
+    }
+
+    if (!foundDoodads){
+      doodadsFileReject('Doodads file not found.')
+    }
+
+    if (!foundRegions){
+      regionsFileReject('Regions file not found.')
+    }
+
+    if (!foundCameras){
+      camerasFileReject('Cameras file not found.')
+    }
+
+    if (!foundImports) {
+      importFileReject('Assets file list not found.')
+    }
+
+    if (!foundTriggers) {
+      triggerFileReject('Trigger file not found.')
+    }
+
+    if (!foundCustomScripts){
+      customScriptFileReject('Custom scripts file not found.')
     }
 
     return await Promise.all(promises)

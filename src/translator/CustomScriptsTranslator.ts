@@ -5,7 +5,12 @@ import { W3Buffer } from '../wc3maptranslator/W3Buffer'
 
 const log = LoggerFactory.createLogger('CustomScriptsTranslator')
 
-export function jsonToWar (json: { headerComment: string, scripts: string[] }, formatVersion: integer, formatSubversion?: integer): Buffer {
+export interface CustomScriptsTranslatorOutput {
+  headerComment: string
+  scripts: string[]
+}
+
+export function jsonToWar (json: CustomScriptsTranslatorOutput, formatVersion: integer, formatSubversion?: integer): Buffer {
   if (formatVersion < 0 || formatVersion > 0x80000004) {
     throw new Error(`Unknown map scripts format version=${formatVersion}, expected value from range [0, 0x80000004]`)
   }
@@ -24,8 +29,8 @@ export function jsonToWar (json: { headerComment: string, scripts: string[] }, f
     if (text.length > 0) {
       const buf = Buffer.from(text, 'utf-8')
       output.addInt(buf.length + 1) // + nul char
-      for (let i = 0; i < buf.length; i++) {
-        output.addByte(buf[i])
+      for (const byte of buf) {
+        output.addByte(byte)
       }
       output.addByte(0) // nul char
     } else {

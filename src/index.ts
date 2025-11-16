@@ -12,7 +12,6 @@ import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
 import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
 import fs from 'fs'
-import { SupplementTranslatorRecord } from './converter/TranslatorRecord'
 
 import * as Wc3MapTranslator from './wc3maptranslator'
 import * as PatchworkTranslator from './translator'
@@ -46,6 +45,8 @@ program
   .addOption(new Option('-cie, --container-info-extension <extension', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
   .addOption(new Option('-ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('-mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
+  .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
+  .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
   .hook('preAction', (thisCommand, actionCommand) => {
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
@@ -84,6 +85,9 @@ program
     if ((options.containerInfoExtension as string).startsWith('.')) EnhancementManager.containerInfoExtension = options.containerInfoExtension as string
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
     if ((options.mapDataExtension as string).startsWith('.')) EnhancementManager.mapDataExtension = options.mapDataExtension as string
+
+    if (options.chunk === true) EnhancementManager.chunkifyMapData = true
+    if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
 
     if (options.prettify === true) EnhancementManager.prettify = true
 

@@ -31,9 +31,9 @@ export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversi
     output.addFloat(unit.position[1])
     output.addFloat(unit.position[2])
     output.addFloat(unit.angle ?? 0)
-    output.addFloat(unit.scale?.at(0) ?? UnitDefaults.scale[0])
-    output.addFloat(unit.scale?.at(1) ?? UnitDefaults.scale[1])
-    output.addFloat(unit.scale?.at(2) ?? UnitDefaults.scale[2])
+    output.addFloat(unit.scale?.[0] ?? UnitDefaults.scale[0])
+    output.addFloat(unit.scale?.[1] ?? UnitDefaults.scale[1])
+    output.addFloat(unit.scale?.[2] ?? UnitDefaults.scale[2])
 
     if (editorVersion >= 6089) {
       output.addChars(unit.skin ?? unit.type)
@@ -109,12 +109,12 @@ export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversi
         output.addInt(unit.random?.type ?? -1)
         switch (unit.random?.type) {
           case 0:
-            output.addInt(((unit.random.level as integer) & 0x00FFFFFFFF) |
-        (((unit.random.itemClass as integer) ?? 0) << 24) & 0xFF00000000)
+            output.addInt(((unit.random.level!) & 0x00FFFFFFFF) |
+        (((unit.random.itemClass!) ?? 0) << 24) & 0xFF00000000)
             break
           case 1:
-            output.addInt(unit.random.groupIndex as integer)
-            output.addInt(unit.random.columnIndex as integer)
+            output.addInt(unit.random.groupIndex!)
+            output.addInt(unit.random.columnIndex!)
             break
           case 2:
             output.addInt(randomUnitSet.length)

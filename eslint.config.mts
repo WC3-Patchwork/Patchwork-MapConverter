@@ -5,6 +5,7 @@ import stylistic from '@stylistic/eslint-plugin'
 
 export default defineConfig(
   eslint.configs.recommended,
+  tseslint.configs.stylisticTypeChecked,
   tseslint.configs.recommendedTypeChecked,
   {
     plugins: {
@@ -26,8 +27,7 @@ export default defineConfig(
     },
     rules: {
       "no-trailing-spaces": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/require-await": "error",
+      "@typescript-eslint/require-await": "off",
       "@typescript-eslint/restrict-template-expressions": "error",
       "@typescript-eslint/no-empty-function": "error",
       "@typescript-eslint/no-unused-vars": "off",

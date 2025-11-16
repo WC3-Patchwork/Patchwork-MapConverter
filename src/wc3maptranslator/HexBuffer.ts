@@ -39,8 +39,8 @@ export class HexBuffer {
     // | "ucs-2" | "base64" | "latin1" | "binary" | "hex"
     const buf = Buffer.from(str, 'utf-8')
 
-    for (let i = 0; i < buf.length; i++) {
-      this._buffer.push(`0x${buf[i]?.toString(16) ?? '\0'}`)
+    for (const byte of buf) {
+      this._buffer.push(`0x${byte.toString(16) ?? '\0'}`)
     }
   }
 

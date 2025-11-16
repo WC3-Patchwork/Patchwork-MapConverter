@@ -13,7 +13,7 @@ const ImportComposer = {
 
     const imports: Asset[] = []
     const standardImportFolder = path.join(importsFolderTree.path, 'war3mapImported')
-    const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [importsFolderTree]
+    const fileStack: DirectoryTree<Record<string, unknown>>[] = [importsFolderTree]
 
     while (fileStack.length > 0) {
       const file = fileStack.pop()

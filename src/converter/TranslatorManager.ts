@@ -4,6 +4,7 @@ import { type Terrain, type Unit, type Asset, type Info, type Doodad, type Speci
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
 import { translators } from '../translator'
 import { type TargetProfile } from './Profile'
+import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
 
 const TranslatorManager = {
   FindAppropriateTranslationMethodText2Binary: function (filename: string, profile: TargetProfile): ((json: object) => Buffer) | null {
@@ -13,7 +14,7 @@ const TranslatorManager = {
     } else if (filename.endsWith('Units.doo')) {
       return (units) => UnitsTranslator.jsonToWar(units as unknown as Unit[], profile.unitsDooFormatVersion, profile.unitsDooFormatSubversion, profile.editorVersion)
     } else if (filename.endsWith('.doo')) {
-      return (doodads) => DoodadsTranslator.jsonToWar(doodads as unknown as [Doodad[], SpecialDoodad[]], profile.dooFormatVersion, profile.dooFormatSubversion, profile.specialDooFormatVersion, profile.editorVersion)
+      return (doodads) => DoodadsTranslator.jsonToWar(doodads as unknown as DoodadsTranslatorOutput, profile.dooFormatVersion, profile.dooFormatSubversion, profile.specialDooFormatVersion, profile.editorVersion)
     } else if (filename.endsWith('.w3r')) {
       return (regions) => RegionsTranslator.jsonToWar(regions as unknown as Region[], profile.w3rFormatVersion)
     } else if (filename.endsWith('.w3c')) {

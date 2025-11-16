@@ -16,7 +16,7 @@ import { type Asset } from '../wc3maptranslator/data'
 import { AssetsTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
 import { TranslatorManager } from './TranslatorManager'
-import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
+import { translators } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
 import { type TargetProfile } from './Profile'
 const log = LoggerFactory.createLogger('Json2War')
@@ -64,18 +64,18 @@ function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
 }
 
 async function exportTriggers (triggersJson: TriggerContainer, output: string, profile: TargetProfile): Promise<void> {
-  const tasks: Array<Promise<unknown>> = []
-  const triggerLog = log.getSubLogger({ name: `${TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
+  const tasks: Promise<unknown>[] = []
+  const triggerLog = log.getSubLogger({ name: `${translators.TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   const triggerAndScript: TriggerTranslatorOutput = {
     root: triggersJson,
     scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
   }
 
-  const triggerBuffer = TriggersTranslator.jsonToWar(triggerAndScript, profile.wtgFormatVersion, profile.wtgFormatSubversion)
+  const triggerBuffer = translators.TriggersTranslator.jsonToWar(triggerAndScript, profile.wtgFormatVersion, profile.wtgFormatSubversion)
   tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wtg'), triggerBuffer)
     .then(() => triggerLog.info('Finished exporting triggers.')))
 
-  const scriptLog = log.getSubLogger({ name: `${CustomScriptsTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
+  const scriptLog = log.getSubLogger({ name: `${translators.CustomScriptsTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
 
   const scriptArg: { headerComment: string, scripts: string[] } = { headerComment: '', scripts: [] }
   for (const trigger of triggerAndScript.scriptReferences) {
@@ -89,7 +89,7 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string, p
     }
   }
 
-  const scriptBuffer = CustomScriptsTranslator.jsonToWar(scriptArg, profile.wctFormatVersion)
+  const scriptBuffer = translators.CustomScriptsTranslator.jsonToWar(scriptArg, profile.wctFormatVersion)
   tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wct'), scriptBuffer)
     .then(() => scriptLog.info('Finished exporting custom scripts.')))
 
@@ -106,8 +106,8 @@ const Json2WarService = {
   convert: async function (inputPath: string, outputPath: string, profile: TargetProfile): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
-    const promises: Array<Promise<void>> = []
-    const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
+    const promises: Promise<void>[] = []
+    const fileStack: DirectoryTree<Record<string, unknown>>[] = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
     let importDirectoryTree: DirectoryTree<Record<string, unknown>> | null = null
 
     while (fileStack.length > 0) {

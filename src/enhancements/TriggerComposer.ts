@@ -86,7 +86,7 @@ function sortTriggerContent (root: OrderedTriggerContainer): void {
     ret[value.name] = value
     return ret
   }, {})
-  if (root.order == null) root.order = []
+  root.order ??= [];
   const orderedContentRecord = Object.entries(root.order).reduce((ret: Record<string, number>, [key, value]) => {
     ret[value] = Number.parseInt(key)
     return ret
@@ -113,7 +113,7 @@ function sortTriggerContent (root: OrderedTriggerContainer): void {
 
 const TriggerComposer = {
   composeTriggerJson: async function (input: DirectoryTree): Promise<TriggerContainer> {
-    const tasks: Array<Promise<unknown>> = []
+    const tasks: Promise<unknown>[] = []
     const result = {
       name: EnhancementManager.mapHeaderFilename,
       contentType: ContentType.HEADER,
@@ -140,9 +140,7 @@ const TriggerComposer = {
       if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       let parent = parents.pop()
-      if (parent == null) {
-        parent = input
-      }
+      parent ??= input;
 
       const containerParent = parentMap.get(parent)
       if (containerParent == null) {
@@ -221,7 +219,7 @@ const TriggerComposer = {
           if (!commentCounters.has(containerParent)) {
             commentCounters.set(containerParent, { [element.name]: 1 })
           } else {
-            const commentCounts = commentCounters.get(containerParent) as Record<string, number>
+            const commentCounts = commentCounters.get(containerParent)!
             if (commentCounts[element.name] != null) {
               const count = commentCounts[element.name] + 1
               commentCounts[element.name] = count
@@ -252,9 +250,7 @@ const TriggerComposer = {
           let script: CustomScript | undefined
           let trigger: GUITrigger | ScriptedTrigger | undefined
           for (const content of contents) {
-            if (injectedRef == null) {
-              injectedRef = content as ScriptedTrigger
-            }
+            injectedRef ??= content as ScriptedTrigger;
             switch (content.contentType) {
               case ContentType.TRIGGER:
               case ContentType.TRIGGER_SCRIPTED:
@@ -285,7 +281,7 @@ const TriggerComposer = {
 
     triggersJson.name = '' // Delete header name
 
-    const tasks: Array<Promise<unknown>> = []
+    const tasks: Promise<unknown>[] = []
     for (const [parents, content] of TreeIterator<TriggerContent>(triggersJson, GetTriggerContainerChildren)) {
       const outPath = path.join(sourceOutput, ...parents.map(it => it.name))
       const exportObj: Record<string, unknown> = {

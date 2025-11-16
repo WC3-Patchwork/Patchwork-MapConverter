@@ -72,9 +72,9 @@ export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer 
     output.addFloat(sound['3d']?.cone?.insideAngle ?? SoundDefaults['3d'].cone.insideAngle)
     output.addFloat(sound['3d']?.cone?.outsideAngle ?? SoundDefaults['3d'].cone.outsideAngle)
     output.addInt(sound['3d']?.cone?.outsideVolume ?? SoundDefaults['3d'].cone.outsideVolume)
-    output.addFloat(sound['3d']?.cone?.orientation?.at(0) ?? SoundDefaults['3d'].cone.orientation[0])
-    output.addFloat(sound['3d']?.cone?.orientation?.at(1) ?? SoundDefaults['3d'].cone.orientation[1])
-    output.addFloat(sound['3d']?.cone?.orientation?.at(2) ?? SoundDefaults['3d'].cone.orientation[2])
+    output.addFloat(sound['3d']?.cone?.orientation?.[0] ?? SoundDefaults['3d'].cone.orientation[0])
+    output.addFloat(sound['3d']?.cone?.orientation?.[1] ?? SoundDefaults['3d'].cone.orientation[1])
+    output.addFloat(sound['3d']?.cone?.orientation?.[2] ?? SoundDefaults['3d'].cone.orientation[2])
 
     if (formatVersion > 1) {
       const assetFlags = sound.assetFlags ?? 0

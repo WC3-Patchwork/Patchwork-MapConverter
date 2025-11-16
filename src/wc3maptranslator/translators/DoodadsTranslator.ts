@@ -9,7 +9,12 @@ import { DoodadDefaults } from '../default/Doodad'
 
 const log = LoggerFactory.createLogger('DoodadsTranslator')
 
-export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
+export interface DoodadsTranslatorOutput {
+  doodads: Doodad[]
+  specialDoodads: SpecialDoodad[]|undefined
+}
+
+export function jsonToWar ({doodads, specialDoodads}: DoodadsTranslatorOutput, formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
@@ -33,9 +38,9 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
     output.addFloat(doodad.position[1])
     output.addFloat(doodad.position[2])
     output.addFloat(deg2Rad(doodad.angle))
-    output.addFloat(doodad.scale?.at(0) ?? DoodadDefaults.scale[0])
-    output.addFloat(doodad.scale?.at(1) ?? DoodadDefaults.scale[1])
-    output.addFloat(doodad.scale?.at(2) ?? DoodadDefaults.scale[2])
+    output.addFloat(doodad.scale?.[0] ?? DoodadDefaults.scale[0])
+    output.addFloat(doodad.scale?.[1] ?? DoodadDefaults.scale[1])
+    output.addFloat(doodad.scale?.[2] ?? DoodadDefaults.scale[2])
 
     if (editorVersion >= 6089) {
       output.addChars(doodad.skinId ?? doodad.type)
@@ -73,7 +78,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   if (formatVersion > 2) {
     specialDoodadFormatVersion = specialDoodadFormatVersion ?? 0
     output.addInt(specialDoodadFormatVersion)
-    output.addInt(specialDoodads?.length || 0)
+    output.addInt(specialDoodads?.length ?? 0)
     specialDoodads?.forEach(specialDoodad => {
       output.addChars(specialDoodad.type)
       output.addInt(specialDoodad.position[0])
@@ -84,7 +89,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): [[Doodad[], SpecialDoodad[] | undefined], integer, integer | undefined, integer | undefined] {
+export function warToJson (buffer: Buffer, editorVersion: integer): [DoodadsTranslatorOutput, integer, integer | undefined, integer | undefined] {
   const input = new W3Buffer(buffer)
   const fileMagicNumber = input.readChars(4)
   if (fileMagicNumber !== 'W3do') {
@@ -203,5 +208,5 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [[Doodad[], 
     }
   }
 
-  return [[doodads, specialDoodads], formatVersion, formatSubversion, specialDoodadFormatVersion]
+  return [{doodads, specialDoodads}, formatVersion, formatSubversion, specialDoodadFormatVersion]
 }

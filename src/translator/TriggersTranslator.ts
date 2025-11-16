@@ -24,9 +24,9 @@ import { TriggerDefaults } from './default/TriggerDefaults'
 
 const log = LoggerFactory.createLogger('TriggersTranslator')
 
-interface TriggerTranslatorOutput {
+export interface TriggerTranslatorOutput {
   root: TriggerContainer
-  scriptReferences: Array<ScriptContent | null>
+  scriptReferences: (ScriptContent | null)[]
 }
 
 export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer, variableFormatVersion: integer, formatSubversion?: integer): Buffer {
@@ -139,7 +139,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
           throw new Error(`Variable ${variable.name} missing ID`)
         }
         output.addInt(elementId)
-        output.addInt(parentReference.get(variable) as integer)
+        output.addInt(parentReference.get(variable)!)
       }
     }
   }
@@ -315,7 +315,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
   if (formatVersion < 2147483648) {
     output.addInt((triggersByContentType.get(ContentType.CATEGORY) as []).length)
     for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
-      saveContainer(elementReference.get(category) as integer, category, parentReference.get(category) as integer)
+      saveContainer(elementReference.get(category)!, category, parentReference.get(category)!)
     }
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
 
@@ -326,13 +326,13 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
 
     output.addInt(triggerContentCount)
     for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
-      saveTrigger(elementReference.get(comment) as integer, comment, parentReference.get(comment) as integer)
+      saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
     }
     for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[]) {
-      saveTrigger(elementReference.get(trigger) as integer, trigger, parentReference.get(trigger) as integer)
+      saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
     }
-    for (const script of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as TriggerContent[]) {
-      saveTrigger(elementReference.get(script) as integer, script, parentReference.get(script) as integer)
+    for (const script of triggersByContentType.get(ContentType.CUSTOM_SCRIPT)!) {
+      saveTrigger(elementReference.get(script)!, script, parentReference.get(script)!)
     }
   } else {
     output.addInt((triggersByContentType.get(ContentType.HEADER) as []).length)
@@ -365,23 +365,23 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, 0)
     }
     for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[]) {
-      saveContainer(elementReference.get(library) as integer, library, parentReference.get(library) as integer)
+      saveContainer(elementReference.get(library)!, library, parentReference.get(library)!)
     }
     for (const container of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
-      saveContainer(elementReference.get(container) as integer, container, parentReference.get(container) as integer)
+      saveContainer(elementReference.get(container)!, container, parentReference.get(container)!)
     }
 
     for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[]) {
-      saveTrigger(elementReference.get(trigger) as integer, trigger, parentReference.get(trigger) as integer)
+      saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
     }
     for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
-      saveTrigger(elementReference.get(comment) as integer, comment, parentReference.get(comment) as integer)
+      saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
     }
-    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as TriggerContent[]) {
-      saveTrigger(elementReference.get(customScript) as integer, customScript, parentReference.get(customScript) as integer)
+    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT)!) {
+      saveTrigger(elementReference.get(customScript)!, customScript, parentReference.get(customScript)!)
     }
     for (const variable of triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[]) {
-      saveTriggerVariable(elementReference.get(variable) as integer, variable, parentReference.get(variable) as integer)
+      saveTriggerVariable(elementReference.get(variable)!, variable, parentReference.get(variable)!)
     }
   }
 
@@ -412,7 +412,7 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
     const elementRelations = new Map<number, number>()
     const containers: Record<number, TriggerContainer> = {}
     const content: Record<number, TriggerContent> = {}
-    const customScripts: Array<ScriptContent | null> = []
+    const customScripts: (ScriptContent | null)[] = []
     const allGlobalVariables: Record<number, GlobalVariable> = {}
     const loadGlobals = function (): void {
       const variableFormatVersion = input.readInt() // [0, 2]
@@ -733,7 +733,7 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
     }
 
     let root: TriggerContainer | null = null
-    const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
+    const missingElements: { data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }[] = []
     // Generate data tree structure
     for (const [elementId, parentId] of elementRelations.entries()) {
       if (parentId === -1) {
@@ -759,7 +759,7 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
             foundParent: parent != null,
             elementId,
             parentId,
-            data: parent != null ? parent : element
+            data: parent ?? element
           })
           continue
         }
@@ -782,5 +782,3 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
     throw e
   }
 }
-
-export type { TriggerTranslatorOutput }
