@@ -23,9 +23,9 @@ export type csv = string
 export type bitstring = string
 
 /**
- * @type ARGB format
+ * @type #AARRGGBB format
  */
-export type color = [number, number, number, number]
+export type color = string
 
 // TranslationError is reserved for future use in case
 // additional constraints are added to translated output,
