@@ -1,105 +1,115 @@
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type Terrain } from '../data/Terrain'
+import { Boundary, type Terrain } from '../data/Terrain'
+import { TerrainDefaults } from '../default/Terrain'
 
-function splitLargeArrayIntoWidthArrays (array: unknown[], width: number): unknown[][] {
-  const rows: unknown[][] = []
-  for (let i = 0; i < array.length / width; i++) {
-    rows.push(array.slice(i * width, (i + 1) * width))
-  }
-  return rows
+const log = LoggerFactory.createLogger('TerrainTranslator')
+
+function heightIntToFloat (heightVal: integer, cliffLevel: integer): number {
+  return (heightVal - 8192 + (cliffLevel - 2) * 512) / 4
 }
 
-export function jsonToWar (terrainJson: Terrain): Buffer {
+function heightFloatToInt (heightVal: number, cliffLevel: integer): integer {
+  return (heightVal * 4) + 8192 - (cliffLevel - 2) * 512
+}
+
+export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer {
   const output = new HexBuffer()
 
-  /*
-         * Header
-         */
-  output.addChars('W3E!') // file id
-  output.addInt(12) // file version
-  output.addChar(terrainJson.tileset) // base tileset
-  output.addInt(+terrainJson.customTileset) // 1 = using custom tileset, 0 = not
+  if (formatVersion < 3 || formatVersion > 12) {
+    throw new Error(`Unknown terrain format version=${formatVersion}, expected value from range [3, 12]`)
+  }
 
-  /*
-         * Tiles
-         */
-  output.addInt(terrainJson.tilePalette?.length || 0)
-  terrainJson.tilePalette?.forEach((tile) => {
+  output.addChars('W3E!')
+  output.addInt(formatVersion)
+
+  if (formatVersion > 0x06) {
+    output.addChar(terrainJson.tileset ?? TerrainDefaults.tileset)
+    output.addInt(+(terrainJson.customTileset ?? TerrainDefaults.customTileset))
+  }
+
+  const tilePalette = terrainJson.tilePalette ?? TerrainDefaults.tilePalette
+  output.addInt(tilePalette.length)
+  tilePalette.forEach((tile) => {
     output.addChars(tile)
   })
 
-  /*
-         * Cliffs
-         */
-  output.addInt(terrainJson.cliffTilePalette?.length || 0)
-  terrainJson.cliffTilePalette?.forEach((cliffTile) => {
+  const cliffTilePalette = terrainJson.cliffTilePalette ?? TerrainDefaults.cliffTilePalette
+  output.addInt(cliffTilePalette.length)
+  cliffTilePalette.forEach((cliffTile) => {
     output.addChars(cliffTile)
   })
 
-  /*
-         * Map size data
-         */
-  output.addInt(terrainJson.map.width + 1)
-  output.addInt(terrainJson.map.height + 1)
+  output.addInt(terrainJson.map.sizeX + 1)
+  output.addInt(terrainJson.map.sizeY + 1)
 
-  /*
-         * Map offset
-         */
-  output.addFloat(terrainJson.map.offset.x)
-  output.addFloat(terrainJson.map.offset.y)
-
-  /*
-         * Tile points
-         */
-  // Partition the terrainJson masks into "chunks" (i.e. rows) of (width+1) length,
-  // reverse that list of rows (due to vertical flipping), and then write the rows out
-  const rows = {
-    groundHeight: splitLargeArrayIntoWidthArrays(terrainJson.groundHeight, terrainJson.map.width + 1) as number[][],
-    waterHeight: splitLargeArrayIntoWidthArrays(terrainJson.waterHeight, terrainJson.map.width + 1) as number[][],
-    boundaryFlag: splitLargeArrayIntoWidthArrays(terrainJson.boundaryFlag, terrainJson.map.width + 1) as boolean[][],
-    flags: splitLargeArrayIntoWidthArrays(terrainJson.flags, terrainJson.map.width + 1) as number[][],
-    groundTexture: splitLargeArrayIntoWidthArrays(terrainJson.groundTexture, terrainJson.map.width + 1) as number[][],
-    groundVariation: splitLargeArrayIntoWidthArrays(terrainJson.groundVariation, terrainJson.map.width + 1) as number[][],
-    cliffVariation: splitLargeArrayIntoWidthArrays(terrainJson.cliffVariation, terrainJson.map.width + 1) as number[][],
-    cliffTexture: splitLargeArrayIntoWidthArrays(terrainJson.cliffTexture, terrainJson.map.width + 1) as number[][],
-    layerHeight: splitLargeArrayIntoWidthArrays(terrainJson.layerHeight, terrainJson.map.width + 1) as number[][],
-    tileset: '',
-    customTileset: false,
-    tilePalette: [],
-    cliffTilePalette: []
+  const offsetX = terrainJson.map.offsetX ?? TerrainDefaults.map.offsetX
+  const offsetY = terrainJson.map.offsetY ?? TerrainDefaults.map.offsetY
+  if (formatVersion >= 0x0A) {
+    output.addFloat(offsetX)
+    output.addFloat(offsetY)
   }
 
-  rows.groundHeight.reverse()
-  rows.waterHeight.reverse()
-  rows.boundaryFlag.reverse()
-  rows.flags.reverse()
-  rows.groundTexture.reverse()
-  rows.groundVariation.reverse()
-  rows.cliffVariation.reverse()
-  rows.cliffTexture.reverse()
-  rows.layerHeight.reverse()
+  const sizeX = terrainJson.map.sizeX
+  for (let i = terrainJson.map.sizeY; i >= 0; i++) {
+    for (let j = 0; j <= sizeX; j++) {
+      const groundTexture = terrainJson.groundTexture[i][j] as number
+      const groundVariation = terrainJson.groundVariation[i][j] as number
+      const groundHeight = terrainJson.groundHeight[i][j] as number
+      const cliffTexture = terrainJson.cliffTexture[i][j] as number
+      const cliffVariation = terrainJson.cliffVariation[i][j] as number
+      const cliffLevel = terrainJson.cliffLevel[i][j] as number
+      const waterHeight = terrainJson.waterHeight[i][j] as number
+      const hasEdgeBoundary = terrainJson.boundary[i][j] === Boundary.Type1
+      let flags = 0
+      if (terrainJson.ramp[i][j]) flags |= 0x0010
+      if (terrainJson.blight[i][j]) flags |= 0x0020
+      if (terrainJson.water[i][j]) flags |= 0x0040
+      if (terrainJson.boundary[i][j] === Boundary.Type2) flags |= 0x0080
 
-  for (let i = 0; i < rows.groundHeight.length; i++) {
-    for (let j = 0; j < rows.groundHeight[i].length; j++) {
-      // these bit operations are based off documentation from https://github.com/stijnherfst/HiveWE/wiki/war3map.w3e-Terrain
-      const groundHeight = rows.groundHeight[i][j]
-      const waterHeight = rows.waterHeight[i][j]
-      const boundaryFlag = rows.boundaryFlag[i][j]
-      const flags = rows.flags[i][j]
-      const groundTexture = rows.groundTexture[i][j]
-      const groundVariation = rows.groundVariation[i][j]
-      const cliffVariation = rows.cliffVariation[i][j]
-      const cliffTexture = rows.cliffTexture[i][j]
-      const layerHeight = rows.layerHeight[i][j]
+      if (formatVersion < 0x0B) {
+        if (formatVersion < 0x0A) {
+          output.addInt(groundTexture)
+          output.addInt(groundVariation)
+        } else {
+          output.addByte(groundTexture)
+          output.addByte(groundVariation)
+        }
+        if (formatVersion < 0x08) {
+          output.addFloat(128 * j + offsetX)
+          output.addFloat(128 * i + offsetY)
+          output.addFloat(groundHeight)
+        } else {
+          output.addInt(heightFloatToInt(groundHeight, cliffLevel))
+          output.addShort(heightFloatToInt(waterHeight, cliffLevel))
+        }
+        output.addByte(cliffLevel)
+        output.addByte(cliffTexture)
+        output.addByte(cliffVariation)
+        if (formatVersion > 0x03) {
+          if (formatVersion < 0x0A) {
+            output.addInt(flags)
+          } else {
+            output.addShort(flags)
+          }
+        }
+        if (formatVersion > 0x04 && formatVersion < 0x08) {
+          output.addFloat(waterHeight)
+        }
+      } else {
+        output.addShort(heightFloatToInt(groundHeight, cliffLevel))
+        output.addShort(heightFloatToInt(waterHeight, cliffLevel) & 0x3FFF | (hasEdgeBoundary ? 0x4000 : 0))
+        if (formatVersion >= 0x0C) {
+          output.addShort((groundTexture & 0x003F) | ((flags << 2) & 0xFFC0))
+        } else {
+          output.addByte((flags & 0xF0) | (groundTexture & 0x0F))
+        }
 
-      const hasBoundaryFlag = boundaryFlag ? 0x4000 : 0
-
-      output.addShort(groundHeight)
-      output.addShort(waterHeight | hasBoundaryFlag)
-      output.addShort((flags << 2) | groundTexture)
-      output.addByte(groundVariation | cliffVariation)
-      output.addByte(cliffTexture | layerHeight)
+        output.addByte(((cliffVariation << 5) & 0xE0) | (groundVariation & 0x1F))
+        output.addByte(((cliffTexture << 4) & 0xF0) | (cliffLevel & 0x0F))
+      }
     }
   }
 
@@ -109,24 +119,24 @@ export function jsonToWar (terrainJson: Terrain): Buffer {
 export function warToJson (buffer: Buffer): Terrain {
   const input = new W3Buffer(buffer)
 
-  const w3eHeader = input.readChars(4) // W3E!
-  const formatVersion = input.readInt()
-
-  if (formatVersion < 0x03) {
-    // does not read, throw error?
+  const fileId = input.readChars(4)
+  if (fileId !== 'W3E!') {
+    log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3E!', will attempt parsing...`)
   }
-  if (formatVersion >= 0x0C) {
-    // throw error?
+
+  const formatVersion = input.readInt()
+  if (formatVersion < 3 || formatVersion > 12) {
+    log.warn(`Unknown terrain file format version '${formatVersion}', expected value [3, 12], will attempt parsing...`)
   }
 
   let tileset: string
   let customTileset: boolean
   if (formatVersion >= 0x06) {
     tileset = input.readChars(1)
-    customTileset = (input.readInt() === 1)
+    customTileset = !!(input.readInt() & 0x01)
   } else {
-    tileset = '\0'
-    customTileset = true
+    tileset = TerrainDefaults.tileset
+    customTileset = TerrainDefaults.customTileset
   }
 
   const tileCount = input.readInt()
@@ -136,7 +146,7 @@ export function warToJson (buffer: Buffer): Terrain {
   }
 
   const cliffTileIds: string[] = []
-  if (formatVersion >= 0x06) {
+  if (formatVersion > 0x06) {
     const cliffTileCount = input.readInt()
     const cliffTileIds: string[] = []
     for (let i = 0; i < cliffTileCount; i++) {
@@ -144,8 +154,8 @@ export function warToJson (buffer: Buffer): Terrain {
     }
   }
 
-  const width = input.readInt() - 1
-  const height = input.readInt() - 1
+  const sizeX = input.readInt() - 1
+  const sizeY = input.readInt() - 1
 
   let offsetX: number
   let offsetY: number
@@ -157,71 +167,151 @@ export function warToJson (buffer: Buffer): Terrain {
     offsetY = 0
   }
 
-  const arrGroundHeight: number[] = []
-  const arrWaterHeight: number[] = []
-  const arrBoundaryFlag: boolean[] = []
-  const arrFlags: number[] = []
-  const arrGroundTexture: number[] = []
-  const arrGroundVariation: number[] = []
-  const arrCliffVariation: number[] = []
-  const arrCliffTexture: number[] = []
-  const arrLayerHeight: number[] = []
+  const arrGroundTexture: number[][] = []
+  const arrGroundVariation: number[][] = []
+  const arrCliffTexture: number[][] = []
+  const arrCliffVariation: number[][] = []
+  const arrCliffLevel: number[][] = []
+  const arrGroundHeight: number[][] = []
+  const arrWaterHeight: number[][] = []
+  const arrRampFlag: boolean[][] = []
+  const arrBlightFlag: boolean[][] = []
+  const arrWaterFlag: boolean[][] = []
+  const arrBoundaryFlag: Boundary[][] = []
+  for (let i = sizeY; i >= 0; i--) {
+    arrGroundTexture[i] = []
+    arrGroundVariation[i] = []
+    arrCliffTexture[i] = []
+    arrCliffVariation[i] = []
+    arrCliffLevel[i] = []
+    arrGroundHeight[i] = []
+    arrWaterHeight[i] = []
+    arrRampFlag[i] = []
+    arrBlightFlag[i] = []
+    arrWaterFlag[i] = []
+    arrBoundaryFlag[i] = []
 
-  while (!input.isExhausted()) {
-    const groundHeight = input.readShort()
-    const waterHeightAndBoundary = input.readShort()
-    const waterHeight = waterHeightAndBoundary & 32767
-    const boundaryFlag = (waterHeightAndBoundary & 0x4000) === 0x4000
+    for (let j = 0; j <= sizeX; j++) {
+      let groundHeight: number
+      let waterHeight: number | null = null
+      let flags: number | null = null
+      let boundaryFlag: Boundary
+      let groundTexture: integer
+      let groundVariation: integer
+      let cliffVariation: integer
+      let cliffTexture: integer
+      let cliffLevel: integer
 
-    let flags: number
-    let groundTexture: number
-    if (formatVersion >= 12) {
-      const flagsAndGroundTexture = input.readShort()
-      flags = (flagsAndGroundTexture & 0xFFC0) >> 2
-      groundTexture = flagsAndGroundTexture & 0x3F
-    } else {
-      const flagsAndGroundTexture = input.readByte()
-      flags = flagsAndGroundTexture & 0xF0
-      groundTexture = flagsAndGroundTexture & 0x0F
+      if (formatVersion < 0x0B) {
+        if (formatVersion < 0x0A) {
+          groundTexture = input.readInt()
+          groundVariation = input.readInt()
+        } else {
+          groundTexture = input.readByte()
+          groundVariation = input.readByte()
+        }
+        let convertHeight: boolean
+        if (formatVersion < 0x08) {
+          input.readFloat() // x -- ignored
+          input.readFloat() // y -- ignored
+          groundHeight = input.readFloat() // z
+          convertHeight = false
+        } else {
+          groundHeight = input.readInt() & 0x3FFF // xy[z]
+          waterHeight = input.readShort()
+          convertHeight = true
+        }
+        cliffLevel = input.readByte()
+        cliffTexture = input.readByte()
+        cliffVariation = input.readByte()
+        if (formatVersion > 0x03) {
+          if (formatVersion < 0x0A) {
+            flags = input.readInt()
+          } else {
+            flags = input.readShort()
+          }
+        }
+        if (formatVersion > 0x04 && formatVersion < 0x08) {
+          waterHeight = input.readFloat() // waterZ
+        }
+        if (convertHeight) {
+          groundHeight = heightIntToFloat(groundHeight, cliffLevel)
+          if (waterHeight != null) {
+            waterHeight = heightIntToFloat(waterHeight, cliffLevel)
+          }
+        }
+
+        if (waterHeight == null) {
+          waterHeight = TerrainDefaults.waterHeight
+        }
+        boundaryFlag = Boundary.None
+      } else {
+        groundHeight = input.readShort()
+        const waterHeightAndBoundary = input.readShort()
+        waterHeight = waterHeightAndBoundary & 0x3FFF
+        boundaryFlag = (waterHeightAndBoundary & 0x4000) ? Boundary.Type1 : Boundary.None
+
+        if (formatVersion >= 0x0C) {
+          const flagsAndGroundTexture = input.readShort()
+          flags = (flagsAndGroundTexture & 0xFFC0) >> 2
+          groundTexture = flagsAndGroundTexture & 0x3F
+        } else {
+          const flagsAndGroundTexture = input.readByte()
+          flags = flagsAndGroundTexture & 0xF0
+          groundTexture = flagsAndGroundTexture & 0x0F
+        }
+
+        const groundAndCliffVariation = input.readByte()
+        const cliffTextureAndLayerHeight = input.readByte()
+        groundVariation = groundAndCliffVariation & 0x1F
+        cliffVariation = groundAndCliffVariation >> 5
+        cliffTexture = cliffTextureAndLayerHeight >> 4
+        cliffLevel = cliffTextureAndLayerHeight & 0x0F
+
+        groundHeight = heightIntToFloat(groundHeight, cliffLevel)
+        waterHeight = heightIntToFloat(waterHeight, cliffLevel)
+      }
+
+      if (flags != null) {
+        arrRampFlag[i][j] = !!(flags | 0x0010)
+        arrBlightFlag[i][j] = !!(flags | 0x0020)
+        arrWaterFlag[i][j] = !!(flags | 0x0040)
+        arrBoundaryFlag[i][j] = boundaryFlag === Boundary.None && !!(flags | 0x0080) ? Boundary.Type2 : boundaryFlag
+      } else {
+        arrRampFlag[i][j] = TerrainDefaults.ramp
+        arrBlightFlag[i][j] = TerrainDefaults.blight
+        arrWaterFlag[i][j] = TerrainDefaults.water
+        arrBoundaryFlag[i][j] = TerrainDefaults.boundary
+      }
+
+      arrGroundTexture[i][j] = groundTexture
+      arrGroundVariation[i][j] = groundVariation
+      arrCliffTexture[i][j] = cliffTexture
+      arrCliffVariation[i][j] = cliffVariation
+      arrCliffLevel[i][j] = cliffLevel
+      arrGroundHeight[i][j] = groundHeight
+      arrWaterHeight[i][j] = waterHeight
     }
-
-    const groundAndCliffVariation = input.readByte()
-    const cliffTextureAndLayerHeight = input.readByte()
-
-    const groundVariation = groundAndCliffVariation & 0xF8
-    const cliffVariation = groundAndCliffVariation & 0x07
-    const cliffTexture = cliffTextureAndLayerHeight & 0XF0
-    const layerHeight = cliffTextureAndLayerHeight & 0x0F
-
-    arrGroundHeight.push(groundHeight)
-    arrWaterHeight.push(waterHeight)
-    arrBoundaryFlag.push(boundaryFlag)
-    arrFlags.push(flags) // TODO: properly parse flags
-    arrGroundTexture.push(groundTexture)
-    arrGroundVariation.push(groundVariation)
-    arrCliffVariation.push(cliffVariation)
-    arrCliffTexture.push(cliffTexture)
-    arrLayerHeight.push(layerHeight)
   }
 
-  function convertArrayOfArraysIntoFlatArray (arr: unknown[][]): unknown {
-    return arr.reduce((a: unknown[], b: unknown[]) => {
-      return [...a, ...b]
-    })
+  return {
+    tileset,
+    customTileset,
+    tilePalette: tileIds,
+    cliffTilePalette: cliffTileIds,
+    map: {
+      sizeX, sizeY, offsetX, offsetY
+    },
+    groundTexture: arrGroundTexture,
+    groundVariation: arrGroundVariation,
+    cliffTexture: arrCliffTexture,
+    cliffVariation: arrCliffVariation,
+    cliffLevel: arrCliffLevel,
+    groundHeight: arrGroundHeight,
+    waterHeight: arrWaterHeight,
+    boundary: arrBoundaryFlag,
+    ramp: arrRampFlag,
+    blight: arrBlightFlag,
+    water: arrWaterFlag
   }
-
-  // The map was read in "backwards" because wc3 maps have origin (0,0)
-  // at the bottom left instead of top left as we desire. Flip the rows
-  // vertically to fix this.
-  result.groundHeight = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrGroundHeight, result.map.width + 1).reverse()) as number[][]
-  result.waterHeight = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrWaterHeight, result.map.width + 1).reverse()) as number[][]
-  result.boundaryFlag = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrBoundaryFlag, result.map.width + 1).reverse()) as boolean[][]
-  result.flags = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrFlags, result.map.width + 1).reverse()) as number[]
-  result.groundTexture = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrGroundTexture, result.map.width + 1).reverse()) as number[][]
-  result.groundVariation = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrGroundVariation, result.map.width + 1).reverse()) as number[][]
-  result.cliffVariation = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrCliffVariation, result.map.width + 1).reverse()) as number[][]
-  result.cliffTexture = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrCliffTexture, result.map.width + 1).reverse()) as number[][]
-  result.layerHeight = convertArrayOfArraysIntoFlatArray(splitLargeArrayIntoWidthArrays(arrLayerHeight, result.map.width + 1).reverse()) as number[][]
-
-  return result
 }

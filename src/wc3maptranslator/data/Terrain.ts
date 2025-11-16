@@ -1,37 +1,37 @@
+import { type bitstring, type csv, type integer } from '../CommonInterfaces'
+
 interface Terrain {
   tileset: string
   customTileset: boolean
   tilePalette: string[]
   cliffTilePalette: string[]
   map: MapSize
-  // "Masks"
-  groundHeight: number[][]
-  waterHeight: number[][]
-  boundaryFlag: boolean[][]
-  flags: number[]
-  groundTexture: number[][]
-  groundVariation: number[][]
-  cliffVariation: number[][]
-  cliffTexture: number[][]
-  layerHeight: number[][]
-}
-
-enum TileFlag {
-  // 0x10
-  // 0x20
-  // 0x40
-  // 0x80
+  // "layers"
+  groundTexture: integer[][] | csv[]
+  groundVariation: integer[][] | csv[]
+  cliffTexture: integer[][] | csv[]
+  cliffVariation: integer[][] | csv[]
+  cliffLevel: integer[][] | csv[]
+  groundHeight: number[][] | csv[]
+  waterHeight: number[][] | csv[]
+  ramp: boolean[][] | bitstring[]
+  blight: boolean[][] | bitstring[]
+  water: boolean[][] | bitstring[]
+  boundary: Boundary[][] | csv[]
 }
 
 interface MapSize {
-  width: number
-  height: number
-  offset: Offset
+  sizeX: number
+  sizeY: number
+  offsetX: number
+  offsetY: number
 }
 
-interface Offset {
-  x: number
-  y: number
+enum Boundary {
+  None = 0,
+  Type1 = 1, // Map edge boundary
+  Type2 = 2 // manually placed boundary tile
 }
 
-export type { Terrain, MapSize, Offset }
+export type { Terrain, MapSize }
+export { Boundary }

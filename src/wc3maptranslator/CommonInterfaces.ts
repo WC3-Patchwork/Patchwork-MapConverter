@@ -13,6 +13,16 @@ export type vector2 = [number, number]
 export type vector3 = [number, number, number]
 
 /**
+ * @type comma seperated string
+ */
+export type csv = string
+
+/**
+ * @type string containing only 0s and 1s
+ */
+export type bitstring = string
+
+/**
  * @type ARGB format
  */
 export type color = [number, number, number, number]
