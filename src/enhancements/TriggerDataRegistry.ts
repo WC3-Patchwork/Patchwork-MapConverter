@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import { TriggerActions, TriggerCalls, TriggerConditions, TriggerEvents, type VariadicParameterTriggerDefinition } from './data/TriggerDefinition'
 import { StatementType } from '../translator/data/statement/StatementType'
@@ -38,13 +38,16 @@ let loaded = false
 const TriggerDataRegistry = {
   loadTriggerData: function (triggerDataFilePath: string) {
     log.info('Loading trigger data from', triggerDataFilePath)
+    if (!existsSync(triggerDataFilePath)){
+      throw new Error(`File ${triggerDataFilePath} not found, missing trigger data.`)
+    }
     const iniData = readFileSync(triggerDataFilePath, { encoding: 'utf8' })
 
-    let currentSection = 'root'
+    let currentSection = 'root' as TriggerDataSections
     for (const line of iniData.split(/\r\n|\n/)) {
       if (line.startsWith('//')) continue // ignore comment
       if (/\[.*\]/.test(line)) {
-        currentSection = line.substring(1, line.length - 1)
+        currentSection = line.substring(1, line.length - 1) as TriggerDataSections
         continue
       }
       if (currentSection !== TriggerDataSections.TRIGGER_ACTIONS && currentSection !== TriggerDataSections.TRIGGER_CALLS &&
@@ -54,10 +57,10 @@ const TriggerDataRegistry = {
       if (line.startsWith('_')) continue // ignore irrelevant properties
       if (line.includes('=')) {
         const [key, value] = line.split('=')
-        const def = convertToSectionRowData(currentSection as TriggerDataSections, key, value)
-        const sectionRegistry = registry.get(currentSection as TriggerDataSections)
+        const def = convertToSectionRowData(currentSection, key, value)
+        const sectionRegistry = registry.get(currentSection)
         if (sectionRegistry == null) {
-          registry.set(currentSection as TriggerDataSections, { [key]: def?.getParameterCount() })
+          registry.set(currentSection, { [key]: def?.getParameterCount() })
         } else {
           sectionRegistry[key] = def?.getParameterCount()
         }

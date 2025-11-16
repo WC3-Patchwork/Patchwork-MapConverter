@@ -1,5 +1,5 @@
-import { CustomScriptsTranslator } from './CustomScriptsTranslator'
-import { TriggersTranslator } from './TriggerTranslator'
+import * as CustomScriptsTranslator from './CustomScriptsTranslator'
+import * as TriggersTranslator from './TriggersTranslator'
 import { type TriggerContainer } from './data/TriggerContainer'
 import { type MapHeader } from './data/MapHeader'
 import { type CustomScript } from './data/content/CustomScript'
@@ -14,7 +14,6 @@ import { type Describable } from './data/properties/Describable'
 import { type Enableable } from './data/properties/Enableable'
 import { type ScriptContent } from './data/properties/ScriptContent'
 import { type Statement } from './data/statement/Statement'
-import { type NestingStatement } from './data/statement/NestingStatement'
 import { type StatementType } from './data/statement/StatementType'
 import { ContentTypeEnumConverter } from './util/ContentTypeEnumConverter'
 import { ParameterTypeEnumConverter } from './util/ParameterTypeEnumConverter'
@@ -24,5 +23,5 @@ const translators = { CustomScriptsTranslator, TriggersTranslator }
 export { translators, ContentTypeEnumConverter, ParameterTypeEnumConverter, StatementTypeEnumConverter }
 export type {
   TriggerContainer, MapHeader, CustomScript, GlobalVariable, GUITrigger, ScriptContent, ScriptedTrigger, TriggerComment, TriggerContent,
-  Parameter, ParameterType, Describable, Enableable, Statement, StatementType, NestingStatement
+  Parameter, ParameterType, Describable, Enableable, Statement, StatementType
 }

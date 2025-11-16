@@ -313,8 +313,8 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
   }
 
   if (formatVersion < 2147483648) {
-    output.addInt((triggersByContentType[ContentType.CATEGORY] as []).length)
-    for (const category of triggersByContentType[ContentType.CATEGORY] as TriggerContainer[]) {
+    output.addInt((triggersByContentType.get(ContentType.CATEGORY) as []).length)
+    for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
       saveContainer(elementReference.get(category) as integer, category, parentReference.get(category) as integer)
     }
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
@@ -325,13 +325,13 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       (triggersByContentType.get(ContentType.TRIGGER) as []).length
 
     output.addInt(triggerContentCount)
-    for (const comment of triggersByContentType[ContentType.COMMENT] as TriggerComment[]) {
+    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
       saveTrigger(elementReference.get(comment) as integer, comment, parentReference.get(comment) as integer)
     }
-    for (const trigger of triggersByContentType[ContentType.TRIGGER] as GUITrigger[]) {
+    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[]) {
       saveTrigger(elementReference.get(trigger) as integer, trigger, parentReference.get(trigger) as integer)
     }
-    for (const script of triggersByContentType[ContentType.CUSTOM_SCRIPT] as TriggerContent[]) {
+    for (const script of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as TriggerContent[]) {
       saveTrigger(elementReference.get(script) as integer, script, parentReference.get(script) as integer)
     }
   } else {
@@ -625,7 +625,7 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
         type,
         isEnabled,
         parameters: [] as Parameter[],
-        statements: {} satisfies Record<integer, Statement[]>
+        statements: {} as Record<integer, Statement[]>
       } satisfies Statement
 
       for (let i = 0; i < paramCount; i++) {
@@ -640,7 +640,7 @@ export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, i
           if (triggerFunction.statements[groupIndex] == null) {
             statements = triggerFunction.statements[groupIndex] = [] as Statement[]
           } else {
-            statements = triggerFunction.statements[groupIndex] as Statement[]
+            statements = triggerFunction.statements[groupIndex]
           }
 
           statements.push(loadTriggerFunction(functionType))

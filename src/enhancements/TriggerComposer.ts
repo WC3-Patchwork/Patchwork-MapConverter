@@ -31,7 +31,7 @@ async function populateGUIContent (element: TriggerContent, child: DirectoryTree
   for (const [key, value] of Object.entries(trigger)) {
     if (key === 'children') continue
     if (value == null || value === '') continue
-    element[key] = value as unknown
+    (element as unknown as Record<string, unknown>)[key] = value
   }
 }
 
@@ -43,7 +43,7 @@ async function populateParentDetails (parent: TriggerContainer, file: DirectoryT
   const record = ini.parse(await readFile(file.path, 'utf8'))
   for (const [key, value] of Object.entries(record)) {
     if (key === 'children') continue // ignore children entry, that one is handled internally (shouldn't exist anyways)
-    parent[key] = value as unknown
+    (parent as unknown as Record<string, unknown>)[key] = value as unknown
   }
 }
 
@@ -82,16 +82,15 @@ type OrderedTriggerContainer = TriggerContainer & { order: string[] }
 function sortTriggerContent (root: OrderedTriggerContainer): void {
   let newChildrenOrder = new Array(root.order != null ? root.order.length : 0) as TriggerContent[]
   const unspecifiedChildren: TriggerContent[] = []
-  const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {
+  const containerChildrenRecord = Object.values(root.children).reduce((ret: Record<string, TriggerContent>, value) => {
     ret[value.name] = value
     return ret
-  }, {}) as Record<string, TriggerContent>
+  }, {})
   if (root.order == null) root.order = []
-  const orderedContentRecord = Object.entries(root.order).reduce((ret, entry) => {
-    const [key, value] = entry
-    ret[value] = key
+  const orderedContentRecord = Object.entries(root.order).reduce((ret: Record<string, number>, [key, value]) => {
+    ret[value] = Number.parseInt(key)
     return ret
-  }, {}) as Record<string, number>
+  }, {})
   for (const [name, content] of Object.entries(containerChildrenRecord)) {
     const desiredIndex = orderedContentRecord[name]
     if (desiredIndex == null) {
@@ -225,7 +224,7 @@ const TriggerComposer = {
             const commentCounts = commentCounters.get(containerParent) as Record<string, number>
             if (commentCounts[element.name] != null) {
               const count = commentCounts[element.name] + 1
-              commentCounters[element.name] = count
+              commentCounts[element.name] = count
               element.name = `${element.name}_${count}`
             } else {
               commentCounts[element.name] = 1

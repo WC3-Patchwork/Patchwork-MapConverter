@@ -1,8 +1,8 @@
 import { TerrainTranslator, UnitsTranslator, DoodadsTranslator, RegionsTranslator, CamerasTranslator, SoundsTranslator, ObjectsTranslator, StringsTranslator, InfoTranslator, AssetsTranslator } from '../wc3maptranslator/translators'
 import { type ObjectModificationTable, ObjectType } from '../wc3maptranslator/data/ObjectModificationTable'
 import { type Terrain, type Unit, type Asset, type Info, type Doodad, type SpecialDoodad, type Region, type Camera, type Sound } from '../wc3maptranslator/data'
-import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
+import { translators } from '../translator'
 import { type TargetProfile } from './Profile'
 
 const TranslatorManager = {
@@ -45,9 +45,9 @@ const TranslatorManager = {
     else if (filename.endsWith('.wts')) {
       return StringsTranslator.jsonToWar as unknown as ((json: object) => Buffer)
     } else if (filename.endsWith('.wtg')) {
-      return (triggers) => TriggersTranslator.jsonToWar(triggers as unknown as TriggerTranslatorOutput, profile.wtgFormatVersion, profile.wtgFormatSubversion)
+      return (triggers) => translators.TriggersTranslator.jsonToWar(triggers as unknown as TriggerTranslatorOutput, profile.wtgFormatVersion, profile.wtgFormatSubversion)
     } else if (filename.endsWith('.wct')) {
-      return (scripts) => CustomScriptsTranslator.jsonToWar(scripts as unknown as { headerComment: string, scripts: string[] }, profile.wctFormatVersion)
+      return (scripts) => translators.CustomScriptsTranslator.jsonToWar(scripts as unknown as { headerComment: string, scripts: string[] }, profile.wctFormatVersion)
     }
 
     // Map files
