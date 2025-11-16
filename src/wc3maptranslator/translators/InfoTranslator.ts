@@ -1,8 +1,12 @@
+import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
+import { mergeBoolRecords } from '../Util'
 import { W3Buffer } from '../W3Buffer'
 import { type ObjectChance, type Force, type Info, type Player, type RandomGroup, type RandomGroupSet, type TechUnavailable, type UpgradeAvailable, type PlayerList, ScriptLanguage, ResearchState, PlayerType, Race, RandomGroupSetType, FogType, type ItemTable } from '../data/Info'
 import { ForceDefaults, InfoDefaults, PlayerDefaults, RandomGroupDefaults, UpgradeAvailableDefaults } from '../default/Info'
+
+const log = LoggerFactory.createLogger('InfoTranslator')
 
 function playerBitmapToPlayerList (playerBitmap: integer): PlayerList {
   const playerList: integer[] = []
@@ -77,7 +81,7 @@ export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
       output.addInt(0)
     }
 
-    const mapFlags = { ...infoJson.map.flags, ...InfoDefaults.map.flags }
+    const mapFlags = mergeBoolRecords(infoJson.map?.flags, InfoDefaults.map.flags)
     let flags = 0
     if (mapFlags.hideMinimapInPreview) flags |= 0x01
     if (mapFlags.modifyAllyPriorities) flags |= 0x02
@@ -348,7 +352,7 @@ export function warToJson (buffer: Buffer): Info {
   const formatVersion = input.readInt()
 
   if (formatVersion < 0 || formatVersion > 33) {
-    throw new Error(`Unknown map info format version=${formatVersion}, expected value from range [0, 33]`)
+    log.warn(`Unknown map info format version ${formatVersion} will attempt at reading...`)
   }
 
   let mapVersion: integer

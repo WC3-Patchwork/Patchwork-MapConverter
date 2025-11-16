@@ -5,17 +5,18 @@ import { type Inventory, type Hero, type RandomSpawn, type Unit, type Abilities,
 import { type UnitSet } from '../data/UnitSet'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
 import { LoggerFactory } from '../../logging/LoggerFactory'
+import { UnitDefaults } from '../default/Units'
 
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
 export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, editorVersion]: [integer, integer, integer]): Buffer {
   const output = new HexBuffer()
   if (formatVersion < 9) {
-    throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
+    throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
   }
 
   if (formatSubversion < 12) {
-    throw new Error(`Unknown doodad format subversion=${formatSubversion}, expected below 12`)
+    throw new Error(`Unknown preplaced units format subversion=${formatSubversion}, expected below 12`)
   }
 
   output.addChars('W3do')
@@ -25,33 +26,34 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
   }
   units?.forEach((unit) => {
     output.addChars(unit.type)
-    output.addInt(unit.variation ?? 0)
+    output.addInt(unit.variation ?? UnitDefaults.variation)
     output.addFloat(unit.position[0])
     output.addFloat(unit.position[1])
     output.addFloat(unit.position[2])
     output.addFloat(unit.angle ?? 0)
-    output.addFloat(unit.scale?.at(0) ?? 1)
-    output.addFloat(unit.scale?.at(1) ?? 1)
-    output.addFloat(unit.scale?.at(2) ?? 1)
+    output.addFloat(unit.scale?.at(0) ?? UnitDefaults.scale[0])
+    output.addFloat(unit.scale?.at(1) ?? UnitDefaults.scale[1])
+    output.addFloat(unit.scale?.at(2) ?? UnitDefaults.scale[2])
 
     if (editorVersion >= 6089) {
       output.addChars(unit.skin ?? unit.type)
     }
 
-    if (formatVersion > 5) {
+    if (formatVersion > 5) { // TODO: flags defaults
       output.addByte(0x02 | (unit.flags.fixedZ ? 0x04 : 0)) // by default all units have 0x02, which means nothing
     }
     output.addShort(unit.player)
     output.addInt(unit.flags.isUprooted ? 1 : 0)
-    output.addInt(unit.hitpoints ?? -1)
-    output.addInt(unit.mana ?? 0)
+    output.addInt(unit.hitpoints ?? UnitDefaults.hitpoints)
+    output.addInt(unit.mana ?? UnitDefaults.mana)
 
     if (formatSubversion >= 11) {
-      output.addInt(unit.randomItemSetPtr)
+      output.addInt(unit.randomItemSetPtr ?? UnitDefaults.randomItemSetPtr)
     }
     if (formatSubversion !== 0) {
-      output.addInt(unit.droppedItemSets?.length ?? 0)
-      unit.droppedItemSets?.forEach(itemSet => {
+      const droppedItemSets = unit.droppedItemSets ?? UnitDefaults.droppedItemSets
+      output.addInt(droppedItemSets.length)
+      droppedItemSets?.forEach(itemSet => {
         output.addInt(itemSet.items?.length ?? 0)
         itemSet.items?.forEach(item => {
           output.addChars(item.itemId)
@@ -61,29 +63,31 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
     }
 
     if (formatSubversion >= 2) {
-      output.addInt(unit.gold ?? 0)
+      output.addInt(unit.gold ?? UnitDefaults.gold)
     }
 
     if (formatSubversion >= 3) {
-      output.addFloat(unit.targetAcquisition ?? -1)
+      output.addFloat(unit.targetAcquisition ?? UnitDefaults.targetAcquisition)
     }
 
     if (formatSubversion >= 5) {
-      output.addInt(unit.hero?.level ?? 1)
+      output.addInt(unit.hero?.level ?? UnitDefaults.hero.level)
       if (formatSubversion >= 10) {
-        output.addInt(unit.hero?.str ?? 1)
-        output.addInt(unit.hero?.agi ?? 1)
-        output.addInt(unit.hero?.int ?? 1)
+        output.addInt(unit.hero?.str ?? UnitDefaults.hero.str)
+        output.addInt(unit.hero?.agi ?? UnitDefaults.hero.agi)
+        output.addInt(unit.hero?.int ?? UnitDefaults.hero.int)
       }
 
-      output.addInt(unit.inventory?.length ?? 0)
-      unit.inventory?.forEach(item => {
+      const inventory = unit.inventory ?? UnitDefaults.inventory
+      output.addInt(inventory.length)
+      inventory.forEach(item => {
         output.addInt(item.slot - 1) // zero-index item slot
         output.addChars(item.type)
       })
 
-      output.addInt(unit.abilities?.length ?? 0)
-      unit.abilities?.forEach((ability) => {
+      const abilities = unit.abilities ?? UnitDefaults.abilities
+      output.addInt(abilities.length)
+      abilities.forEach((ability) => {
         output.addChars(ability.ability) // ability string
         output.addInt(+ability.active) // 0 = not active, 1 = active
         output.addInt(ability.level)
@@ -91,9 +95,10 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
     }
 
     if (formatSubversion > 6) {
+      const randomUnitSet = unit.random?.unitSet ?? UnitDefaults.random.unitSet
       if (formatSubversion < 8) {
-        output.addInt((unit?.random?.unitSet)?.length ?? 0)
-        unit?.random?.unitSet?.forEach(spawnableUnit => {
+        output.addInt(randomUnitSet.length)
+        randomUnitSet.forEach(spawnableUnit => {
           output.addChars(spawnableUnit.unitId)
           output.addInt(spawnableUnit.chance)
         })
@@ -102,6 +107,7 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
         switch (unit.random?.type) {
           case 0:
             // reminder: Little-Endian
+            // TODO: defaultify
             output.addInt(((unit.random.level as integer) & 0x00FFFFFFFF) |
         ((unit.random.itemClass as integer) ?? 0) & 0xFF00000000)
             break
@@ -110,8 +116,8 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
             output.addInt(unit.random.columnIndex as integer)
             break
           case 2:
-            output.addInt((unit.random.unitSet as UnitSet)?.length || 0)
-            unit.random.unitSet?.forEach(spawnableUnit => {
+            output.addInt(randomUnitSet.length)
+            randomUnitSet.forEach(spawnableUnit => {
               output.addChars(spawnableUnit.unitId)
               output.addInt(spawnableUnit.chance)
             })
@@ -120,13 +126,13 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
       }
 
       if (formatSubversion >= 9) {
-        output.addInt(unit.playerColor ?? unit.player) // custom color, defaults to owning player
-        output.addInt(unit.waygate ?? -1) // waygate
+        output.addInt(unit.playerColor ?? unit.player)
+        output.addInt(unit.waygate ?? UnitDefaults.waygate)
       }
     }
 
     if (formatVersion > 3) {
-      output.addInt(unit.id ?? 0)
+      output.addInt(unit.id ?? 0) // TODO: auto-assign, check how this works
     }
   })
 

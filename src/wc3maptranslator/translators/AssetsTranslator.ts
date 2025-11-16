@@ -1,6 +1,9 @@
+import { LoggerFactory } from '../../logging/LoggerFactory'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { AssetType, type Asset } from '../data/Asset'
+
+const log = LoggerFactory.createLogger('AssetsTranslator')
 
 export function jsonToWar (imports: Asset[], formatVersion: number): Buffer {
   const output = new HexBuffer()
@@ -44,7 +47,7 @@ export function warToJson (buffer: Buffer): Asset[] {
 
   const formatVersion = input.readInt()
   if (formatVersion > 1 || formatVersion < 0) {
-    throw new Error(`Unknown imports file format version=${formatVersion}, expected 0 or 1.`)
+    log.warn(`Unknown asset file format version=${formatVersion}, expected 0 or 1, will attempt reading...`)
   }
 
   const importCount = input.readInt()

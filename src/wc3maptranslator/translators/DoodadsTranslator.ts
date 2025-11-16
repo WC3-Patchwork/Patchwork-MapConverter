@@ -1,9 +1,13 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { rad2Deg, deg2Rad } from '../AngleConverter'
+import { rad2Deg, deg2Rad, mergeBoolRecords } from '../Util'
 import { type integer, type vector3 } from '../CommonInterfaces'
 import { type SpecialDoodad, type Doodad } from '../data/Doodad'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { DoodadDefaults } from '../default/Doodad'
+
+const log = LoggerFactory.createLogger('DoodadsTranslator')
 
 export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], [formatVersion, formatSubversion, specialDoodadFormatVersion, editorVersion]: [integer, integer, integer, integer]): Buffer {
   const output = new HexBuffer()
@@ -24,21 +28,21 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   output.addInt(doodads?.length ?? 0)
   doodads?.forEach((doodad) => {
     output.addChars(doodad.type)
-    output.addInt(doodad.variation ?? 0)
+    output.addInt(doodad.variation ?? DoodadDefaults.variation)
     output.addFloat(doodad.position[0])
     output.addFloat(doodad.position[1])
     output.addFloat(doodad.position[2])
-    output.addFloat(deg2Rad(doodad.angle ?? 0))
-    output.addFloat(doodad.scale?.at(0) ?? 1)
-    output.addFloat(doodad.scale?.at(1) ?? 1)
-    output.addFloat(doodad.scale?.at(2) ?? 1)
+    output.addFloat(deg2Rad(doodad.angle))
+    output.addFloat(doodad.scale?.at(0) ?? DoodadDefaults.scale[0])
+    output.addFloat(doodad.scale?.at(1) ?? DoodadDefaults.scale[1])
+    output.addFloat(doodad.scale?.at(2) ?? DoodadDefaults.scale[2])
 
     if (editorVersion >= 6089) {
       output.addChars(doodad.skinId ?? doodad.type)
     }
 
     if (formatVersion > 5) {
-      const flags = doodad.flags ?? { inUnplayableArea: false, notUsedInScript: true, fixedZ: false }
+      const flags = mergeBoolRecords(doodad.flags, DoodadDefaults.flags)
       let flagValue = 0
       if (flags.fixedZ) flagValue |= 0x04
       if (flags.notUsedInScript) flagValue |= 0x02
@@ -46,12 +50,13 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
       output.addByte(flagValue)
     }
 
-    output.addByte(doodad.life ?? 100)
+    output.addByte(doodad.life ?? DoodadDefaults.life)
 
     if (formatVersion > 6) {
-      output.addInt(doodad.randomItemSetPtr ?? -1)
-      output.addInt(doodad.droppedItemSets?.length ?? 0)
-      doodad.droppedItemSets?.forEach(itemSet => {
+      const droppedItemSets = doodad.droppedItemSets ?? DoodadDefaults.droppedItemSets
+      output.addInt(doodad.randomItemSetPtr ?? DoodadDefaults.randomItemSetPtr)
+      output.addInt(droppedItemSets.length)
+      droppedItemSets.forEach(itemSet => {
         output.addInt(itemSet.items?.length ?? 0)
         itemSet.items?.forEach(item => {
           output.addChars(item.itemId)
@@ -61,7 +66,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
     }
 
     if (formatVersion > 3) {
-      output.addInt(doodad.id ?? 0)
+      output.addInt(doodad.id ?? -1) // TODO: auto-assign ID - figure out how it works
     }
   })
 
@@ -83,11 +88,11 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
 
   const fileMagicNumber = input.readChars(4)
   if (fileMagicNumber !== 'W3do') {
-    throw new Error(`Doodads file does not being with 'W3do' magic number. It starts with ${fileMagicNumber}`)
+    log.warn(`Doodads file does not begin with 'W3do' magic number. It starts with ${fileMagicNumber}, will attempt reading...`)
   }
   const formatVersion = input.readInt()
   if (formatVersion === 0) {
-    throw new Error(`Unknown doodad file format version=${formatVersion}, expected above 0`)
+    log.warn(`Unknown doodad file format version=${formatVersion}, expected above 0, will attempt reading...`)
   }
 
   let subVersion
@@ -113,22 +118,24 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
       skinId = type
     }
 
-    let flagsValue
+    let fixedZ: boolean
+    let notUsedInScript: boolean
+    let inUnplayableArea: boolean
     if (formatVersion > 5) {
-      flagsValue = input.readByte()
+      const flagsValue = input.readByte()
+      fixedZ = !!(flagsValue & 0x04)
+      notUsedInScript = !!(flagsValue & 0x02)
+      inUnplayableArea = !!(flagsValue & 0x01)
     } else {
-      flagsValue = 2
-    }
-    const flags = {
-      fixedZ: !!(flagsValue & 0x04),
-      notUsedInScript: !!(flagsValue & 0x02),
-      inUnplayableArea: !!(flagsValue & 0x01)
+      fixedZ = false
+      notUsedInScript = true
+      inUnplayableArea = false
     }
 
     const life = input.readByte() // as a %
 
-    let randomItemSetPtr = 0
-    let droppedItemSets: ItemSet[] | undefined
+    let randomItemSetPtr: integer
+    let droppedItemSets: ItemSet[]
     if (formatVersion > 6) {
       randomItemSetPtr = input.readInt()
       const numberOfItemSets = input.readInt() // this should be 0 if randomItemSetPtr is >= 0
@@ -136,7 +143,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
         throw new Error(`For doodad ${i}: ${type} at world coords: ${position.join(', ')}, number of dropped item sets is ${numberOfItemSets} instead of 0 since randomItemSetPtr is ${randomItemSetPtr} and not -1.`)
       }
 
-      const droppedItemSets = [] as ItemSet[]
+      droppedItemSets = [] as ItemSet[]
       for (let j = 0; j < numberOfItemSets; j++) {
         // Read the item set
         const numberOfItems = input.readInt()
@@ -150,7 +157,8 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
         }
       }
     } else {
-      droppedItemSets = undefined
+      randomItemSetPtr = DoodadDefaults.randomItemSetPtr
+      droppedItemSets = [...DoodadDefaults.droppedItemSets]
     }
     let id: integer | undefined
     if (formatVersion > 3) {
@@ -158,14 +166,26 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
     } else {
       id = undefined
     }
-    doodads[i] = { type, variation, position, angle, scale, skinId, flags, life, randomItemSetPtr, droppedItemSets, id }
+    doodads[i] = {
+      type,
+      variation,
+      position,
+      angle,
+      scale,
+      skinId,
+      flags: { fixedZ, notUsedInScript, inUnplayableArea },
+      life,
+      randomItemSetPtr,
+      droppedItemSets,
+      id
+    }
   }
 
   const specialDoodads: SpecialDoodad[] = []
   if (formatVersion > 2) {
     const specialDoodadFormatVersion = input.readInt()
     if (specialDoodadFormatVersion !== 0) {
-      throw new Error(`Unknown special doodads format version=${specialDoodadFormatVersion}, expected 0`)
+      log.warn(`Unknown special doodads format version=${specialDoodadFormatVersion}, expected 0, will attempt reading...`)
     }
 
     const specialDoodadCount = input.readInt()
