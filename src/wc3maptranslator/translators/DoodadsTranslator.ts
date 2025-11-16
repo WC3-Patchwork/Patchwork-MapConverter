@@ -1,170 +1,170 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { rad2Deg, deg2Rad } from '../AngleConverter'
-import { type WarResult, type JsonResult, type FourCC } from '../CommonInterfaces'
-import { type Translator } from './Translator'
+import { type integer, type FourCC } from '../CommonInterfaces'
 import { type SpecialDoodad, type Doodad, type DoodadFlags } from '../data/Doodad'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
+import { spec } from 'node:test/reporters'
 
-export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]> {
-  private static instance: DoodadsTranslator
+export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], [doodadFormatVersion, doodadFormatSubversion, specialDoodadFormatVersion]: [integer, integer, integer]): Buffer {
+  const outBufferToWar = new HexBuffer()
+  writeDoodads(outBufferToWar, doodads, doodadFormatVersion, doodadFormatSubversion)
+  writeSpecialDoodads(outBufferToWar, specialDoodads, specialDoodadFormatVersion)
+  return outBufferToWar.getBuffer()
+}
 
-  private constructor () { }
-
-  public static getInstance (): DoodadsTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
-    }
-    return this.instance
+function writeDoodads (output: HexBuffer, doodads: Doodad[], doodadFormatVersion: integer, doodadFormatSubversion: integer): void {
+  if (doodadFormatVersion !== 7 && doodadFormatVersion !== 8) {
+    throw new Error(`Unknown doodad format version=${doodadFormatVersion}, expected 7 or 8`)
   }
 
-  public static jsonToWar (doodads: [Doodad[], SpecialDoodad[]]): WarResult {
-    return this.getInstance().jsonToWar(doodads)
+  if (doodadFormatSubversion !== 11 && doodadFormatSubversion !== 8) {
+    throw new Error(`Unknown doodad format subversion=${doodadFormatSubversion}, expected 8 or 11`)
   }
 
-  public static warToJson (buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
-    return this.getInstance().warToJson(buffer)
-  }
-
-  public jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]]): WarResult {
-    const outBufferToWar = new HexBuffer()
-    this.writeDoodads(outBufferToWar, doodads)
-    this.writeSpecialDoodads(outBufferToWar, specialDoodads)
-    return {
-      errors: [],
-      buffer: outBufferToWar.getBuffer()
-    }
-  }
-
-  private writeDoodads (outBufferToWar: HexBuffer, doodads: Doodad[]): void {
-    outBufferToWar.addChars('W3do') // file id
-    outBufferToWar.addInt(8) // file version
-    outBufferToWar.addInt(11) // subversion 0x0B
-
-    outBufferToWar.addInt(doodads?.length ?? 0) // num of trees
-    doodads?.forEach((doodad) => {
-      outBufferToWar.addChars(doodad.type)
-      outBufferToWar.addInt(doodad.variation ?? 0)
-      outBufferToWar.addFloat(doodad.position[0])
-      outBufferToWar.addFloat(doodad.position[1])
-      outBufferToWar.addFloat(doodad.position[2])
-      outBufferToWar.addFloat(deg2Rad(doodad.angle ?? 0))
-      outBufferToWar.addFloat(doodad.scale?.at(0) ?? 1)
-      outBufferToWar.addFloat(doodad.scale?.at(1) ?? 1)
-      outBufferToWar.addFloat(doodad.scale?.at(2) ?? 1)
-      outBufferToWar.addChars(doodad.skinId ?? doodad.type)
-      outBufferToWar.addByte(this.serializeDoodadFlags(doodad))
-      outBufferToWar.addByte(doodad.life ?? 100)
-      outBufferToWar.addInt(doodad.randomItemSetPtr ?? -1)
-      outBufferToWar.addInt(doodad.droppedItemSets?.length ?? 0)
-      doodad.droppedItemSets?.forEach(itemSet => {
-        outBufferToWar.addInt(itemSet.items?.length ?? 0)
-        itemSet.items?.forEach(item => {
-          outBufferToWar.addChars(item.itemId)
-          outBufferToWar.addInt(item.chance)
-        })
+  output.addChars('W3do') // file magic number
+  output.addInt(doodadFormatVersion)
+  output.addInt(doodadFormatSubversion)
+  output.addInt(doodads?.length ?? 0)
+  doodads?.forEach((doodad) => {
+    output.addChars(doodad.type)
+    output.addInt(doodad.variation ?? 0)
+    output.addFloat(doodad.position[0])
+    output.addFloat(doodad.position[1])
+    output.addFloat(doodad.position[2])
+    output.addFloat(deg2Rad(doodad.angle ?? 0))
+    output.addFloat(doodad.scale?.at(0) ?? 1)
+    output.addFloat(doodad.scale?.at(1) ?? 1)
+    output.addFloat(doodad.scale?.at(2) ?? 1)
+    output.addChars(doodad.skinId ?? doodad.type)
+    output.addByte(serializeDoodadFlags(doodad))
+    output.addByte(doodad.life ?? 100)
+    output.addInt(doodad.randomItemSetPtr ?? -1)
+    output.addInt(doodad.droppedItemSets?.length ?? 0)
+    doodad.droppedItemSets?.forEach(itemSet => {
+      output.addInt(itemSet.items?.length ?? 0)
+      itemSet.items?.forEach(item => {
+        output.addChars(item.itemId)
+        output.addInt(item.chance)
       })
-      outBufferToWar.addInt(doodad.id)
     })
+    output.addInt(doodad.id)
+  })
+}
+
+function serializeDoodadFlags (doodad: Doodad): number {
+  const flags = doodad.flags ?? { inUnplayableArea: false, notUsedInScript: true, fixedZ: false }
+  let treeFlag = 0
+  if (flags.fixedZ) treeFlag |= 0x04
+  if (flags.notUsedInScript) treeFlag |= 0x02
+  if (flags.inUnplayableArea) treeFlag |= 0x01
+  return treeFlag
+}
+
+function writeSpecialDoodads (output: HexBuffer, specialDoodads: SpecialDoodad[]): void {
+  output.addInt(0) // special doodad format number, fixed at 0x00
+  output.addInt(specialDoodads?.length || 0) // number of special doodads
+  specialDoodads?.forEach(specialDoodad => {
+    output.addChars(specialDoodad.type)
+    output.addInt(specialDoodad.position[0])
+    output.addInt(specialDoodad.position[1])
+    output.addInt(specialDoodad.position[2])
+  })
+}
+
+export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], SpecialDoodad[]] {
+  const input = new W3Buffer(buffer)
+  const doodads: Doodad[] = []
+  const fileId = input.readChars(4) // W3do for doodad file
+  const formatVersion = input.readInt() // File version = 8
+
+  if (formatVersion === 0) {
+    throw new Error(`Unknown doodad file format version=${formatVersion}, expected above 0`)
   }
 
-  private serializeDoodadFlags (doodad: Doodad): number {
-    const flags = doodad.flags ?? { inUnplayableArea: false, notUsedInScript: true, fixedZ: false }
-    let treeFlag = 0
-    if (flags.fixedZ) treeFlag |= 0x04
-    if (flags.notUsedInScript) treeFlag |= 0x02
-    if (flags.inUnplayableArea) treeFlag |= 0x01
-    return treeFlag
+  let subVersion = 0
+  if (formatVersion > 4) {
+    subVersion = input.readInt()
   }
 
-  private writeSpecialDoodads (outBufferToWar: HexBuffer, specialDoodads: SpecialDoodad[]): void {
-    outBufferToWar.addInt(0) // special doodad format number, fixed at 0x00
-    outBufferToWar.addInt(specialDoodads?.length || 0) // number of special doodads
-    specialDoodads?.forEach(specialDoodad => {
-      outBufferToWar.addChars(specialDoodad.type)
-      outBufferToWar.addInt(specialDoodad.position[0])
-      outBufferToWar.addInt(specialDoodad.position[1])
-      outBufferToWar.addInt(specialDoodad.position[2])
-    })
+  const doodadCount = input.readInt()
+  for (let i = 0; i < doodadCount; i++) {
+    const type = input.readChars(4)
+    const variation = input.readInt()
+    const position = [input.readFloat(), input.readFloat(), input.readFloat()] as unknown as vector3
+    const angle = rad2Deg(input.readFloat())
+    const scale = [input.readFloat(), input.readFloat(), input.readFloat()]
+    let skinId: string | undefined = type
+    if (editorVersion >= 6089) {
+      skinId = getDoodadSkinId(input, formatVersion)
+    }
+
+    let flags
+    if (formatVersion > 5) {
+      flags = getDoodadFlags(input)
+    } else {
+      flags = {}
+    }
+    const life = input.readByte() // as a %
+
+    let randomItemSetPtr = 0
+    let droppedItemSets
+    if (formatVersion > 6) {
+      randomItemSetPtr = input.readInt()
+      droppedItemSets = getDroppedItemSets(input)
+    }
+    let id
+    if (formatVersion > 3) {
+      id = input.readInt()
+    }
+    doodads[i] = { type, variation, position, angle, scale, skinId, flags, life, randomItemSetPtr, droppedItemSets, id }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
-    const outBufferToJSON = new W3Buffer(buffer)
-    return {
-      errors: [],
-      json: [this.readDoodads(outBufferToJSON), this.readSpecialDoodads(outBufferToJSON)]
+  const specialDoodads: SpecialDoodad[] = []
+  const specialDoodadFormatVersion = input.readInt()
+  if (specialDoodadFormatVersion !== 0) {
+    throw new Error(`Unknown special doodads format version=${specialDoodadFormatVersion}, expected 0`)
+  }
+  const specialDoodadCount = input.readInt()
+  for (let i = 0; i < specialDoodadCount; i++) {
+    specialDoodads[i] = {
+      type: input.readChars(4),
+      position: [input.readFloat(), input.readFloat(), input.readFloat()]
     }
   }
 
-  private readDoodads (input: W3Buffer): Doodad[] {
-    const doodads: Doodad[] = []
-    const fileId = input.readChars(4) // W3do for doodad file
-    const fileVersion = input.readInt() // File version = 8
-    const subVersion = input.readInt() // 0B 00 00 00
-    const numDoodads = input.readInt() // # of doodads
-    for (let i = 0; i < numDoodads; i++) {
-      doodads[i] = {
-        type: input.readChars(4),
-        variation: input.readInt(),
-        position: [input.readFloat(), input.readFloat(), input.readFloat()],
-        angle: rad2Deg(input.readFloat()),
-        scale: [input.readFloat(), input.readFloat(), input.readFloat()],
-        skinId: this.getDoodadSkinId(input, fileVersion),
-        flags: this.getDoodadFlags(input),
-        life: input.readByte(), // as a %
-        randomItemSetPtr: input.readInt(), // points to an item set defined in the map (rather than custom one defined below)
-        droppedItemSets: this.getDroppedItemSets(input),
-        id: input.readInt()
+  return [doodads, specialDoodads]
+}
+
+function getDoodadSkinId (input: W3Buffer, fileVersion: number): FourCC | undefined {
+  if (fileVersion) {
+    return input.readChars(4)
+  }
+}
+
+function getDoodadFlags (input: W3Buffer): DoodadFlags {
+  const flags = input.readByte()
+  return {
+    fixedZ: !!(flags & 0x04),
+    notUsedInScript: !!(flags & 0x02),
+    inUnplayableArea: !!(flags & 0x01)
+  }
+}
+
+function getDroppedItemSets (input: W3Buffer): ItemSet[] {
+  const numberOfItemSets = input.readInt() // this should be 0 if randomItemSetPtr is >= 0
+  const itemSets: ItemSet[] = []
+  for (let j = 0; j < numberOfItemSets; j++) {
+    // Read the item set
+    const numberOfItems = input.readInt()
+    const items: DroppableItem[] = []
+    itemSets[j] = { items }
+    for (let k = 0; k < numberOfItems; k++) {
+      items[k] = {
+        itemId: input.readChars(4), // Item ID
+        chance: input.readInt() // % chance to drop
       }
     }
-    return doodads
   }
-
-  private getDoodadSkinId (outBufferToJSON: W3Buffer, fileVersion: number): FourCC | undefined {
-    if (fileVersion) {
-      return outBufferToJSON.readChars(4)
-    }
-  }
-
-  private getDoodadFlags (outBufferToJSON: W3Buffer): DoodadFlags {
-    const flags = outBufferToJSON.readByte()
-    return {
-      fixedZ: !!(flags & 0x04),
-      notUsedInScript: !!(flags & 0x02),
-      inUnplayableArea: !!(flags & 0x01)
-    }
-  }
-
-  private getDroppedItemSets (outBufferToJSON: W3Buffer): ItemSet[] {
-    const numberOfItemSets = outBufferToJSON.readInt() // this should be 0 if randomItemSetPtr is >= 0
-    const itemSets: ItemSet[] = []
-    for (let j = 0; j < numberOfItemSets; j++) {
-      // Read the item set
-      const numberOfItems = outBufferToJSON.readInt()
-      const items: DroppableItem[] = []
-      itemSets[j] = { items }
-      for (let k = 0; k < numberOfItems; k++) {
-        items[k] = {
-          itemId: outBufferToJSON.readChars(4), // Item ID
-          chance: outBufferToJSON.readInt() // % chance to drop
-        }
-      }
-    }
-    return itemSets
-  }
-
-  private readSpecialDoodads (outBufferToJSON: W3Buffer): SpecialDoodad[] {
-    const resultSpecial: SpecialDoodad[] = []
-    const specialDoodadFormatVersion = outBufferToJSON.readInt() // usually '0'
-    const numSpecialDoodads = outBufferToJSON.readInt()
-    for (let i = 0; i < numSpecialDoodads; i++) {
-      resultSpecial[i] = {
-        type: outBufferToJSON.readChars(4),
-        position: [outBufferToJSON.readFloat(),
-          outBufferToJSON.readFloat(),
-          outBufferToJSON.readFloat()]
-      }
-    }
-    return resultSpecial
-  }
+  return itemSets
 }
