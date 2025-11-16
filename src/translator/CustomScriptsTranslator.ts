@@ -130,12 +130,7 @@ export function warToJson (buffer: Buffer): { headerComment: string, scripts: st
   } else {
     try {
       do {
-        const lengthWithNulChar = input.readInt()
-        if (lengthWithNulChar === 0) {
-          scripts.push('')
-          continue // skip
-        }
-        scripts.push(input.readString())
+        loadCustomScript()
       } while (true)
     } catch (e) {
     // catch EOF

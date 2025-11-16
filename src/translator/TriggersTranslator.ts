@@ -20,6 +20,7 @@ import { LoggerFactory } from '../logging/LoggerFactory'
 import { type MapHeader } from './data/MapHeader'
 import { type TriggerItemBase } from './data/content/TriggerItemBase'
 import { type BaseTrigger } from './data/content/BaseTrigger'
+import { TriggerDefaults } from './default/TriggerDefaults'
 
 const log = LoggerFactory.createLogger('TriggersTranslator')
 
@@ -171,38 +172,38 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       case ContentType.CATEGORY:
         throw new Error('Cannot save container as a trigger?')
       case ContentType.TRIGGER:
-        triggerDescription = (trigger as TriggerItemBase).description ?? ''
+        triggerDescription = (trigger as TriggerItemBase).description ?? TriggerDefaults.description
         isComment = false
-        isEnabled = (trigger as GUITrigger)?.isEnabled ?? true
+        isEnabled = (trigger as GUITrigger)?.isEnabled ?? TriggerDefaults.isEnabled
         isCustomScript = false
-        initiallyOff = (trigger as GUITrigger)?.initiallyOff ?? false
-        runOnMapInit = (trigger as BaseTrigger)?.runOnMapInit ?? false
+        initiallyOff = (trigger as GUITrigger)?.initiallyOff ?? TriggerDefaults.initiallyOff
+        runOnMapInit = (trigger as BaseTrigger)?.runOnMapInit ?? TriggerDefaults.runOnMapInit
         triggerFunctionCount = (function (trigger: GUITrigger): integer {
-          return (trigger.events?.length ?? 0) +
-          (trigger.conditions?.length ?? 0) +
-          (trigger.actions?.length ?? 0)
+          return (trigger.events ?? TriggerDefaults.events).length +
+          (trigger.conditions ?? TriggerDefaults.conditions).length +
+          (trigger.actions ?? TriggerDefaults.actions).length
         })(trigger as GUITrigger)
         break
       case ContentType.TRIGGER_SCRIPTED:
-        triggerDescription = (trigger as TriggerItemBase).description ?? ''
+        triggerDescription = (trigger as TriggerItemBase).description ?? TriggerDefaults.description
         isComment = false
-        isEnabled = (trigger as ScriptedTrigger)?.isEnabled ?? true
+        isEnabled = (trigger as ScriptedTrigger)?.isEnabled ?? TriggerDefaults.isEnabled
         isCustomScript = true
-        initiallyOff = false
-        runOnMapInit = (trigger as BaseTrigger)?.runOnMapInit ?? false
+        initiallyOff = TriggerDefaults.initiallyOff
+        runOnMapInit = (trigger as BaseTrigger)?.runOnMapInit ?? TriggerDefaults.runOnMapInit
         triggerFunctionCount = 0
         break
       case ContentType.CUSTOM_SCRIPT:
-        triggerDescription = (trigger as TriggerItemBase).description ?? ''
+        triggerDescription = (trigger as TriggerItemBase).description ?? TriggerDefaults.description
         isComment = false
-        isEnabled = (trigger as ScriptedTrigger)?.isEnabled ?? true
+        isEnabled = (trigger as ScriptedTrigger)?.isEnabled ?? TriggerDefaults.isEnabled
         isCustomScript = true
         initiallyOff = false
         runOnMapInit = false
         triggerFunctionCount = 0
         break
       case ContentType.COMMENT:
-        triggerDescription = (trigger as TriggerComment).comment ?? ''
+        triggerDescription = (trigger as TriggerComment).comment ?? TriggerDefaults.description
         isComment = true
         isEnabled = true
         isCustomScript = false
@@ -264,7 +265,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       output.addInt(+triggerFunction.isEnabled)
     }
     const paramCount = TriggerDataRegistry.getParameterCount(triggerFunction.type, triggerFunction.name)
-    const triggerParams = triggerFunction?.parameters ?? []
+    const triggerParams = triggerFunction?.parameters ?? TriggerDefaults.parameters
     if (paramCount == null) {
       throw new Error(`Missing parameter count for type ${triggerFunction.type} - function ${triggerFunction.name} in triggerdata.txt`)
     } else if (paramCount !== triggerParams.length) {
@@ -275,7 +276,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
     }
 
     if (formatVersion > 5) {
-      const childTriggerFunctions = triggerFunction?.statements ?? {}
+      const childTriggerFunctions = triggerFunction?.statements ?? TriggerDefaults.statements
       for (const [groupIndex, groupFunctions] of Object.entries(childTriggerFunctions)) {
         for (const childTriggerFunction of groupFunctions) {
           output.addInt(StatementTypeEnumConverter.toIdentifier(childTriggerFunction.type))
@@ -354,12 +355,12 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
     output.addInt(totalElements)
     for (const header of triggersByContentType.get(ContentType.HEADER) ?? [{
-      isExpanded: false,
-      children: [],
+      isExpanded: TriggerDefaults.isExpanded,
+      children: TriggerDefaults.children,
       name: '',
       contentType: ContentType.HEADER,
       script: '',
-      description: ''
+      description: TriggerDefaults.description
     } satisfies MapHeader]) {
       saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, 0)
     }
