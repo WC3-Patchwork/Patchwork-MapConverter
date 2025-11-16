@@ -121,7 +121,7 @@ export function warToJson (buffer: Buffer): Sound[] {
     const fadeOutRate = input.readInt()
     // WE stores this as integer but casts as float internally, but the sound editor input and game API accepts only integers...
     const volume = input.readInt()
-    const pitch = input.readInt()
+    const pitch = input.readFloat()
     const pitchVariance = input.readFloat()
     const priority = input.readInt()
     const channelValue = input.readInt()
