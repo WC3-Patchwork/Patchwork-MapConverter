@@ -54,7 +54,7 @@ export class ObjectsTranslator implements Translator<ObjectModificationTable> {
          */
     outBufferToWar.addInt(2) // file version
 
-    const generateTableFromJson = (tableType: TableType, tableData: object): void => { // create "original" or "custom" table
+    const generateTableFromJson = (tableType: TableType, tableData: Record<string, Modification[]>): void => { // create "original" or "custom" table
       if (!tableData) {
         outBufferToWar.addInt(0)
         return
@@ -208,7 +208,7 @@ export class ObjectsTranslator implements Translator<ObjectModificationTable> {
         if (isOriginalTable) {
           result.original[originalId] = objectDefinition
         } else {
-          result.custom[customId + ':' + originalId] = objectDefinition
+          result.custom[`${customId}:${originalId}`] = objectDefinition
         }
       }
     }

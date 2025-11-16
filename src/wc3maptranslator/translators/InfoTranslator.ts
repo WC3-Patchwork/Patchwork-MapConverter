@@ -3,29 +3,29 @@ import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
-import { FogType, type Force, type Info, type Player, ScriptLanguage, SupportedModes } from '../data/Info'
+import { FogType, type Force, type Info, type ObjectPool, type Player, type RandomObject, type RandomTable, type RandomUnitTable, ScriptLanguage, SupportedModes, type TechUnavailable, type UpgradeAvailable } from '../data/Info'
 
 export class InfoTranslator implements Translator<Info> {
   private static instance: InfoTranslator
 
-  private constructor() { }
+  private constructor () { }
 
-  public static getInstance(): InfoTranslator {
+  public static getInstance (): InfoTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar(info: Info): WarResult {
+  public static jsonToWar (info: Info): WarResult {
     return this.getInstance().jsonToWar(info)
   }
 
-  public static warToJson(buffer: Buffer): JsonResult<Info> {
+  public static warToJson (buffer: Buffer): JsonResult<Info> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar(infoJson: Info): WarResult {
+  public jsonToWar (infoJson: Info): WarResult {
     const outBufferToWar = new HexBuffer()
 
     outBufferToWar.addInt(33) // format version
@@ -144,7 +144,7 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addInt(infoJson.forcedMinCamDistance)
 
     // Players
-    outBufferToWar.addInt(infoJson.players?.length || 0)
+    outBufferToWar.addInt(infoJson.players?.length ?? 0)
     infoJson.players?.forEach((player) => {
       outBufferToWar.addInt(player.playerNum)
       outBufferToWar.addInt(player.type)
@@ -159,8 +159,11 @@ export class InfoTranslator implements Translator<Info> {
       outBufferToWar.addInt(player.enermyHighPriorities) // enemy high prio flags
     })
 
+    const undefinedPlayersBitMask = ~(infoJson.players?.map(it => 1 << it.playerNum).reduce((acc, it) => acc | it) ?? 0)
+
     // Forces
-    outBufferToWar.addInt(infoJson.forces?.length || 0)
+    outBufferToWar.addInt(infoJson.forces?.length ?? 0)
+    let firstForce = true
     infoJson.forces?.forEach((force) => {
       // Calculate flags
       let forceFlags = 0
@@ -172,12 +175,21 @@ export class InfoTranslator implements Translator<Info> {
       if (force.flags.shareAdvUnitControl) forceFlags |= 0x0020
 
       outBufferToWar.addInt(forceFlags)
-      outBufferToWar.addInt(force.players)
+
+      const forcePlayerbitmap = force.players.map(it => 1 << it).reduce((acc, it) => acc | it)
+      // First force must contain undefined players so they get automatically added in case they do get defined.
+      if (firstForce) {
+        outBufferToWar.addInt(forcePlayerbitmap | undefinedPlayersBitMask)
+      } else {
+        outBufferToWar.addInt(forcePlayerbitmap)
+      }
+
       outBufferToWar.addString(force.name)
+      firstForce = false
     })
 
     // Struct: upgrade avail.
-    outBufferToWar.addInt(infoJson.upgrades?.length || 0)
+    outBufferToWar.addInt(infoJson.upgrades?.length ?? 0)
     infoJson.upgrades?.forEach(upgrade => {
       outBufferToWar.addInt(upgrade.playerFlags)
       outBufferToWar.addChars(upgrade.upgradeId)
@@ -186,37 +198,37 @@ export class InfoTranslator implements Translator<Info> {
     })
 
     // Struct: tech avail.
-    outBufferToWar.addInt(infoJson.techBlacklist?.length || 0)
+    outBufferToWar.addInt(infoJson.techBlacklist?.length ?? 0)
     infoJson.techBlacklist?.forEach(tech => {
       outBufferToWar.addInt(tech.playerFlags)
       outBufferToWar.addChars(tech.techId)
     })
 
     // Struct: random unit table
-    outBufferToWar.addInt(infoJson.randomUnitTables?.length || 0)
+    outBufferToWar.addInt(infoJson.randomUnitTables?.length ?? 0)
     infoJson.randomUnitTables?.forEach(randomUnitTable => {
       outBufferToWar.addInt(randomUnitTable.id)
       outBufferToWar.addString(randomUnitTable.name)
 
-      outBufferToWar.addInt(randomUnitTable.positions?.length || 0)
-      randomUnitTable.positions?.forEach(position => outBufferToWar.addInt(position))
+      outBufferToWar.addInt(randomUnitTable.positions?.length ?? 0)
+      randomUnitTable.positions?.forEach(position => { outBufferToWar.addInt(position) })
 
-      outBufferToWar.addInt(randomUnitTable.chances?.length || 0)
+      outBufferToWar.addInt(randomUnitTable.chances?.length ?? 0)
       randomUnitTable.chances?.forEach(chance => {
         outBufferToWar.addInt(chance.chance)
-        chance.unitIds.forEach(unitId => outBufferToWar.addChars(unitId)) //Amount of units must match amount of positions
+        chance.unitIds.forEach(unitId => { outBufferToWar.addChars(unitId) }) // Amount of units must match amount of positions
       })
     })
 
     // Struct: random item table
-    outBufferToWar.addInt(infoJson.randomItemTables?.length || 0)
+    outBufferToWar.addInt(infoJson.randomItemTables?.length ?? 0)
     infoJson.randomItemTables?.forEach(randomItemTable => {
       outBufferToWar.addInt(randomItemTable.id)
       outBufferToWar.addString(randomItemTable.name)
 
-      outBufferToWar.addInt(randomItemTable.rows?.length || 0)
+      outBufferToWar.addInt(randomItemTable.rows?.length ?? 0)
       randomItemTable.rows?.forEach(randomItemPool => {
-        outBufferToWar.addInt(randomItemPool.objects?.length || 0)
+        outBufferToWar.addInt(randomItemPool.objects?.length ?? 0)
         randomItemPool.objects?.forEach(randomItem => {
           outBufferToWar.addInt(randomItem.chance)
           outBufferToWar.addChars(randomItem.objectId)
@@ -229,13 +241,25 @@ export class InfoTranslator implements Translator<Info> {
     }
   }
 
-  public warToJson(buffer: Buffer): JsonResult<Info> {
+  public warToJson (buffer: Buffer): JsonResult<Info> {
+    const outBufferToJSON = new W3Buffer(buffer)
+
+    const fileVersion = outBufferToJSON.readInt()
+
     const result: Info = {
+      saves: outBufferToJSON.readInt(),
+      editorVersion: outBufferToJSON.readInt(),
+      gameVersion: {
+        major: outBufferToJSON.readInt(),
+        minor: outBufferToJSON.readInt(),
+        patch: outBufferToJSON.readInt(),
+        build: outBufferToJSON.readInt()
+      },
       map: {
-        name: '',
-        author: '',
-        description: '',
-        recommendedPlayers: '',
+        name: outBufferToJSON.readString(),
+        author: outBufferToJSON.readString(),
+        description: outBufferToJSON.readString(),
+        recommendedPlayers: outBufferToJSON.readString(),
         playableArea: {
           width: 64,
           height: 64
@@ -261,7 +285,7 @@ export class InfoTranslator implements Translator<Info> {
           enableWaterTinting: false, // 0x10000
           useAccurateProbabilityForCalculations: false, // 0x20000
           useCustomAbilitySkins: false, // 0x40000
-          disableDenyIcon: false, //0x80000
+          disableDenyIcon: false, // 0x80000
           forceDefaultCameraZoom: false, // 0x100000
           forceMaxCameraZoom: false, // 0x200000
           forceMinCameraZoom: false // 0x400000
@@ -291,50 +315,26 @@ export class InfoTranslator implements Translator<Info> {
         bounds: [],
         complements: []
       },
-      players: [],
-      forces: [],
-      saves: 0,
-      editorVersion: 0,
+      players: undefined,
+      forces: undefined,
+
       scriptLanguage: ScriptLanguage.JASS,
       supportedModes: SupportedModes.Both,
       forcedDefaultCamDistance: 1250,
       forcedMaxCamDistance: 1250,
       forcedMinCamDistance: 1250,
-      gameVersion: {
-        major: 0,
-        minor: 0,
-        patch: 0,
-        build: 0
-      },
+
       globalWeather: 0,
       customSoundEnvironment: '',
       customLightEnv: 0,
       water: [],
       gameDataVersion: 0,
       gameDataSet: 0,
-      upgrades: [],
-      techBlacklist: [],
-      randomUnitTables: [],
-      randomItemTables: []
+      upgrades: undefined,
+      techBlacklist: undefined,
+      randomUnitTables: undefined,
+      randomItemTables: undefined
     }
-    const outBufferToJSON = new W3Buffer(buffer)
-
-    const fileVersion = outBufferToJSON.readInt()
-
-    result.saves = outBufferToJSON.readInt()
-    result.editorVersion = outBufferToJSON.readInt()
-
-    result.gameVersion = {
-      major: outBufferToJSON.readInt(),
-      minor: outBufferToJSON.readInt(),
-      patch: outBufferToJSON.readInt(),
-      build: outBufferToJSON.readInt()
-    }
-
-    result.map.name = outBufferToJSON.readString()
-    result.map.author = outBufferToJSON.readString()
-    result.map.description = outBufferToJSON.readString()
-    result.map.recommendedPlayers = outBufferToJSON.readString()
 
     result.camera.bounds = [
       outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat(),
@@ -410,15 +410,16 @@ export class InfoTranslator implements Translator<Info> {
     result.scriptLanguage = outBufferToJSON.readInt()
     result.supportedModes = outBufferToJSON.readInt()
     result.gameDataVersion = outBufferToJSON.readInt()
-    if (fileVersion >= 32){
+    if (fileVersion >= 32) {
       result.forcedDefaultCamDistance = outBufferToJSON.readInt()
       result.forcedMaxCamDistance = outBufferToJSON.readInt()
     }
-    if (fileVersion >= 33){
+    if (fileVersion >= 33) {
       result.forcedMinCamDistance = outBufferToJSON.readInt()
     }
 
     // Struct: players
+    const players: Player[] = result.players = []
     const numPlayers = outBufferToJSON.readInt()
     for (let i = 0; i < numPlayers; i++) {
       const player: Player = {
@@ -451,15 +452,21 @@ export class InfoTranslator implements Translator<Info> {
       player.enemyLowPriorities = outBufferToJSON.readInt() // enemy low priorities flags
       player.enermyHighPriorities = outBufferToJSON.readInt() // enemy high priorities flags
 
-      result.players.push(player)
+      players.push(player)
     }
+
+    const playerDictionary: Record<number, Player> = result.players.reduce((map, player) => {
+      map[player.playerNum] = player
+      return map
+    }, {})
 
     // Struct: forces
     const numForces = outBufferToJSON.readInt()
+    const forces: Force[] = result.forces = []
     for (let i = 0; i < numForces; i++) {
       const force: Force = {
         flags: { allied: false, alliedVictory: true, shareVision: true, shareUnitControl: false, shareAdvUnitControl: false },
-        players: 0,
+        players: [],
         name: ''
       }
 
@@ -472,16 +479,25 @@ export class InfoTranslator implements Translator<Info> {
         shareUnitControl: !!(forceFlag & 0b10000), // 0x00000010: share unit control
         shareAdvUnitControl: !!(forceFlag & 0b100000) // 0x00000020: share advanced unit control
       }
-      force.players = outBufferToJSON.readInt() // UNSUPPORTED: (bit "x"=1 --> player "x" is in this force; but carried over for accurate translation
+
+      const playerBitmap = outBufferToJSON.readInt() // (bit "x"=1 --> player "x" is in this force
+      for (let i = 0; i < 24; i++) {
+        const playerId = playerBitmap & (1 << i)
+        if (playerDictionary[playerId]) {
+          force.players.push(playerId)
+        }
+      }
+
       force.name = outBufferToJSON.readString()
 
-      result.forces.push(force)
+      forces.push(force)
     }
 
     // Struct: upgrade avail.
     const numUpgrades = outBufferToJSON.readInt()
+    const upgrades: UpgradeAvailable[] = result.upgrades = []
     for (let i = 0; i < numUpgrades; i++) {
-      result.upgrades.push({
+      upgrades.push({
         playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
         upgradeId: outBufferToJSON.readChars(4), // upgrade id (as in UpgradeData.slk)
         level: outBufferToJSON.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
@@ -491,8 +507,9 @@ export class InfoTranslator implements Translator<Info> {
 
     // Struct: tech avail.
     const numTech = outBufferToJSON.readInt()
+    const techBlacklist: TechUnavailable[] = result.techBlacklist = []
     for (let i = 0; i < numTech; i++) {
-      result.techBlacklist.push({
+      techBlacklist.push({
         playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
         techId: outBufferToJSON.readChars(4) // tech id (this can be an item, unit or ability)
       })
@@ -500,17 +517,20 @@ export class InfoTranslator implements Translator<Info> {
 
     // Struct: random unit table
     const numUnitTable = outBufferToJSON.readInt()
+    const randomUnitTables: RandomUnitTable[] = result.randomUnitTables = []
     for (let i = 0; i < numUnitTable; i++) {
-      result.randomUnitTables.push({
+      const randomUnitTable = {
         id: outBufferToJSON.readInt(), // Group number
         name: outBufferToJSON.readString(), // Group name
         positions: [],
         chances: []
-      })
+      }
+      randomUnitTables.push(randomUnitTable)
 
       const numPositions = outBufferToJSON.readInt() // Number "m" of positions
+      const positions: number[] = randomUnitTable.positions = []
       for (let j = 0; j < numPositions; j++) {
-        result.randomUnitTables[i].positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
+        positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
       }
 
       const numChances = outBufferToJSON.readInt()
@@ -528,23 +548,28 @@ export class InfoTranslator implements Translator<Info> {
 
     // Struct: random item table
     const numItemTable = outBufferToJSON.readInt()
+    const randomItemTables: RandomTable[] = result.randomItemTables = []
     for (let i = 0; i < numItemTable; i++) {
-      result.randomItemTables.push({
+      const randomItemTable: RandomTable = {
         id: outBufferToJSON.readInt(), // Group number
         name: outBufferToJSON.readString(), // Group name
-        rows: []
-      })
+        rows: undefined
+      }
+      randomItemTables.push(randomItemTable)
 
       const itemSetsCurrentTable = outBufferToJSON.readInt() // Number "m" of item sets on the current item table
+      const tableRows: ObjectPool[] = randomItemTable.rows = []
       for (let j = 0; j < itemSetsCurrentTable; j++) {
-        result.randomItemTables[i].rows.push({
+        const tableRow: ObjectPool = {
           type: 2, // unit table (=0), a building table (=1) or an item table (=2) - not used
-          objects: []
-        })
+          objects: undefined
+        }
+        tableRows.push(tableRow)
 
         const itemsInItemSet = outBufferToJSON.readInt() // Number "i" of items on the current item set
+        const objects: RandomObject[] = tableRow.objects = []
         for (let k = 0; k < itemsInItemSet; k++) {
-          result.randomItemTables[i].rows[j].objects.push({
+          objects.push({
             chance: outBufferToJSON.readInt(), // Percentual chance
             objectId: outBufferToJSON.readChars(4) // Item id (as in ItemData.slk)
           })

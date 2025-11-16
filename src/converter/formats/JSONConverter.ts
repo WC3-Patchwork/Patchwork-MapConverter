@@ -1,15 +1,12 @@
 import EnhancementManager from '../../enhancements/EnhancementManager'
-import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type FormatConverter } from './FormatConverter'
-
-const log = LoggerFactory.createLogger('JSONConverter')
-
 export const JSONConverter: FormatConverter = {
-  parse (str: string): object {
-    return JSON.parse(str) as object
+  parse (str: string): unknown {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return JSON.parse(str)
   },
 
-  stringify (obj: object): string {
+  stringify (obj: unknown): string {
     if (EnhancementManager.prettify) {
       return JSON.stringify(obj, null, 2)
     } else {

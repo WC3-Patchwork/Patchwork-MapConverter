@@ -3,31 +3,32 @@ import { W3Buffer } from '../W3Buffer'
 import { rad2Deg, deg2Rad } from '../AngleConverter'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
-import { SpecialDoodad, type Doodad } from '../data/Doodad'
+import { type SpecialDoodad, type Doodad } from '../data/Doodad'
+import { type ItemSet } from '../data/ItemSet'
 
 export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]> {
   private static instance: DoodadsTranslator
 
-  private constructor() { }
+  private constructor () { }
 
-  public static getInstance(): DoodadsTranslator {
+  public static getInstance (): DoodadsTranslator {
     if (this.instance == null) {
       this.instance = new this()
     }
     return this.instance
   }
 
-  public static jsonToWar(doodads: [Doodad[], SpecialDoodad[]]): WarResult {
+  public static jsonToWar (doodads: [Doodad[], SpecialDoodad[]]): WarResult {
     return this.getInstance().jsonToWar(doodads)
   }
 
-  public static warToJson(buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
+  public static warToJson (buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
     return this.getInstance().warToJson(buffer)
   }
 
-  public jsonToWar(compositeJson: [Doodad[], SpecialDoodad[]]): WarResult {
-    const doodadsJson = compositeJson[0];
-    const specialDoodadsJson = compositeJson[1];
+  public jsonToWar (compositeJson: [Doodad[], SpecialDoodad[]]): WarResult {
+    const doodadsJson = compositeJson[0]
+    const specialDoodadsJson = compositeJson[1]
     const outBufferToWar = new HexBuffer()
     /*
          * Header
@@ -35,14 +36,14 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     outBufferToWar.addChars('W3do') // file id
     outBufferToWar.addInt(8) // file version
     outBufferToWar.addInt(11) // subversion 0x0B
-    outBufferToWar.addInt(doodadsJson?.length || 0) // num of trees
+    outBufferToWar.addInt(doodadsJson?.length ?? 0) // num of trees
 
     /*
          * Body
          */
     doodadsJson?.forEach((tree) => {
       outBufferToWar.addChars(tree.type)
-      outBufferToWar.addInt(tree.variation != null ? tree.variation : 0) // optional - default value 0
+      outBufferToWar.addInt(tree.variation != null ? tree.variation : 0)
       outBufferToWar.addFloat(tree.position[0])
       outBufferToWar.addFloat(tree.position[1])
       outBufferToWar.addFloat(tree.position[2])
@@ -71,11 +72,11 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
       outBufferToWar.addByte(treeFlag)
 
       outBufferToWar.addByte(tree.life != null ? tree.life : 100)
-      outBufferToWar.addInt(tree.randomItemSetPtr)
-      outBufferToWar.addInt(tree.droppedItemSets?.length || 0)
+      outBufferToWar.addInt(tree.randomItemSetPtr ?? -1)
+      outBufferToWar.addInt(tree.droppedItemSets?.length ?? 0)
       tree?.droppedItemSets?.forEach(itemSet => {
         // Write the item set
-        outBufferToWar.addInt(itemSet.items?.length || 0);
+        outBufferToWar.addInt(itemSet.items?.length ?? 0)
         itemSet.items?.forEach(item => {
           outBufferToWar.addChars(item.itemId)
           outBufferToWar.addInt(item.chance)
@@ -91,9 +92,9 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     outBufferToWar.addInt(specialDoodadsJson?.length || 0) // number of special doodads
     specialDoodadsJson?.forEach(specialDoodad => {
       outBufferToWar.addChars(specialDoodad.type)
-      outBufferToWar.addInt(specialDoodad.position[0]) //x
-      outBufferToWar.addInt(specialDoodad.position[1]) //y
-      outBufferToWar.addInt(specialDoodad.position[2]) //z
+      outBufferToWar.addInt(specialDoodad.position[0]) // x
+      outBufferToWar.addInt(specialDoodad.position[1]) // y
+      outBufferToWar.addInt(specialDoodad.position[2]) // z
     })
 
     return {
@@ -102,7 +103,7 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     }
   }
 
-  public warToJson(buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
+  public warToJson (buffer: Buffer): JsonResult<[Doodad[], SpecialDoodad[]]> {
     const result: Doodad[] = []
     const outBufferToJSON = new W3Buffer(buffer)
 
@@ -122,7 +123,7 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
         flags: { inUnplayableArea: false, notUsedInScript: true, fixedZ: false },
         life: -1,
         randomItemSetPtr: 0,
-        droppedItemSets: [],
+        droppedItemSets: undefined,
         id: -1
       }
 
@@ -144,7 +145,7 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
       doodad.flags = {
         fixedZ: !!(flags & 0x04),
         notUsedInScript: !!(flags & 0x02),
-        inUnplayableArea: !!(flags & 0x01),
+        inUnplayableArea: !!(flags & 0x01)
       }
 
       doodad.life = outBufferToJSON.readByte() // as a %
@@ -152,15 +153,17 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
       doodad.randomItemSetPtr = outBufferToJSON.readInt() // points to an item set defined in the map (rather than custom one defined below)
       const numberOfItemSets = outBufferToJSON.readInt() // this should be 0 if randomItemSetPtr is >= 0
 
+      const itemSets: ItemSet[] = doodad.droppedItemSets = []
       for (let j = 0; j < numberOfItemSets; j++) {
         // Read the item set
         const numberOfItems = outBufferToJSON.readInt()
-        doodad.droppedItemSets.push({ items: [] })
+        const itemSet: ItemSet = { items: [] }
+        itemSets.push(itemSet)
         for (let k = 0; k < numberOfItems; k++) {
-          doodad.droppedItemSets[j].items.push({
+          itemSet.items.push({
             itemId: outBufferToJSON.readChars(4), // Item ID
             chance: outBufferToJSON.readInt() // % chance to drop
-          });
+          })
         }
       }
 
@@ -176,8 +179,8 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
       resultSpecial.push({
         type: outBufferToJSON.readChars(4), // doodad ID
         position: [outBufferToJSON.readInt(),
-        outBufferToJSON.readInt(),
-        outBufferToJSON.readInt()]
+          outBufferToJSON.readInt(),
+          outBufferToJSON.readInt()]
       })
     }
 

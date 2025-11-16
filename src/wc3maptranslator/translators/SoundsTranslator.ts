@@ -29,28 +29,28 @@ export class SoundsTranslator implements Translator<Sound[]> {
     const outBufferToWar = new HexBuffer()
 
     /*
-         * Header
-         */
+    * Header
+    */
     outBufferToWar.addInt(3) // file version
-    outBufferToWar.addInt(soundsJson?.length || 0) // number of sounds
+    outBufferToWar.addInt(soundsJson.length || 0) // number of sounds
 
     /*
-         * Body
-         */
+    * Body
+    */
     soundsJson?.forEach((sound) => {
       outBufferToWar.addString(sound.name) // e.g. gg_snd_HumanGlueScreenLoop1
       outBufferToWar.addString(sound.path) // e.g. Sound\Ambient\HumanGlueScreenLoop1.wav
 
       // EAX effects enum (e.g. missiles, speech, etc)
       /*
-                default = DefaultEAXON
-                combat = CombatSoundsEAX
-                drums = KotoDrumsEAX
-                spells = SpellsEAX
-                missiles = MissilesEAX
-                hero speech = HeroAcksEAX
-                doodads = DoodadsEAX
-            */
+          default = DefaultEAXON
+          combat = CombatSoundsEAX
+          drums = KotoDrumsEAX
+          spells = SpellsEAX
+          missiles = MissilesEAX
+          hero speech = HeroAcksEAX
+          doodads = DoodadsEAX
+      */
       outBufferToWar.addString(sound.eax != null ? sound.eax : 'DefaultEAXON') // defaults to "DefaultEAXON"
 
       // Flags, if present (optional)
@@ -79,22 +79,22 @@ export class SoundsTranslator implements Translator<Sound[]> {
 
       // Which channel to use? Use the lookup table for more details (optional)
       /*
-                0=General
-                1=Unit Selection
-                2=Unit Acknowledgement
-                3=Unit Movement
-                4=Unit Ready
-                5=Combat
-                6=Error
-                7=Music
-                8=User Interface
-                9=Looping Movement
-                10=Looping Ambient
-                11=Animations
-                12=Constructions
-                13=Birth
-                14=Fire
-            */
+        0=General
+        1=Unit Selection
+        2=Unit Acknowledgement
+        3=Unit Movement
+        4=Unit Ready
+        5=Combat
+        6=Error
+        7=Music
+        8=User Interface
+        9=Looping Movement
+        10=Looping Ambient
+        11=Animations
+        12=Constructions
+        13=Birth
+        14=Fire
+    */
       outBufferToWar.addInt(sound.channel != null ? sound.channel : 0) // default to 0
 
       // Distance fields

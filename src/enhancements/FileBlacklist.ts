@@ -15,8 +15,8 @@ const FileBlacklist = {
     log.info('Loading blacklist from', blacklistFilePath)
     const blacklistFileContent = readFileSync(blacklistFilePath, { encoding: 'utf8' })
 
-    if (blacklistFileContent == null || blacklistFileContent == ""){
-      return;
+    if (blacklistFileContent == null || blacklistFileContent === '') {
+      return
     }
 
     // eslint-disable-next-line no-control-regex

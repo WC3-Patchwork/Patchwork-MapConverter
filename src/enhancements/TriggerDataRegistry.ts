@@ -66,43 +66,46 @@ const TriggerDataRegistry = {
     loaded = true
   },
 
-  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number | undefined {
+  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number {
     let sectionRegistry: Record<string, number | undefined> | undefined
     if (!loaded) {
       throw new Error('TriggerData has not been provided, therefore GUI triggers cannot be converted!')
     }
+    let paramCount: number | undefined
     switch (classification) {
       case StatementType.EVENT:
       case TriggerDataSections.TRIGGER_EVENTS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_EVENTS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.CONDITION:
       case TriggerDataSections.TRIGGER_CONDITIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CONDITIONS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.ACTION:
       case TriggerDataSections.TRIGGER_ACTIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_ACTIONS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.CALL:
       case TriggerDataSections.TRIGGER_CALLS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CALLS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
     }
-
-    return 0 // TODO: do actual error handling?
+    if (paramCount == null) {
+      throw new Error(`Unknown trigger ${classification} named '${name}'`)
+    }
+    return paramCount
   }
 
 }

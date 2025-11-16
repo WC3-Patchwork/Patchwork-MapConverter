@@ -1,15 +1,12 @@
-import { LoggerFactory } from '../../logging/LoggerFactory'
 import yaml from 'yaml'
 import { type FormatConverter } from './FormatConverter'
 
-const log = LoggerFactory.createLogger('YAMLConverter')
-
 export const YAMLConverter: FormatConverter = {
-  parse (str: string): object {
-    return yaml.parse(str, {}) as object
+  parse (str: string): unknown {
+    return yaml.parse(str, {})
   },
 
-  stringify (obj: object): string {
+  stringify (obj: unknown): string {
     return yaml.stringify(obj, {})
   }
 }

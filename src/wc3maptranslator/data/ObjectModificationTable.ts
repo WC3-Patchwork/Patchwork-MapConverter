@@ -44,8 +44,8 @@ interface Modification {
 }
 
 interface ObjectModificationTable {
-  original: object
-  custom: object
+  original: Record<string, Modification[]>
+  custom: Record<string, Modification[]>
 }
 
 export { TableType, ModificationType, FileTypeExtension, ObjectType, type Modification, type ObjectModificationTable }
