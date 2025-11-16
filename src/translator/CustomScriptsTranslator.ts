@@ -69,7 +69,7 @@ export function jsonToWar (json: { headerComment: string, scripts: string[] }, f
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): { headerComment: string, scripts: string[] } {
+export function warToJson (buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readUint()
   let formatSubversion: integer
@@ -131,11 +131,12 @@ export function warToJson (buffer: Buffer): { headerComment: string, scripts: st
     try {
       do {
         loadCustomScript()
+      // eslint-disable-next-line no-constant-condition
       } while (true)
     } catch (e) {
     // catch EOF
     }
   }
 
-  return { headerComment, scripts }
+  return [{ headerComment, scripts }, formatVersion]
 }

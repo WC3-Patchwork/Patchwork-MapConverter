@@ -140,7 +140,7 @@ export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversi
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
+export function warToJson (buffer: Buffer, editorVersion: integer): [Unit[], integer, integer] {
   const input = new W3Buffer(buffer)
   const fileId = input.readChars(4)
   if (fileId !== 'W3do') {
@@ -348,5 +348,5 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     result[i] = { type, variation, position, angle, scale, skin, flags, player, hitpoints, mana, randomItemSetPtr, droppedItemSets, gold, targetAcquisition, hero, inventory, abilities, random, playerColor, waygate, id }
   }
 
-  return result
+  return [result, formatVersion, formatSubversion]
 }

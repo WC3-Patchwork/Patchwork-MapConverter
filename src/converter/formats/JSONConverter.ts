@@ -2,7 +2,6 @@ import EnhancementManager from '../../enhancements/EnhancementManager'
 import { type FormatConverter } from './FormatConverter'
 export const JSONConverter: FormatConverter = {
   parse (str: string): unknown {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return JSON.parse(str)
   },
 

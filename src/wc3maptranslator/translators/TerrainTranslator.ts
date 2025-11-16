@@ -7,15 +7,15 @@ import { TerrainDefaults } from '../default/Terrain'
 
 const log = LoggerFactory.createLogger('TerrainTranslator')
 
-function heightIntToFloat (heightVal: integer, cliffLevel: integer): number {
+function heightIntToFloat(heightVal: integer, cliffLevel: integer): number {
   return (heightVal - 8192 + (cliffLevel - 2) * 512) / 4
 }
 
-function heightFloatToInt (heightVal: number, cliffLevel: integer): integer {
+function heightFloatToInt(heightVal: number, cliffLevel: integer): integer {
   return (heightVal * 4) + 8192 - (cliffLevel - 2) * 512
 }
 
-export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer {
+export function jsonToWar(terrainJson: Terrain, formatVersion: number): Buffer {
   if (formatVersion < 3 || formatVersion > 12) {
     throw new Error(`Unknown terrain format version=${formatVersion}, expected value from range [3, 12]`)
   }
@@ -51,7 +51,7 @@ export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer 
   }
 
   const sizeX = terrainJson.map.sizeX
-  for (let i = terrainJson.map.sizeY; i >= 0; i++) {
+  for (let i = terrainJson.map.sizeY; i >= 0; i--) {
     for (let j = 0; j <= sizeX; j++) {
       const groundTexture = terrainJson.groundTexture[i][j] as number
       const groundVariation = terrainJson.groundVariation[i][j] as number
@@ -114,7 +114,7 @@ export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer 
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Terrain {
+export function warToJson(buffer: Buffer): [Terrain, integer] {
   const input = new W3Buffer(buffer)
   const fileId = input.readChars(4)
   if (fileId !== 'W3E!') {
@@ -293,7 +293,7 @@ export function warToJson (buffer: Buffer): Terrain {
     }
   }
 
-  return {
+  return [{
     tileset,
     customTileset,
     tilePalette: tileIds,
@@ -312,5 +312,5 @@ export function warToJson (buffer: Buffer): Terrain {
     ramp: arrRampFlag,
     blight: arrBlightFlag,
     water: arrWaterFlag
-  }
+  }, formatVersion]
 }

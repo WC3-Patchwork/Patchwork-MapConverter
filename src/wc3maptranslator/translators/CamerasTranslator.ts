@@ -36,7 +36,7 @@ export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVers
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): Camera[] {
+export function warToJson (buffer: Buffer, editorVersion: integer): [Camera[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion !== 0) {
@@ -74,5 +74,5 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Camera[] {
     result[i] = { targetX, targetY, offsetZ, rotation, angleOfAttack, distance, roll, fieldOfView, farClipping, nearClipping, localPitch, localRoll, localYaw, name }
   }
 
-  return result
+  return [result, formatVersion]
 }

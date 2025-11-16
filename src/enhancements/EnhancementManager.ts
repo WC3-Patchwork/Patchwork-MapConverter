@@ -12,7 +12,8 @@ const EnhancementManager = {
   prettify: false,
   containerInfoExtension: '.ini',
   commentExtension: '.txt',
-  mapHeaderFilename: 'header'
+  mapHeaderFilename: 'header',
+  generateTargetProfile: false
 }
 
 export default EnhancementManager

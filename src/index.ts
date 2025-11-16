@@ -21,7 +21,8 @@ import * as Enhancements from './enhancements'
 
 import { LoadTargetProfile } from './converter/ProfileLoader'
 import { type TargetProfile } from './converter/Profile'
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
+ 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 require('source-map-support').install()
 
 let log: Logger<ILogObj>
@@ -99,9 +100,15 @@ program
 program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
+  .option('-gtp, --generate-target-profile', 'Generate target profile json file for json2war')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argOptional())
+  .hook('preAction', (thisCommand, actionCommand) => {
+    const options = actionCommand.opts()
+    if (options.generateTargetProfile) EnhancementManager.generateTargetProfile = true
+    log.info('Will generate target profile JSON file')
+  })
   .action(async (input: string, output: string, target?: string) => {
     try {
       let profile: TargetProfile | undefined

@@ -388,7 +388,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): TriggerTranslatorOutput {
+export function warToJson (buffer: Buffer): [TriggerTranslatorOutput, integer, integer] {
   const input = new W3Buffer(buffer)
 
   try {
@@ -768,7 +768,7 @@ export function warToJson (buffer: Buffer): TriggerTranslatorOutput {
       }
     }
 
-    return {
+    return [{
       root: root ?? {
         isExpanded: false,
         children: [],
@@ -776,7 +776,7 @@ export function warToJson (buffer: Buffer): TriggerTranslatorOutput {
         contentType: ContentType.HEADER
       } satisfies TriggerContainer,
       scriptReferences: customScripts
-    }
+    }, formatVersion, formatSubversion]
   } catch (e) {
     log.error(`Error at offset: ${(input as unknown as { _offset: number })._offset}`)
     throw e

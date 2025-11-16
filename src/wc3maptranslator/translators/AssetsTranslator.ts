@@ -1,4 +1,5 @@
 import { LoggerFactory } from '../../logging/LoggerFactory'
+import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { AssetType, type Asset } from '../data/Asset'
@@ -41,7 +42,7 @@ export function jsonToWar (imports: Asset[], formatVersion: number): Buffer {
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Asset[] {
+export function warToJson (buffer: Buffer): [Asset[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion > 1 || formatVersion < 0) {
@@ -59,5 +60,5 @@ export function warToJson (buffer: Buffer): Asset[] {
     }
   }
 
-  return result
+  return [result, formatVersion]
 }

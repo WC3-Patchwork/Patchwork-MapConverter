@@ -100,7 +100,7 @@ export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer 
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Sound[] {
+export function warToJson (buffer: Buffer): [Sound[], integer] {
   const result: Sound[] = []
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
@@ -219,5 +219,5 @@ export function warToJson (buffer: Buffer): Sound[] {
     }
   }
 
-  return result
+  return [result, formatVersion]
 }

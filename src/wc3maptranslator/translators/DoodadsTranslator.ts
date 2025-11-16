@@ -9,11 +9,12 @@ import { DoodadDefaults } from '../default/Doodad'
 
 const log = LoggerFactory.createLogger('DoodadsTranslator')
 
-export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], formatVersion: integer, formatSubversion: integer, specialDoodadFormatVersion: integer, editorVersion: integer): Buffer {
+export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
 
+  formatSubversion = formatSubversion ?? 0
   if (formatSubversion < 12) {
     throw new Error(`Unknown doodad format subversion=${formatSubversion}, expected below 12`)
   }
@@ -70,6 +71,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   })
 
   if (formatVersion > 2) {
+    specialDoodadFormatVersion = specialDoodadFormatVersion ?? 0
     output.addInt(specialDoodadFormatVersion)
     output.addInt(specialDoodads?.length || 0)
     specialDoodads?.forEach(specialDoodad => {
@@ -82,7 +84,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], SpecialDoodad[] | undefined] {
+export function warToJson (buffer: Buffer, editorVersion: integer): [[Doodad[], SpecialDoodad[] | undefined], integer, integer | undefined, integer | undefined] {
   const input = new W3Buffer(buffer)
   const fileMagicNumber = input.readChars(4)
   if (fileMagicNumber !== 'W3do') {
@@ -95,12 +97,12 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
     log.info(`Doodad format version is ${formatVersion}.`)
   }
 
-  let subVersion: integer
+  let formatSubversion: integer
   if (formatVersion > 4) {
-    subVersion = input.readInt()
-    log.info(`Doodad format subversion is ${subVersion}.`)
+    formatSubversion = input.readInt()
+    log.info(`Doodad format subversion is ${formatSubversion}.`)
   } else {
-    subVersion = 0
+    formatSubversion = 0
   }
 
   const doodads: Doodad[] = []
@@ -182,9 +184,10 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
     }
   }
 
+  let specialDoodadFormatVersion: integer | undefined
   const specialDoodads: SpecialDoodad[] = []
   if (formatVersion > 2) {
-    const specialDoodadFormatVersion = input.readInt()
+    specialDoodadFormatVersion = input.readInt()
     if (specialDoodadFormatVersion !== 0) {
       log.warn(`Unknown special doodads format version=${specialDoodadFormatVersion}, expected 0, will attempt reading...`)
     } else {
@@ -200,5 +203,5 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
     }
   }
 
-  return [doodads, specialDoodads]
+  return [[doodads, specialDoodads], formatVersion, formatSubversion, specialDoodadFormatVersion]
 }

@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const roundTo = require('round-to')
 
 export class W3Buffer {
@@ -30,7 +30,7 @@ export class W3Buffer {
   public readFloat (): number {
     const float: number = this._buffer.readFloatLE(this._offset)
     this._offset += 4
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+     
     return roundTo(float, 3)
   }
 

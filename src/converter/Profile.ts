@@ -12,9 +12,8 @@ interface TargetProfile {
   unitsDooFormatVersion: integer
   unitsDooFormatSubversion: integer
   dooFormatVersion: integer
-  dooFormatSubversion: integer
-  specialDooFormatVersion: integer
-  specialDooFormatSubversion: integer
+  dooFormatSubversion: integer | undefined
+  specialDooFormatVersion: integer | undefined
   w3rFormatVersion: integer
   w3cFormatVersion: integer
   w3sFormatVersion: integer

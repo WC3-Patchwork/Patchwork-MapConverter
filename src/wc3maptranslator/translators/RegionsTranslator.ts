@@ -72,7 +72,7 @@ export function jsonToWar (regionsJson: Region[], formatVersion: integer): Buffe
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Region[] {
+export function warToJson (buffer: Buffer): [Region[], integer] {
   const result: Region[] = []
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
@@ -136,5 +136,5 @@ export function warToJson (buffer: Buffer): Region[] {
     }
   }
 
-  return result
+  return [result, formatVersion]
 }

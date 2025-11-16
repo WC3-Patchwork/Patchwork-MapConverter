@@ -345,7 +345,7 @@ export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Info {
+export function warToJson (buffer: Buffer): [Info, integer, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 33) {
@@ -877,7 +877,7 @@ export function warToJson (buffer: Buffer): Info {
     scriptLanguageVal = input.readInt()
   }
 
-  return {
+  return [{
     mapVersion,
     gameVersion: {
       major: gameVersionMajor,
@@ -969,5 +969,5 @@ export function warToJson (buffer: Buffer): Info {
     techtree,
     randomGroups,
     randomItemTables
-  } satisfies Info
+  } satisfies Info, formatVersion, editorVersion]
 }

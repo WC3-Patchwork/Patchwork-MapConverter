@@ -103,7 +103,7 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModificationTable {
+export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModificationTable, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 3) {
@@ -212,5 +212,5 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModifi
     custom = ObjectModificationTableDefaults.custom
   }
 
-  return { original, custom }
+  return [{ original, custom }, formatVersion]
 }
