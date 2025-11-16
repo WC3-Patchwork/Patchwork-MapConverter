@@ -7,7 +7,7 @@ import { type Camera } from '../data/Camera'
 export class CamerasTranslator implements Translator<Camera[]> {
   private static instance: CamerasTranslator
 
-  private constructor () {}
+  private constructor () { }
 
   public static getInstance (): CamerasTranslator {
     if (this.instance == null) {
@@ -25,75 +25,48 @@ export class CamerasTranslator implements Translator<Camera[]> {
   }
 
   public jsonToWar (cameras: Camera[]): WarResult {
-    const outBufferToWar = new HexBuffer()
+    const output = new HexBuffer()
 
-    /*
-         * Header
-         */
-    outBufferToWar.addInt(0) // file version
-    outBufferToWar.addInt(cameras?.length || 0) // number of cameras
-
-    /*
-         * Body
-         */
+    output.addInt(0) // file version
+    output.addInt(cameras?.length ?? 0) // number of cameras
     cameras?.forEach((camera) => {
-      outBufferToWar.addFloat(camera.target.x)
-      outBufferToWar.addFloat(camera.target.y)
-      outBufferToWar.addFloat(camera.offsetZ)
-      outBufferToWar.addFloat(camera.rotation != null ? camera.rotation : 0)
-      outBufferToWar.addFloat(camera.aoa)
-      outBufferToWar.addFloat(camera.distance)
-      outBufferToWar.addFloat(camera.roll != null ? camera.roll : 0)
-      outBufferToWar.addFloat(camera.fov)
-      outBufferToWar.addFloat(camera.farClipping)
-      outBufferToWar.addFloat(100) // (?) unknown - usually set to 100
-
-      // Camera name - must be null-terminated
-      outBufferToWar.addString(camera.name)
+      output.addFloat(camera.target[0])
+      output.addFloat(camera.target[1])
+      output.addFloat(camera.target[2])
+      output.addFloat(camera.rotation ?? 0)
+      output.addFloat(camera.angleOfAttack)
+      output.addFloat(camera.distance)
+      output.addFloat(camera.roll ?? 0)
+      output.addFloat(camera.fieldOfView)
+      output.addFloat(camera.farClipping)
+      output.addFloat(camera.float1)
+      output.addString(camera.name)
     })
 
     return {
       errors: [],
-      buffer: outBufferToWar.getBuffer()
+      buffer: output.getBuffer()
     }
   }
 
   public warToJson (buffer: Buffer): JsonResult<Camera[]> {
     const result: Camera[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
+    const input = new W3Buffer(buffer)
 
-    const fileVersion = outBufferToJSON.readInt()
-    const numCameras = outBufferToJSON.readInt()
-
+    const fileVersion = input.readInt()
+    const numCameras = input.readInt()
     for (let i = 0; i < numCameras; i++) {
-      const camera: Camera = {
-        target: {
-          x: 0,
-          y: 0
-        },
-        offsetZ: 0,
-        rotation: 0,
-        aoa: 0,
-        distance: 0,
-        roll: 0,
-        fov: 0,
-        farClipping: 0,
-        name: ''
+      result[i] = {
+        target: [input.readFloat(), input.readFloat(), input.readFloat()],
+        rotation: input.readFloat(),
+        angleOfAttack: input.readFloat(),
+        distance: input.readFloat(),
+        roll: input.readFloat(),
+        fieldOfView: input.readFloat(),
+        farClipping: input.readFloat(),
+        float1: input.readFloat(),
+        name: input.readString()
       }
-
-      camera.target.x = outBufferToJSON.readFloat()
-      camera.target.y = outBufferToJSON.readFloat()
-      camera.offsetZ = outBufferToJSON.readFloat()
-      camera.rotation = outBufferToJSON.readFloat()
-      camera.aoa = outBufferToJSON.readFloat() // angle of attack
-      camera.distance = outBufferToJSON.readFloat()
-      camera.roll = outBufferToJSON.readFloat()
-      camera.fov = outBufferToJSON.readFloat() // field of view
-      camera.farClipping = outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat() // consume this unknown float field
-      camera.name = outBufferToJSON.readString()
-
-      result.push(camera)
     }
 
     return {

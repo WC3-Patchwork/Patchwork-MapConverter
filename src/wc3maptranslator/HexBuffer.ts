@@ -14,11 +14,11 @@ const intToHex = (intV: number, isShort: boolean): string[] => {
   // Bytes are already in correct little-endian form
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
   return byteNum.map((Byte: number) => {
-    return '0x' + Byte.toString(16)
+    return `0x${Byte.toString(16)}`
   })
 }
 const charToHex = (character: string): string => {
-  return '0x' + character.charCodeAt(0).toString(16)
+  return `0x${character.charCodeAt(0).toString(16)}`
 }
 
 export class HexBuffer {
@@ -37,7 +37,7 @@ export class HexBuffer {
     const buf = Buffer.from(str, 'utf-8')
 
     for (let i = 0; i < buf.length; i++) {
-      this._buffer.push('0x' + buf[i].toString(16))
+      this._buffer.push(`0x${buf[i].toString(16)}`)
     }
   }
 
@@ -70,13 +70,11 @@ export class HexBuffer {
     // ieee754.write(buffer, value, buffer offset, little-endian, mantissa length, bytes);
     ieee754.write(buf as Uint8Array, float, 0, true, 23, 4)
 
-    buf.forEach((byte) => {
-      this._buffer.push('0x' + byte.toString(16))
-    })
+    buf.forEach((byte) => this._buffer.push(`0x${byte.toString(16)}`))
   }
 
   public addByte (byte: number): void {
-    this._buffer.push('0x' + byte.toString(16))
+    this._buffer.push(`0x${byte.toString(16)}`)
   }
 
   public addNullTerminator (): void {

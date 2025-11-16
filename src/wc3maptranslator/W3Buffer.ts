@@ -49,10 +49,7 @@ export class W3Buffer {
       this._offset += 1
     }
 
-    return string.map((ch) => {
-      // if (ch === 0x0) return '0' //Curse spell has a "Crs" field, whose 4th byte is probably a 0x0, and not a "0", causing the editor to just ignore this change when converting back...
-      return String.fromCharCode(ch)
-    }).join('')
+    return string.map((ch) => String.fromCharCode(ch)).join('')
   }
 
   public readByte (): number {
