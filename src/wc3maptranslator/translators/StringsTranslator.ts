@@ -2,7 +2,6 @@ import { HexBuffer } from '../HexBuffer'
 
 export function jsonToWar (stringsJson: Record<string, string>): Buffer {
   const output = new HexBuffer()
-
   Object.keys(stringsJson).forEach((key) => {
     output.addChars('STRING ' + key)
     output.addNewLine()

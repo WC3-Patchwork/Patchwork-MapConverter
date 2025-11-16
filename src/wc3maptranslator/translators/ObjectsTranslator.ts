@@ -2,7 +2,8 @@ import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { ModificationType, type ObjectModificationTable, ObjectType, type Modification } from '../data/ObjectModificationTable'
+import { ModificationType, type ObjectModificationTable, ObjectType, type Modification, type ObjectData } from '../data/ObjectModificationTable'
+import { ModificationDefaults, ObjectModificationTableDefaults } from '../default/ObjectModificationTable'
 
 const log = LoggerFactory.createLogger('ObjectsTranslator')
 
@@ -18,28 +19,27 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
   const output = new HexBuffer()
   output.addInt(formatVersion)
 
-  const generateTableFromJson = (tableType: TableType, tableData: Record<string, Modification[]>): void => {
-    const data = Object.entries(tableData)
+  const generateTableFromJson = (tableType: TableType, tableData: Record<string, ObjectData>): void => {
+    const data = tableData ? Object.entries(tableData) : []
     output.addInt(data.length)
-    data.forEach(([defKey, modifications]) => {
+    data.forEach(([defKey, objectData]) => {
       if (tableType === TableType.original) {
         output.addChars(defKey)
-        output.addChars('\0\0\0\0')
+        output.addChars(ModificationDefaults.customId)
       } else {
-        // e.g. "h000:hfoo"
-        output.addChars(defKey.substring(5, 9)) // original id
-        output.addChars(defKey.substring(0, 4)) // custom id
+        output.addChars(objectData.originalId)
+        output.addChars(defKey)
       }
 
       if (formatVersion >= 3) {
         // once Blizzard decides to do something with this, I will add Set/Variant support
         // TODO: sets means adding another for loop, just take a look at warToJson function
         output.addInt(1) // setCount
-        output.addInt(0) // setFlag
+        output.addInt(ModificationDefaults.setFlag)
       }
 
-      output.addInt(modifications.length)
-      for (const modification of modifications) {
+      output.addInt(objectData.modifications.length)
+      for (const modification of objectData.modifications) {
         output.addChars(modification.id)
 
         const fieldTypeValue = (function (fieldType: ModificationType): integer {
@@ -71,8 +71,8 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
         }
 
         if (useExtraData) {
-          output.addInt(modification.levelVariation ?? 0) // Level or variation
-          output.addInt(modification.dataPointer ?? 0) // E.g DataA1 is 1 because of col A; refer to the xyzData.slk files for Data fields
+          output.addInt(modification.levelVariation ?? ModificationDefaults.levelVariation) // Level or variation
+          output.addInt(modification.dataPointer ?? ModificationDefaults.dataPointer) // E.g DataA1 is 1 because of col A; refer to the xyzData.slk files for Data fields
         }
 
         switch (modification.type) {
@@ -110,12 +110,12 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModifi
     log.warn(`Unknown object definition format version ${formatVersion} will attempt at reading...`)
   }
 
-  const readModificationTable = (input: W3Buffer, objectType: ObjectType, formatVersion: integer): Record<string, Modification[]> => {
-    const modifications: Record<string, Modification[]> = {}
+  const readModificationTable = (input: W3Buffer, objectType: ObjectType, formatVersion: integer): Record<string, ObjectData> => {
+    const modifications: Record<string, ObjectData> = {}
 
     const numTableModifications = input.readInt()
     for (let i = 0; i < numTableModifications; i++) {
-      const objectDefinition: Modification[] = []
+      const modifications: Modification[] = []
 
       const originalId = input.readChars(4)
       const customId = input.readChars(4)
@@ -186,7 +186,7 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModifi
             input.readChars(4) // objectID, again
           }
 
-          objectDefinition.push({
+          modifications.push({
             id: fieldId,
             type: fieldType,
             value: fieldValue,
@@ -196,16 +196,18 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModifi
         }
       }
 
-      const objectKey = (customId === '\0\0\0\0') ? originalId : `${customId}:${originalId}`
-      modifications[objectKey] = objectDefinition
+      const objectKey = (customId === ModificationDefaults.customId) ? originalId : customId
+      modifications[objectKey] = { originalId, modifications }
     }
     return modifications
   }
 
   const original = readModificationTable(input, objectType, formatVersion)
-  let custom: Record<string, Modification[]> | undefined
+  let custom: Record<string, ObjectData>
   if (!input.isExhausted()) {
     custom = readModificationTable(input, objectType, formatVersion)
+  } else {
+    custom = ObjectModificationTableDefaults.custom
   }
 
   return { original, custom }

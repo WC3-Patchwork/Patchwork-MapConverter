@@ -10,7 +10,6 @@ import { DoodadDefaults } from '../default/Doodad'
 const log = LoggerFactory.createLogger('DoodadsTranslator')
 
 export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]], formatVersion: integer, formatSubversion: integer, specialDoodadFormatVersion: integer, editorVersion: integer): Buffer {
-  const output = new HexBuffer()
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
@@ -18,7 +17,7 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
   if (formatSubversion < 12) {
     throw new Error(`Unknown doodad format subversion=${formatSubversion}, expected below 12`)
   }
-
+  const output = new HexBuffer()
   output.addChars('W3do')
   output.addInt(formatVersion)
   if (formatVersion > 4) {
@@ -85,7 +84,6 @@ export function jsonToWar ([doodads, specialDoodads]: [Doodad[], SpecialDoodad[]
 
 export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], SpecialDoodad[] | undefined] {
   const input = new W3Buffer(buffer)
-
   const fileMagicNumber = input.readChars(4)
   if (fileMagicNumber !== 'W3do') {
     log.warn(`Doodads file does not begin with 'W3do' magic number. It starts with ${fileMagicNumber}, will attempt reading...`)

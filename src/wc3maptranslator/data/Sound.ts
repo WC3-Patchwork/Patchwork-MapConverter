@@ -17,7 +17,7 @@ interface Sound {
   productionComments: string
   speakerNameId: integer
   listenerName: string
-  assetFlags: integer // TODO: map asset flags
+  assetFlags: integer // unknown flags - no use found
   speakerUnitId: string
   animationLabel: string
   animationGroup: string

@@ -37,7 +37,6 @@ export function jsonToWar (regionsJson: Region[], formatVersion: integer): Buffe
   if (formatVersion < 0 || formatVersion > 5) {
     throw new Error(`Unknown regions format version=${formatVersion}, expected value from range [0, 5]`)
   }
-
   const output = new HexBuffer()
   output.addInt(formatVersion)
   output.addInt(regionsJson?.length ?? 0) // number of regions
@@ -77,7 +76,6 @@ export function warToJson (buffer: Buffer): Region[] {
   const result: Region[] = []
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
-
   if (formatVersion < 0 || formatVersion > 5) {
     log.warn(`Unknown regions format version ${formatVersion} will attempt at reading...`)
   }

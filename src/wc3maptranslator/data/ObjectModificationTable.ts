@@ -1,4 +1,4 @@
-import { type integer } from '../CommonInterfaces'
+import { type FourCC, type integer } from '../CommonInterfaces'
 
 enum ModificationType {
   INTEGER = 'INTEGER', // 0
@@ -28,7 +28,7 @@ enum ObjectType {
 }
 
 interface Modification {
-  id: string
+  id: FourCC
   type: ModificationType
   value: integer | number | string
 
@@ -39,9 +39,14 @@ interface Modification {
   dataPointer?: integer
 }
 
-interface ObjectModificationTable {
-  original: Record<string, Modification[]>
-  custom?: Record<string, Modification[]>
+interface ObjectData {
+  originalId: FourCC
+  modifications: Modification[]
 }
 
-export { ModificationType, FileTypeExtension, ObjectType, type Modification, type ObjectModificationTable }
+interface ObjectModificationTable {
+  original: Record<FourCC, ObjectData>
+  custom?: Record<FourCC, ObjectData>
+}
+
+export { ModificationType, type ObjectData, FileTypeExtension, ObjectType, type Modification, type ObjectModificationTable }

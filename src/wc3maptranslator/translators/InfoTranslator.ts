@@ -21,12 +21,11 @@ function playerListToPlayerBitmap (playerList: PlayerList): integer {
 }
 
 export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
-  const output = new HexBuffer()
-
   if (formatVersion < 0 || formatVersion > 33) {
     throw new Error(`Unknown map info format version=${formatVersion}, expected value from range [0, 33]`)
   }
 
+  const output = new HexBuffer()
   output.addInt(formatVersion)
   if (formatVersion > 0x0F) {
     output.addInt(infoJson.mapVersion ?? InfoDefaults.mapVersion)
@@ -348,9 +347,7 @@ export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
 
 export function warToJson (buffer: Buffer): Info {
   const input = new W3Buffer(buffer)
-
   const formatVersion = input.readInt()
-
   if (formatVersion < 0 || formatVersion > 33) {
     log.warn(`Unknown map info format version ${formatVersion} will attempt at reading...`)
   }

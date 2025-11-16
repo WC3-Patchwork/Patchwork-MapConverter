@@ -12,9 +12,8 @@ export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVers
     throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
   }
   const output = new HexBuffer()
-
-  output.addInt(formatVersion) // file version
-  output.addInt(cameras?.length ?? 0) // number of cameras
+  output.addInt(formatVersion)
+  output.addInt(cameras?.length ?? 0)
   cameras?.forEach((camera) => {
     output.addFloat(camera.targetX)
     output.addFloat(camera.targetY)

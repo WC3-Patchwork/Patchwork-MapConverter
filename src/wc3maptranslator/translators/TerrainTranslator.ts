@@ -16,12 +16,10 @@ function heightFloatToInt (heightVal: number, cliffLevel: integer): integer {
 }
 
 export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer {
-  const output = new HexBuffer()
-
   if (formatVersion < 3 || formatVersion > 12) {
     throw new Error(`Unknown terrain format version=${formatVersion}, expected value from range [3, 12]`)
   }
-
+  const output = new HexBuffer()
   output.addChars('W3E!')
   output.addInt(formatVersion)
 
@@ -118,7 +116,6 @@ export function jsonToWar (terrainJson: Terrain, formatVersion: number): Buffer 
 
 export function warToJson (buffer: Buffer): Terrain {
   const input = new W3Buffer(buffer)
-
   const fileId = input.readChars(4)
   if (fileId !== 'W3E!') {
     log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3E!', will attempt parsing...`)

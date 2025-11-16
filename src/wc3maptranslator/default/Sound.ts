@@ -36,7 +36,7 @@ const SoundDefaults = {
   productionComments: '',
   speakerNameId: 0xFFFFFFFF,
   listenerName: '',
-  assetFlags: 0, // TODO
+  assetFlags: 0, // Editor has no use for these
   speakerUnitId: '',
   animationLabel: '',
   animationGroup: '',

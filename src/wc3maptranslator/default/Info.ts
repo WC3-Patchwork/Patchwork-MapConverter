@@ -76,7 +76,7 @@ const InfoDefaults = {
     title: '',
     subtitle: ''
   },
-  scriptLanguage: ScriptLanguage.JASS, // TODO: find default
+  scriptLanguage: ScriptLanguage.JASS,
   assetMode: {
     SD: true,
     HD: true

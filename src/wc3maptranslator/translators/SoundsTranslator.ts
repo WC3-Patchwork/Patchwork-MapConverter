@@ -39,12 +39,10 @@ const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc, it
 }, {}) as Record<string, integer>
 
 export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
-  const output = new HexBuffer()
-
   if (fileVersion > 3 || fileVersion < 1) {
     throw new Error(`Unknown sound file format version ${fileVersion}`)
   }
-
+  const output = new HexBuffer()
   output.addInt(fileVersion)
   output.addInt(soundsJson.length ?? 0)
   soundsJson?.forEach((sound) => {
@@ -105,7 +103,6 @@ export function jsonToWar (soundsJson: Sound[], fileVersion: integer): Buffer {
 export function warToJson (buffer: Buffer): Sound[] {
   const result: Sound[] = []
   const input = new W3Buffer(buffer)
-
   const fileVersion = input.readInt()
   if (fileVersion > 3) {
     log.warn(`Unsupported sound file format version ${fileVersion}, will attempt at parsing...`)

@@ -6,11 +6,11 @@ import { type UnitSet } from '../data/UnitSet'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
 import { LoggerFactory } from '../../logging/LoggerFactory'
 import { UnitDefaults } from '../default/Units'
+import { mergeBoolRecords } from '../Util'
 
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
 export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, editorVersion]: [integer, integer, integer]): Buffer {
-  const output = new HexBuffer()
   if (formatVersion < 9) {
     throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
   }
@@ -18,7 +18,7 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
   if (formatSubversion < 12) {
     throw new Error(`Unknown preplaced units format subversion=${formatSubversion}, expected below 12`)
   }
-
+  const output = new HexBuffer()
   output.addChars('W3do')
   output.addInt(formatVersion)
   if (formatVersion > 4) {
@@ -39,18 +39,21 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
       output.addChars(unit.skin ?? unit.type)
     }
 
-    if (formatVersion > 5) { // TODO: flags defaults
-      output.addByte(0x02 | (unit.flags.fixedZ ? 0x04 : 0)) // by default all units have 0x02, which means nothing
+    const flags = mergeBoolRecords(unit.flags, UnitDefaults.flags)
+    if (formatVersion > 5) {
+      let flagValue = 0
+      if (flags.fixedZ) flagValue |= 0x04
+      output.addByte(flagValue | 0x02) // by default all units have 0x02, which means nothing
     }
     output.addShort(unit.player)
-    output.addInt(unit.flags.isUprooted ? 1 : 0)
+    output.addInt(flags.isUprooted ? 1 : 0)
     output.addInt(unit.hitpoints ?? UnitDefaults.hitpoints)
     output.addInt(unit.mana ?? UnitDefaults.mana)
 
     if (formatSubversion >= 11) {
       output.addInt(unit.randomItemSetPtr ?? UnitDefaults.randomItemSetPtr)
     }
-    if (formatSubversion !== 0) {
+    if (formatVersion !== 0) {
       const droppedItemSets = unit.droppedItemSets ?? UnitDefaults.droppedItemSets
       output.addInt(droppedItemSets.length)
       droppedItemSets?.forEach(itemSet => {
@@ -62,17 +65,17 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
       })
     }
 
-    if (formatSubversion >= 2) {
+    if (formatVersion >= 2) {
       output.addInt(unit.gold ?? UnitDefaults.gold)
     }
 
-    if (formatSubversion >= 3) {
+    if (formatVersion >= 3) {
       output.addFloat(unit.targetAcquisition ?? UnitDefaults.targetAcquisition)
     }
 
-    if (formatSubversion >= 5) {
+    if (formatVersion >= 5) {
       output.addInt(unit.hero?.level ?? UnitDefaults.hero.level)
-      if (formatSubversion >= 10) {
+      if (formatVersion >= 10) {
         output.addInt(unit.hero?.str ?? UnitDefaults.hero.str)
         output.addInt(unit.hero?.agi ?? UnitDefaults.hero.agi)
         output.addInt(unit.hero?.int ?? UnitDefaults.hero.int)
@@ -94,9 +97,9 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
       })
     }
 
-    if (formatSubversion > 6) {
+    if (formatVersion > 6) {
       const randomUnitSet = unit.random?.unitSet ?? UnitDefaults.random.unitSet
-      if (formatSubversion < 8) {
+      if (formatVersion < 8) {
         output.addInt(randomUnitSet.length)
         randomUnitSet.forEach(spawnableUnit => {
           output.addChars(spawnableUnit.unitId)
@@ -106,10 +109,8 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
         output.addInt(unit.random?.type ?? -1)
         switch (unit.random?.type) {
           case 0:
-            // reminder: Little-Endian
-            // TODO: defaultify
             output.addInt(((unit.random.level as integer) & 0x00FFFFFFFF) |
-        ((unit.random.itemClass as integer) ?? 0) & 0xFF00000000)
+        (((unit.random.itemClass as integer) ?? 0) << 24) & 0xFF00000000)
             break
           case 1:
             output.addInt(unit.random.groupIndex as integer)
@@ -125,7 +126,7 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
         }
       }
 
-      if (formatSubversion >= 9) {
+      if (formatVersion >= 9) {
         output.addInt(unit.playerColor ?? unit.player)
         output.addInt(unit.waygate ?? UnitDefaults.waygate)
       }
@@ -141,17 +142,14 @@ export function jsonToWar (units: Unit[], [formatVersion, formatSubversion, edit
 
 export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
   const input = new W3Buffer(buffer)
-
   const fileId = input.readChars(4)
   if (fileId !== 'W3do') {
     log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3do', will attempt parsing...`)
   }
-
   const formatVersion = input.readInt()
   if (formatVersion < 9) {
     log.warn(`Unknown preplaced units file format version '${formatVersion}', expected less than 9, will attempt parsing...`)
   }
-
   const formatSubversion = input.readInt()
   if (formatSubversion < 12) {
     log.warn(`Unknown preplaced units file format subversion '${formatVersion}', expected less than 12, will attempt parsing...`)
@@ -191,7 +189,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     }
 
     const droppedItemSets: ItemSet[] = []
-    if (formatSubversion !== 0) {
+    if (formatVersion !== 0) {
       const numDroppedItemSets = input.readInt()
       for (let j = 0; j < numDroppedItemSets; j++) {
         const items: DroppableItem[] = []
@@ -207,14 +205,14 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     }
 
     let gold: integer
-    if (formatSubversion >= 2) {
+    if (formatVersion >= 2) {
       gold = input.readInt()
     } else {
       gold = 0
     }
 
     let targetAcquisition: number
-    if (formatSubversion >= 3) {
+    if (formatVersion >= 3) {
       targetAcquisition = input.readFloat() // (-1 = normal, -2 = camp)
     } else {
       targetAcquisition = -1
@@ -226,9 +224,9 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     let int: integer
     const inventory: Inventory[] = []
     const abilities: Abilities[] = []
-    if (formatSubversion >= 5) {
+    if (formatVersion >= 5) {
       level = input.readInt()
-      if (formatSubversion >= 10) {
+      if (formatVersion >= 10) {
         str = input.readInt()
         agi = input.readInt()
         int = input.readInt()
@@ -260,14 +258,14 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     let random: RandomSpawn | undefined
     let playerColor: integer
     let waygate: integer
-    if (formatSubversion > 6) {
+    if (formatVersion > 6) {
       let randomType: integer
       let randomUnitSet: UnitSet | undefined
       let randomLevel: integer | undefined
       let itemClass: integer | undefined
       let groupIndex: integer | undefined
       let columnIndex: integer | undefined
-      if (formatSubversion < 8) {
+      if (formatVersion < 8) {
         const randomUnitCount = input.readInt()
         randomUnitSet = []
         for (let j = 0; j < randomUnitCount; j++) {
@@ -279,7 +277,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
         randomType = 2
       } else {
         randomType = input.readInt() // random unit/item flag "r" (for uDNR units and iDNR items)
-        let unitSetCount
+        let unitSetCount: integer
         switch (randomType) {
           case 0:
             // 0 = Any neutral passive building/item, in this case we have
@@ -287,7 +285,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
             //   byte: item class of the random item, 0 = any, 1 = permanent ... (this is 0 for units)
             //   r is also 0 for non random units/items so we have these 4 bytes anyway (even if the id wasnt uDNR or iDNR)
             randomLevel = input.readInt()
-            itemClass = randomLevel & 0xFF000000
+            itemClass = (randomLevel & 0xFF000000) >> 24
             randomLevel &= 0x00FFFFFFFF
             break
           case 1:
@@ -325,7 +323,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
         } satisfies RandomSpawn
       }
 
-      if (formatSubversion >= 9) {
+      if (formatVersion >= 9) {
         playerColor = input.readInt()
         waygate = input.readInt() // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
       } else {
@@ -338,7 +336,7 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
     }
 
     let id: integer
-    if (formatSubversion > 3) {
+    if (formatVersion > 3) {
       id = input.readInt()
     } else {
       id = 0
