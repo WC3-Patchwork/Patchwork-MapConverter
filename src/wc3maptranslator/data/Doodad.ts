@@ -12,7 +12,7 @@ interface Doodad {
   life: integer
   randomItemSetPtr: integer | undefined
   droppedItemSets: ItemSet[] | undefined
-  id: integer
+  id: integer | undefined
 }
 
 interface DoodadFlags {
