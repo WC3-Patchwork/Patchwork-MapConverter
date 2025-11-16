@@ -92,12 +92,12 @@ export class SoundsTranslator implements Translator<Sound[]> {
       output.addFloat(sound['3d']?.distance?.min ?? 0xFFFFFFFF) // UINTMAX as default
       output.addFloat(sound['3d']?.distance?.max ?? 0xFFFFFFFF) // UINTMAX as default
       output.addFloat(sound['3d']?.distance?.cutoff ?? 10000.0)
-      output.addFloat(sound['3d']?.cone?.insideAngle ?? 0xFFFFFFFF)
-      output.addFloat(sound['3d']?.cone?.outsideAngle ?? 0xFFFFFFFF)
-      output.addInt(sound['3d']?.cone?.outsideVolume ?? 0xFFFFFFFF)
-      output.addFloat(sound['3d']?.cone?.orientation?.at(0) ?? 0xFFFFFFFF)
-      output.addFloat(sound['3d']?.cone?.orientation?.at(1) ?? 0xFFFFFFFF)
-      output.addFloat(sound['3d']?.cone?.orientation?.at(2) ?? 0xFFFFFFFF)
+      output.addFloat(sound['3d']?.cone?.insideAngle ?? 0xFFFFFFFF) // UINTMAX as default
+      output.addFloat(sound['3d']?.cone?.outsideAngle ?? 0xFFFFFFFF) // UINTMAX as default
+      output.addInt(sound['3d']?.cone?.outsideVolume ?? 0xFFFFFFFF) // UINTMAX as default
+      output.addFloat(sound['3d']?.cone?.orientation?.at(0) ?? 0xFFFFFFFF) // UINTMAX as default
+      output.addFloat(sound['3d']?.cone?.orientation?.at(1) ?? 0xFFFFFFFF) // UINTMAX as default
+      output.addFloat(sound['3d']?.cone?.orientation?.at(2) ?? 0xFFFFFFFF) // UINTMAX as default
 
       if (fileVersion > 1) {
         const assetFlags = sound.assetFlags ?? 0
@@ -134,7 +134,12 @@ export class SoundsTranslator implements Translator<Sound[]> {
     const errors: Error[] = []
     const result: Sound[] = []
     const input = new W3Buffer(buffer)
+
     const fileVersion = input.readInt() // File version
+    if (fileVersion > 3) {
+      log.warn(`Unsupported sound file format version ${fileVersion}, will attempt at parsing...`)
+    }
+
     const numSounds = input.readInt() // # of sounds
     for (let i = 0; i < numSounds; i++) {
       let name = input.readString()
