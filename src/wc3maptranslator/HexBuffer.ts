@@ -1,3 +1,4 @@
+import { WithImplicitCoercion } from 'buffer'
 import ieee754 from 'ieee754'
 import IntN from 'intn'
 
@@ -5,14 +6,16 @@ const intToHex = (intV: number, isShort: boolean, unsigned: boolean): string[] =
   // Creates a new 32-bit integer from the given number
   const intSize = isShort ? 16 : 32
 
-   
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const intNSize = new IntN(intSize, unsigned)
-   
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const byteNum = intNSize.fromInt(intV).bytes
 
   // Map decimal bytes to hex bytes
   // Bytes are already in correct little-endian form
-   
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   return byteNum.map((Byte: number) => {
     return `0x${Byte.toString(16)}`
   })
@@ -37,7 +40,7 @@ export class HexBuffer {
     const buf = Buffer.from(str, 'utf-8')
 
     for (let i = 0; i < buf.length; i++) {
-      this._buffer.push(`0x${buf[i].toString(16)}`)
+      this._buffer.push(`0x${buf[i]?.toString(16) ?? '\0'}`)
     }
   }
 

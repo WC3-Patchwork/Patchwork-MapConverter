@@ -32,11 +32,12 @@ const soundChannelEnum = {
   21: SoundChannel.CINEMATIC_SFX2,
   22: SoundChannel.CINEMATIC_SFX3,
   0xFFFFFFFF: SoundChannel.GENERAL // this key takes priority in reverse
-}
-const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc, it) => {
-  acc[it[1]] = it[0]
+} as Record<integer, SoundChannel>
+
+const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc: Record<string, integer>, it) => {
+  acc[it[1]] = it[0] as unknown as integer
   return acc
-}, {}) as Record<string, integer>
+}, {}) as Record<SoundChannel, integer>
 
 export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer {
   if (formatVersion > 3 || formatVersion < 1) {
@@ -101,7 +102,6 @@ export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer 
 }
 
 export function warToJson (buffer: Buffer): [Sound[], integer] {
-  const result: Sound[] = []
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion > 3) {
@@ -110,6 +110,7 @@ export function warToJson (buffer: Buffer): [Sound[], integer] {
     log.info(`Sounds format version is ${formatVersion}.`)
   }
 
+  const result: Sound[] = []
   const soundCount = input.readInt()
   for (let i = 0; i < soundCount; i++) {
     let name = input.readString()
@@ -133,7 +134,7 @@ export function warToJson (buffer: Buffer): [Sound[], integer] {
     const coneOrientationX = input.readFloat()
     const coneOrientationY = input.readFloat()
     const coneOrientationZ = input.readFloat()
-    let channel = soundChannelEnum[channelValue] as SoundChannel
+    let channel = soundChannelEnum[channelValue] as SoundChannel|undefined
 
     let labelSLK = ''
     let dialogueId = 0xFFFFFFFF
@@ -167,7 +168,7 @@ export function warToJson (buffer: Buffer): [Sound[], integer] {
       }
     }
 
-    if (Object.keys(SoundEnvironment).findIndex(it => it === eax) === -1) {
+    if (Object.keys(SoundEnvironment).findIndex(it => it as SoundEnvironment === eax) === -1) {
       log.warn(`EAX value='${eax}' is not valid for sound '${name}', defaulting to DEFAULT`)
       eax = SoundEnvironment.DEFAULT
     }

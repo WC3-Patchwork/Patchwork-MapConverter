@@ -20,7 +20,7 @@ enum ObjectType {
 interface Modification {
   id: FourCC
   type: ModificationType
-  value: integer | number | string
+  value: integer | string
 
   // Marked optional because these fields are not needed on any table.
   // They can be specified for: Doodads, Abilities, Upgrades, but if

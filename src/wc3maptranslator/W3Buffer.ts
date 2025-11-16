@@ -1,4 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+import { WithImplicitCoercion } from "buffer"
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 const roundTo = require('round-to')
 
 export class W3Buffer {
@@ -30,15 +32,16 @@ export class W3Buffer {
   public readFloat (): number {
     const float: number = this._buffer.readFloatLE(this._offset)
     this._offset += 4
-     
-    return roundTo(float, 3)
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    return roundTo(float, 3) as number
   }
 
   public readString (): string {
     const string: number[] = []
 
     while (this._buffer[this._offset] !== 0x00) {
-      string.push(this._buffer[this._offset])
+      string.push(this._buffer[this._offset] ?? 0)
       this._offset += 1
     }
     this._offset += 1 // consume the \0 end-of-string delimiter
@@ -51,7 +54,7 @@ export class W3Buffer {
     const numCharsToRead = len
 
     for (let i = 0; i < numCharsToRead; i++) {
-      string.push(this._buffer[this._offset])
+      string.push(this._buffer[this._offset] ?? 0)
       this._offset += 1
     }
 
@@ -61,7 +64,7 @@ export class W3Buffer {
   public readByte (): number {
     const byte = this._buffer[this._offset]
     this._offset += 1
-    return byte
+    return byte ?? 0
   }
 
   public isExhausted (): boolean {

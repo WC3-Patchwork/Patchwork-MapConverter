@@ -21,8 +21,8 @@ import * as Enhancements from './enhancements'
 
 import { LoadTargetProfile } from './converter/ProfileLoader'
 import { type TargetProfile } from './converter/Profile'
- 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 require('source-map-support').install()
 
 let log: Logger<ILogObj>

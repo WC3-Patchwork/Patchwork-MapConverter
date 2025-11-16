@@ -2,7 +2,7 @@ import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { ModificationType, type ObjectModificationTable, ObjectType, type Modification, type ObjectData } from '../data/ObjectModificationTable'
+import { type Modification, ModificationType, type ObjectData, type ObjectModificationTable, ObjectType } from '../data/ObjectModificationTable'
 import { ModificationDefaults, ObjectModificationTableDefaults } from '../default/ObjectModificationTable'
 
 const log = LoggerFactory.createLogger('ObjectsTranslator')
@@ -32,9 +32,9 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
       }
 
       if (formatVersion >= 3) {
-        // once Blizzard decides to do something with this, I will add Set/Variant support
+        // Once Blizzard decides to do something with this, I will add Set/Variant support
         // TODO: sets means adding another for loop, just take a look at warToJson function
-        output.addInt(1) // setCount
+        output.addInt(1) // SetCount
         output.addInt(ModificationDefaults.setFlag)
       }
 
@@ -113,7 +113,7 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
   }
 
   const readModificationTable = (input: W3Buffer, objectType: ObjectType, formatVersion: integer): Record<string, ObjectData> => {
-    const modifications: Record<string, ObjectData> = {}
+    const modificationTable: Record<string, ObjectData> = {}
 
     const numTableModifications = input.readInt()
     for (let i = 0; i < numTableModifications; i++) {
@@ -130,7 +130,7 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
 
       for (let j = 0; j < sets; j++) {
         if (formatVersion >= 3) {
-          input.readInt() // setFlag unused in editor, who knows. (Variant in WE)
+          input.readInt() // SetFlag unused in editor, who knows. (Variant in WE)
         }
         const modificationCount = input.readInt()
         for (let k = 0; k < modificationCount; k++) {
@@ -162,7 +162,7 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
           }
 
           let fieldType: ModificationType
-          let fieldValue: integer | number | string
+          let fieldValue: integer | string
           switch (fieldTypeValue) {
             case 0:
               fieldType = ModificationType.INTEGER
@@ -185,7 +185,7 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
           }
 
           if (formatVersion > 0x00) {
-            input.readChars(4) // objectID, again
+            input.readChars(4) // ObjectID, again
           }
 
           modifications.push({
@@ -199,9 +199,9 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
       }
 
       const objectKey = (customId === ModificationDefaults.customId) ? originalId : customId
-      modifications[objectKey] = { originalId, modifications }
+      modificationTable[objectKey] = { originalId, modifications }
     }
-    return modifications
+    return modificationTable
   }
 
   const original = readModificationTable(input, objectType, formatVersion)
