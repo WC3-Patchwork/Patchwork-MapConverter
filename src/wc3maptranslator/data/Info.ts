@@ -1,3 +1,5 @@
+import { type integer } from '../CommonInterfaces'
+
 interface Map {
   name: string
   author: string
@@ -16,8 +18,8 @@ interface GameVersion {
 }
 
 interface PlayableCamera {
-  bounds: number[]
-  complements: number[]
+  bounds: number[] // x,y pairs
+  margins: number[] // left, right, top, bottom
 }
 
 interface MapFlags {
@@ -47,7 +49,7 @@ interface MapFlags {
 }
 
 interface LoadingScreen {
-  background: number
+  imageId: number
   path: string
   text: string
   title: string
@@ -81,12 +83,12 @@ interface Prologue {
 }
 
 interface Info {
-  saves: number
+  mapVersion: number
   gameVersion: GameVersion
   editorVersion: number
   scriptLanguage: ScriptLanguage
-  supportedModes: SupportedModes
-  gameDataVersion: number
+  assetMode: SupportedModes
+  mapDataVersion: number
   forcedDefaultCamDistance: number
   forcedMaxCamDistance: number
   forcedMinCamDistance: number
@@ -96,16 +98,16 @@ interface Info {
   prologue: Prologue
   loadingScreen: LoadingScreen
   fog: Fog
-  globalWeather: number
+  globalWeatherEffect: number
   customSoundEnvironment: string
-  customLightEnv: number
-  water: number[] // R G B A
+  customLightEnvironment: number
+  waterColor: number[] // R G B A
   players: Player[] | undefined
   forces: Force[] | undefined
   upgrades: UpgradeAvailable[] | undefined
-  techBlacklist: TechUnavailable[] | undefined
-  randomUnitTables: RandomUnitTable[] | undefined
-  randomItemTables: RandomTable[] | undefined
+  techtree: TechUnavailable[] | undefined
+  randomGroups: RandomGroup[] | undefined
+  randomItemTables: ItemTable[] | undefined
 }
 
 interface PlayerStartingPosition {
@@ -115,16 +117,16 @@ interface PlayerStartingPosition {
 }
 
 interface Player {
-  playerNum: number
+  slotId: number
   type: number // 1=Human, 2=Computer, 3=Neutral, 4=Rescuable
   race: number // 1=Human, 2=Orc, 3=Undead, 4=Night Elf
 
   name: string
-  startingPos: PlayerStartingPosition
-  allyLowPriorities: number
-  allyHighPriorities: number
-  enemyLowPriorities: number
-  enermyHighPriorities: number
+  startLocation: PlayerStartingPosition
+  allyLowPriorities: PlayerList
+  allyHighPriorities: PlayerList
+  enemyLowPriorities: PlayerList
+  enemyHighPriorities: PlayerList
 }
 
 interface ForceFlags {
@@ -136,45 +138,47 @@ interface ForceFlags {
   shareAdvUnitControl: boolean // 0x00000020: share advanced unit control
 }
 
+type PlayerList = integer[] // 0-indexed player IDs
+
 interface Force {
   flags: ForceFlags
-  players: number[] // 0-based player indices
+  players: PlayerList
   name: string
 }
 
 interface UpgradeAvailable {
-  playerFlags: number
+  players: PlayerList
   upgradeId: string
   level: number
-  availability: Availability
+  state: ResearchState
 }
 
 interface TechUnavailable {
-  playerFlags: number
+  players: PlayerList
   techId: string
 }
 
-interface RandomTable {
+interface ItemTable {
   id: number
   name: string
-  rows: ObjectPool[] | undefined
+  table: ObjectChance[][] | undefined
 }
 
-interface ObjectPool {
-  type: number
-  objects: RandomObject[] | undefined
-}
-
-interface RandomObject {
+interface ObjectChance {
   objectId: string
   chance: number
 }
 
-interface RandomUnitTable {
+interface RandomGroup {
   id: number
   name: string
   positions: number[] | undefined
-  chances: Array<{ chance: number, unitIds: string[] }>
+  sets: RandomGroupSet[]
+}
+
+interface RandomGroupSet {
+  chance: number
+  objects: string[]
 }
 
 enum ScriptLanguage {
@@ -188,7 +192,7 @@ enum SupportedModes {
   Both = 3
 }
 
-enum Availability {
+enum ResearchState {
   UNAVAILABLE = 0,
   AVAILABLE = 1,
   RESEARCHED = 2
@@ -197,7 +201,7 @@ enum Availability {
 export {
   type Map, type GameVersion, type PlayableCamera, type MapFlags,
   type LoadingScreen, FogType, type PlayableMapArea, type Prologue,
-  type Info, type PlayerStartingPosition, type Player, type ForceFlags,
+  type Info, type PlayerStartingPosition, type Player, type ForceFlags, type PlayerList,
   type Force, ScriptLanguage, SupportedModes, type UpgradeAvailable, type TechUnavailable,
-  type RandomTable, type RandomUnitTable, type ObjectPool, type RandomObject
+  type ItemTable as RandomTable, type RandomGroup, type RandomGroupSet, type ObjectChance
 }
