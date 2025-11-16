@@ -1,4 +1,4 @@
-import { type vector3, type angle, type integer, type color } from '../CommonInterfaces'
+import { type vector3, type angle, type integer } from '../CommonInterfaces'
 import { type ItemSet } from './ItemSet'
 import { type UnitSet } from './UnitSet'
 
@@ -58,4 +58,4 @@ interface RandomSpawn {
   unitSet: UnitSet | undefined
 }
 
-export type { Unit, Hero, Inventory, Abilities, RandomSpawn }
+export type { Unit, Hero, Inventory, Abilities, RandomSpawn, UnitFlag }
