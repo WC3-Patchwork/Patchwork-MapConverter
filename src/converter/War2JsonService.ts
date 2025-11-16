@@ -29,7 +29,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
       asyncLog.error(error)
     }
   } else {
-    await WriteAndCreatePath(output, FormatConverters[EnhancementManager.mapDataExtension].stringify(result.json as Object), { encoding: 'utf8' })
+    await WriteAndCreatePath(output, FormatConverters[EnhancementManager.mapDataExtension].stringify(result.json as object), { encoding: 'utf8' })
     asyncLog.info('Finished processing', output)
   }
 }

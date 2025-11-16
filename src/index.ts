@@ -13,6 +13,12 @@ import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
 import fs from 'fs'
 import { SupplementTranslatorRecord } from './converter/TranslatorRecord'
+
+import * as Wc3MapTranslator from './wc3maptranslator'
+import * as PatchworkTranslator from './translator'
+import * as Converters from './converter'
+import * as Enhancements from './enhancements'
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -116,3 +122,5 @@ program
   })
 
 program.parse()
+
+export { Wc3MapTranslator, PatchworkTranslator, Converters, Enhancements }

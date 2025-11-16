@@ -35,34 +35,34 @@ export const translatorRecord: Record<string, Translator<unknown>> = {
   // '.shd': IGNORED
 }
 
-export function SupplementTranslatorRecord(mapDataExtension: string) {
+export function SupplementTranslatorRecord (mapDataExtension: string): void {
   // World files
-  translatorRecord[`.w3e${mapDataExtension}`] = TerrainTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`Units.doo${mapDataExtension}`] = UnitsTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.doo${mapDataExtension}`] = DoodadsTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.w3r${mapDataExtension}`] = RegionsTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.w3c${mapDataExtension}`] = CamerasTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.w3s${mapDataExtension}`] = SoundsTranslator.getInstance() as Translator<unknown>;
+  translatorRecord[`.w3e${mapDataExtension}`] = TerrainTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`Units.doo${mapDataExtension}`] = UnitsTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.doo${mapDataExtension}`] = DoodadsTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.w3r${mapDataExtension}`] = RegionsTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.w3c${mapDataExtension}`] = CamerasTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.w3s${mapDataExtension}`] = SoundsTranslator.getInstance() as Translator<unknown>
 
   // Object data files
-  translatorRecord[`.w3u${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Units) as Translator<unknown>;
-  translatorRecord[`.w3t${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Items) as Translator<unknown>;
-  translatorRecord[`.w3a${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Abilities) as Translator<unknown>;
-  translatorRecord[`.w3b${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Destructables) as Translator<unknown>;
-  translatorRecord[`.w3d${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Doodads) as Translator<unknown>;
-  translatorRecord[`.w3q${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Upgrades) as Translator<unknown>;
-  translatorRecord[`.w3h${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Buffs) as Translator<unknown>;
+  translatorRecord[`.w3u${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Units) as Translator<unknown>
+  translatorRecord[`.w3t${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Items) as Translator<unknown>
+  translatorRecord[`.w3a${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Abilities) as Translator<unknown>
+  translatorRecord[`.w3b${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Destructables) as Translator<unknown>
+  translatorRecord[`.w3d${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Doodads) as Translator<unknown>
+  translatorRecord[`.w3q${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Upgrades) as Translator<unknown>
+  translatorRecord[`.w3h${mapDataExtension}`] = ObjectsTranslator.getInstance(ObjectType.Buffs) as Translator<unknown>
 
   // Trigger files
   // '.lua': IGNORED
   // '.j': IGNORED
-  translatorRecord[`.wts${mapDataExtension}`] = StringsTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.wtg${mapDataExtension}`] = TriggersTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.wct${mapDataExtension}`] = CustomScriptsTranslator.getInstance() as Translator<unknown>;
+  translatorRecord[`.wts${mapDataExtension}`] = StringsTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.wtg${mapDataExtension}`] = TriggersTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.wct${mapDataExtension}`] = CustomScriptsTranslator.getInstance() as Translator<unknown>
 
   // Map files
-  translatorRecord[`.w3i${mapDataExtension}`] = InfoTranslator.getInstance() as Translator<unknown>;
-  translatorRecord[`.imp${mapDataExtension}`] = ImportsTranslator.getInstance() as Translator<unknown>;
+  translatorRecord[`.w3i${mapDataExtension}`] = InfoTranslator.getInstance() as Translator<unknown>
+  translatorRecord[`.imp${mapDataExtension}`] = ImportsTranslator.getInstance() as Translator<unknown>
   // '.wpm': IGNORED
   // '.shd': IGNORED
 }
