@@ -49,7 +49,7 @@ function FindAppropriateTranslationMethodText2Binary (filename: string, profile:
   } else if (filename.endsWith('.wtg')) {
     return (triggers) => TriggersTranslator.jsonToWar(triggers as unknown as TriggerTranslatorOutput, profile.wtgFormatVersion, profile.wtgFormatSubversion)
   } else if (filename.endsWith('.wct')) {
-    return (scripts) => CustomScriptsTranslator.jsonToWar(scripts as unknown as { headerComments: string[], scripts: string[] }, profile.wctFormatVersion)
+    return (scripts) => CustomScriptsTranslator.jsonToWar(scripts as unknown as { headerComment: string, scripts: string[] }, profile.wctFormatVersion)
   }
 
   // Map files

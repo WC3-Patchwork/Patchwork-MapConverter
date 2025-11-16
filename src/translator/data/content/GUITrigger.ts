@@ -1,13 +1,8 @@
-import { type Describable } from '../properties/Describable'
-import { type Enableable } from '../properties/Enableable'
 import { type Statement } from '../statement/Statement'
-import { type ContentType, type TriggerContent } from './TriggerContent'
+import { type BaseTrigger } from './BaseTrigger'
 
-interface GUITrigger extends TriggerContent, Enableable, Describable {
-  name: string
-  contentType: ContentType
+interface GUITrigger extends BaseTrigger {
   initiallyOff: boolean
-  runOnMapInit: boolean
   events: Statement[]
   conditions: Statement[]
   actions: Statement[]

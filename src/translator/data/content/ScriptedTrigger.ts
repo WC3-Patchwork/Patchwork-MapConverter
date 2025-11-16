@@ -1,14 +1,6 @@
-import { type Describable } from '../properties/Describable'
-import { type Enableable } from '../properties/Enableable'
 import { type ScriptContent } from '../properties/ScriptContent'
-import { type ContentType, type TriggerContent } from './TriggerContent'
+import { type BaseTrigger } from './BaseTrigger'
 
-interface ScriptedTrigger extends TriggerContent, Enableable, Describable, ScriptContent {
-  name: string
-  contentType: ContentType
-  description: string
-  isEnabled: boolean
-  runOnMapInit: boolean
-}
+interface ScriptedTrigger extends BaseTrigger, ScriptContent {}
 
 export type { ScriptedTrigger }

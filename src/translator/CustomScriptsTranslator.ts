@@ -14,7 +14,7 @@ export function jsonToWar (json: { headerComment: string, scripts: string[] }, f
   output.addUInt(formatVersion)
   if (formatVersion > 0x7FFFFFFF) {
     if (!formatSubversion || formatSubversion < 0 || formatSubversion > 1) {
-      throw new Error(`Unknown map scripts format version=${formatSubversion ?? 'undefined'}, expected value from range [0, 1]`)
+      throw new Error(`Unknown map scripts format subversion=${formatSubversion ?? 'undefined'}, expected value from range [0, 1]`)
     }
     output.addUInt(formatSubversion)
   }

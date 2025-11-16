@@ -1,8 +1,6 @@
-import { type ContentType, type TriggerContent } from './TriggerContent'
+import { type TriggerContent } from './TriggerContent'
 
 interface GlobalVariable extends TriggerContent {
-  name: string
-  contentType: ContentType
   type: string
   userDefined: boolean
   isArray: boolean
