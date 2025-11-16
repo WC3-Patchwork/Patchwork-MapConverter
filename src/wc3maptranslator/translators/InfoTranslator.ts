@@ -313,11 +313,11 @@ export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
             case RandomGroupSetType.ANY_ITEM: return 2
           }
         })(set.type ?? RandomGroupDefaults.set.type))
-        output.addInt(randomUnitTable.sets?.length ?? 0)
-        randomUnitTable.sets?.forEach(chance => {
-          output.addInt(chance.chance)
-          chance.objects.forEach(objectId => { output.addChars(objectId) })
-        })
+      })
+      output.addInt(randomUnitTable.sets?.length ?? 0)
+      randomUnitTable.sets?.forEach(chance => {
+        output.addInt(chance.chance)
+        chance.objects.forEach(objectId => { output.addChars(objectId) })
       })
     })
   }
