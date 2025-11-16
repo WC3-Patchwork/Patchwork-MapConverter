@@ -148,11 +148,15 @@ export function warToJson (buffer: Buffer, editorVersion: integer): Unit[] {
   }
   const formatVersion = input.readInt()
   if (formatVersion < 9) {
-    log.warn(`Unknown preplaced units file format version '${formatVersion}', expected less than 9, will attempt parsing...`)
+    log.warn(`Unknown preplaced units format version '${formatVersion}', expected less than 9, will attempt parsing...`)
+  } else {
+    log.info(`Preplaced units format version is ${formatVersion}.`)
   }
   const formatSubversion = input.readInt()
   if (formatSubversion < 12) {
-    log.warn(`Unknown preplaced units file format subversion '${formatVersion}', expected less than 12, will attempt parsing...`)
+    log.warn(`Unknown preplaced units format subversion '${formatVersion}', expected less than 12, will attempt parsing...`)
+  } else {
+    log.info(`Preplaced units format subversion is ${formatVersion}.`)
   }
 
   const result: Unit[] = []

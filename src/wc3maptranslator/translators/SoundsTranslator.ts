@@ -40,7 +40,7 @@ const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc, it
 
 export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer {
   if (formatVersion > 3 || formatVersion < 1) {
-    throw new Error(`Unknown sound file format version ${formatVersion}`)
+    throw new Error(`Unknown sounds format version ${formatVersion}`)
   }
   const output = new HexBuffer()
   output.addInt(formatVersion)
@@ -105,7 +105,9 @@ export function warToJson (buffer: Buffer): Sound[] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion > 3) {
-    log.warn(`Unsupported sound file format version ${formatVersion}, will attempt at parsing...`)
+    log.warn(`Unsupported sounds format version ${formatVersion}, will attempt at parsing...`)
+  } else {
+    log.info(`Sounds format version is ${formatVersion}.`)
   }
 
   const soundCount = input.readInt()

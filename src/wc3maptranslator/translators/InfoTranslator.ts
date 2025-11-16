@@ -350,6 +350,8 @@ export function warToJson (buffer: Buffer): Info {
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 33) {
     log.warn(`Unknown map info format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Info format version is ${formatVersion}.`)
   }
 
   let mapVersion: integer
@@ -357,6 +359,7 @@ export function warToJson (buffer: Buffer): Info {
   if (formatVersion > 0x0F) {
     mapVersion = input.readInt()
     editorVersion = input.readInt()
+    log.info(`Editor version is ${editorVersion}.`)
   } else {
     mapVersion = InfoDefaults.mapVersion
     editorVersion = InfoDefaults.editorVersion

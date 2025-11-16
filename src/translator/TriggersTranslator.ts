@@ -46,7 +46,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
     }
     output.addUInt(formatSubversion)
   }
-  formatSubversion = formatSubversion ?? 0x7FFFFFFF
+  const finalFormatSubversion = formatSubversion ?? 0x7FFFFFFF
 
   const parentReference = new Map<TriggerContent, integer>()
   const elementReference = new Map<TriggerContent, integer>()
@@ -150,7 +150,7 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       output.addInt(+(container.contentType === ContentType.COMMENT)) // should always be false
     }
 
-    if (formatSubversion >= 0x80000000) {
+    if (finalFormatSubversion >= 0x80000000) {
       output.addInt(+container.isExpanded)
       output.addInt(parentContainerId)
     }
@@ -222,8 +222,8 @@ export function jsonToWar (json: TriggerTranslatorOutput, formatVersion: integer
       output.addInt(+isComment)
     }
 
-    if (formatVersion < 5 || formatSubversion > 0x7FFFFFFF) {
-      if (formatSubversion > 0x80000000) {
+    if (formatVersion < 5 || finalFormatSubversion > 0x7FFFFFFF) {
+      if (finalFormatSubversion > 0x80000000) {
         output.addInt(elementId)
       }
       output.addInt(+(isEnabled))

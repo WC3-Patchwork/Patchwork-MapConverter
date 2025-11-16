@@ -108,6 +108,8 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): ObjectModifi
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 3) {
     log.warn(`Unknown object definition format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Object definition format version is ${formatVersion}.`)
   }
 
   const readModificationTable = (input: W3Buffer, objectType: ObjectType, formatVersion: integer): Record<string, ObjectData> => {

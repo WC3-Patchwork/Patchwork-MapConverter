@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/brace-style */
 import { TerrainTranslator, UnitsTranslator, DoodadsTranslator, RegionsTranslator, CamerasTranslator, SoundsTranslator, ObjectsTranslator, StringsTranslator, InfoTranslator, AssetsTranslator } from '../wc3maptranslator/translators'
 import { type ObjectModificationTable, ObjectType } from '../wc3maptranslator/data/ObjectModificationTable'
-import { type integer } from '../wc3maptranslator/CommonInterfaces'
 import { type Terrain, type Unit, type Asset, type Info, type Doodad, type SpecialDoodad, type Region, type Camera, type Sound } from '../wc3maptranslator/data'
 import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
+import { type TargetProfile } from './Profile'
+import { type integer } from '../wc3maptranslator/CommonInterfaces'
 
-function FindAppropriateTranslationMethodText2Binary (filename: string, profile: Record<string, integer>): ((json: object) => Buffer) | null {
+function FindAppropriateTranslationMethodText2Binary (filename: string, profile: TargetProfile): ((json: object) => Buffer) | null {
 // World files
   if (filename.endsWith('.w3e')) {
     return (terrain) => TerrainTranslator.jsonToWar(terrain as unknown as Terrain, profile.w3eFormatVersion)
@@ -64,18 +65,18 @@ function FindAppropriateTranslationMethodText2Binary (filename: string, profile:
   return null
 }
 
-function FindAppropriateTranslationMethodBinary2Text (filename: string, profile: Record<string, integer>): ((buffer: Buffer) => unknown) | null {
+function FindAppropriateTranslationMethodBinary2Text (filename: string, editorVersionSupplier: Promise<integer>): ((buffer: Buffer) => unknown) | null {
   // World files
   if (filename.endsWith('.w3e')) {
     return TerrainTranslator.warToJson
   } else if (filename.endsWith('Units.doo')) {
-    return (buffer) => UnitsTranslator.warToJson(buffer, profile.editorVersion)
+    return async (buffer) => UnitsTranslator.warToJson(buffer, await editorVersionSupplier)
   } else if (filename.endsWith('.doo')) {
-    return (buffer) => DoodadsTranslator.warToJson(buffer, profile.editorVersion)
+    return async (buffer) => DoodadsTranslator.warToJson(buffer, await editorVersionSupplier)
   } else if (filename.endsWith('.w3r')) {
     return RegionsTranslator.warToJson
   } else if (filename.endsWith('.w3c')) {
-    return (buffer) => CamerasTranslator.warToJson(buffer, profile.editorVersion)
+    return async (buffer) => CamerasTranslator.warToJson(buffer, await editorVersionSupplier)
   } else if (filename.endsWith('.w3s')) {
     return SoundsTranslator.warToJson
   }

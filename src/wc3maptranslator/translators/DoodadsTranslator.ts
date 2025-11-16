@@ -91,11 +91,14 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
   const formatVersion = input.readInt()
   if (formatVersion === 0) {
     log.warn(`Unknown doodad file format version=${formatVersion}, expected above 0, will attempt reading...`)
+  } else {
+    log.info(`Doodad format version is ${formatVersion}.`)
   }
 
-  let subVersion
+  let subVersion: integer
   if (formatVersion > 4) {
     subVersion = input.readInt()
+    log.info(`Doodad format subversion is ${subVersion}.`)
   } else {
     subVersion = 0
   }
@@ -184,6 +187,8 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Doodad[], S
     const specialDoodadFormatVersion = input.readInt()
     if (specialDoodadFormatVersion !== 0) {
       log.warn(`Unknown special doodads format version=${specialDoodadFormatVersion}, expected 0, will attempt reading...`)
+    } else {
+      log.info(`Special doodads format version is ${specialDoodadFormatVersion}.`)
     }
 
     const specialDoodadCount = input.readInt()

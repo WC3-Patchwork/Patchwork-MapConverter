@@ -18,6 +18,7 @@ import { FormatConverters } from './formats/FormatConverters'
 import { TranslatorManager } from './TranslatorManager'
 import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
+import { type TargetProfile } from './Profile'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
@@ -29,7 +30,7 @@ async function processFile (input: string, translator: ((json: object) => Buffer
   asyncLog.info('Finished processing', output)
 }
 
-async function exportImportsFile (data: Asset[], output: string): Promise<void> {
+async function exportImportsFile (data: Asset[], output: string, profile: TargetProfile): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `AssetsTranslator-${translatorCount++}` }) // TODO: move this log
   asyncLog.info('Exporting generated war3map.imp file.')
   const buffer = AssetsTranslator.jsonToWar(data, profile.impFormatVersion)
@@ -62,11 +63,11 @@ function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
   return result
 }
 
-async function exportTriggers (triggersJson: TriggerContainer, output: string): Promise<void> {
+async function exportTriggers (triggersJson: TriggerContainer, output: string, profile: TargetProfile): Promise<void> {
   const tasks: Array<Promise<unknown>> = []
   const triggerLog = log.getSubLogger({ name: `${TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   const triggerAndScript: TriggerTranslatorOutput = {
-    roots: [triggersJson],
+    root: triggersJson,
     scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
   }
 
@@ -76,11 +77,11 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
 
   const scriptLog = log.getSubLogger({ name: `${CustomScriptsTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
 
-  const scriptArg: { headerComments: string[], scripts: string[] } = { headerComments: [], scripts: [] }
+  const scriptArg: { headerComment: string, scripts: string[] } = { headerComment: '', scripts: [] }
   for (const trigger of triggerAndScript.scriptReferences) {
     if (trigger != null) {
       if ((trigger as MapHeader).children != null) { // Found header
-        scriptArg.headerComments.push(trigger.description)
+        scriptArg.headerComment = trigger.description
       }
       scriptArg.scripts.push(trigger.script)
     } else {
@@ -95,14 +96,14 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
   await Promise.all(tasks)
 }
 
-async function processTriggers (input: string, output: string): Promise<void> {
+async function processTriggers (input: string, output: string, profile: TargetProfile): Promise<void> {
   log.info('Reading triggers file')
   const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
-  await exportTriggers(buffer[0], output)
+  await exportTriggers(buffer[0], output, profile)
 }
 
 const Json2WarService = {
-  convert: async function (inputPath: string, outputPath: string): Promise<void> {
+  convert: async function (inputPath: string, outputPath: string, profile: TargetProfile): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
     const promises: Array<Promise<void>> = []
@@ -124,7 +125,7 @@ const Json2WarService = {
           log.debug('ComposeTriggers requested')
           promises.push((async (): Promise<void> => {
             const triggerJson = await TriggerComposer.composeTriggerJson(file)
-            await exportTriggers(triggerJson, outputPath)
+            await exportTriggers(triggerJson, outputPath, profile)
           })())
 
           continue // skip triggers
@@ -139,7 +140,7 @@ const Json2WarService = {
         }
       } else {
         if (!EnhancementManager.composeTriggers && file.name.endsWith(`triggers${EnhancementManager.mapDataExtension}`)) {
-          promises.push(processTriggers(file.path, outputPath))
+          promises.push(processTriggers(file.path, outputPath, profile))
           continue
         }
 
@@ -148,7 +149,7 @@ const Json2WarService = {
         if (translator != null) {
           outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove final extension
 
-          if (!EnhancementManager.smartImport || !(translator instanceof AssetsTranslator)) {
+          if (!EnhancementManager.smartImport || !(file.name.endsWith('.imp'))) {
             promises.push(processFile(file.path, translator, outputFile))
           }
         } else {
@@ -162,7 +163,7 @@ const Json2WarService = {
       const importFileOutputPath = path.join(outputPath, 'war3map.imp')
       if (importDirectoryTree != null) {
         const importedFiles = ImportComposer.composeImportRegistry(importDirectoryTree)
-        promises.push(exportImportsFile(importedFiles, importFileOutputPath))
+        promises.push(exportImportsFile(importedFiles, importFileOutputPath, profile))
 
         fileStack.push(importDirectoryTree)
 
@@ -184,7 +185,7 @@ const Json2WarService = {
           }
         }
       } else {
-        promises.push(exportImportsFile([], importFileOutputPath))
+        promises.push(exportImportsFile([], importFileOutputPath, profile))
       }
     }
 

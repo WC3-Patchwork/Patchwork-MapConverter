@@ -9,11 +9,13 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { type Asset } from '../wc3maptranslator/data'
+import { type Info, type Asset } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
 import { TranslatorManager } from './TranslatorManager'
 import { CustomScriptsTranslator, TriggersTranslator } from '../translator'
 import { AssetsTranslator } from '../wc3maptranslator/translators'
+import { type integer } from '../wc3maptranslator/CommonInterfaces'
+import { type TargetProfile } from './Profile'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -36,7 +38,7 @@ async function processImportsRegistry (importsFile: string): Promise<Asset[]> {
   return json
 }
 
-async function processTriggers (triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer[]> {
+async function processTriggers (triggersFile: string, customScriptsFile?: string): Promise<TriggerContainer> {
   const asyncLog = log.getSubLogger({ name: `${TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
 
   asyncLog.info('Reading war3map.wtg file.')
@@ -58,18 +60,27 @@ async function processTriggers (triggersFile: string, customScriptsFile?: string
       }
     }
 
-    for (let i = 0; i < csResults.headerComments.length; i++) {
-      (triggerJson.roots[i] as MapHeader).description = csResults.headerComments[i]
-    }
+    (triggerJson.root as MapHeader).description = csResults.headerComment
   }
 
-  return triggerJson.roots
+  return triggerJson.root
 }
 
 const War2JsonService = {
-  convert: async function (inputPath: string, outputPath: string) {
+  convert: async function (inputPath: string, outputPath: string, profile?: TargetProfile) {
     log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
 
+    let editorVersionSupplier: Promise<integer>
+    let editorVersionResolver: ((version: integer) => void) | undefined
+    let editorVersionRejector: ((reason?: unknown) => void) | undefined
+    if (profile) {
+      editorVersionSupplier = new Promise<integer>((resolve) => { resolve(profile.editorVersion) })
+    } else {
+      editorVersionSupplier = new Promise<integer>((resolve, reject) => {
+        editorVersionResolver = resolve
+        editorVersionRejector = reject
+      })
+    }
     const promises: Array<Promise<unknown>> = []
     const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
 
@@ -77,6 +88,8 @@ const War2JsonService = {
     let importFile: string | null = null
     let triggerFile: string | null = null
     let customScriptFile: { input: string, output: string } | null = null
+    let foundW3i = false
+    let waitingForW3i = false
 
     while (fileStack.length > 0) {
       const file = fileStack.pop()
@@ -92,18 +105,33 @@ const War2JsonService = {
           }
         }
       } else {
-        const translator = TranslatorManager.FindAppropriateTranslationMethodBinary2Text(file.name, profile)
+        const translator = TranslatorManager.FindAppropriateTranslationMethodBinary2Text(file.name, editorVersionSupplier)
         if (translator != null) {
-          if (EnhancementManager.smartImport && (translator instanceof AssetsTranslator)) {
+          if (EnhancementManager.smartImport && (file.name.endsWith('.imp'))) {
             importFile = file.path
-          } else if (translator instanceof TriggersTranslator) {
+          } else if (file.name.endsWith('.wtg')) {
             triggerFile = file.path
-          } else if (translator instanceof CustomScriptsTranslator) {
+          } else if (file.name.endsWith('.wct')) {
             const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + EnhancementManager.mapDataExtension
             customScriptFile = { input: file.path, output: outputFile }
+          } else if (file.name.endsWith('w3i')) {
+            foundW3i = true
+            const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + EnhancementManager.mapDataExtension
+            promises.push(async function (): Promise<void> {
+              const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` }) // TODO: move this log
+              asyncLog.info('Processing', file.path)
+              const buffer = await readFile(file.path)
+              const json = translator(buffer) as Info
+              await WriteAndCreatePath(outputFile, FormatConverters[EnhancementManager.mapDataExtension].stringify(json), { encoding: 'utf8' })
+              asyncLog.info('Finished processing', outputFile)
+              editorVersionResolver?.(json.editorVersion)
+            }())
           } else {
             const outputFile = path.join(outputPath, path.relative(inputPath, file.path)) + EnhancementManager.mapDataExtension
             promises.push(processFile(file.path, translator, outputFile))
+          }
+          if (file.name.endsWith('w3c') || file.name.endsWith('.doo')) {
+            waitingForW3i = true
           }
         } else {
           const outputFile = path.join(outputPath, path.relative(inputPath, file.path))
@@ -120,7 +148,7 @@ const War2JsonService = {
       promises.push(async function () {
         const triggerJSON = await processTriggers(triggerFile, customScriptFile?.input)
         if (EnhancementManager.composeTriggers) {
-          await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, triggerJSON[0] as unknown as TriggerContainer)
+          await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, triggerJSON)
         } else {
           await writeFile(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(triggerJSON), { encoding: 'utf8' })
         }
@@ -155,6 +183,10 @@ const War2JsonService = {
           promises.push(copyFileWithDirCreation(input, output))
         }
       }
+    }
+
+    if (waitingForW3i && !foundW3i) {
+      editorVersionRejector?.('Editor version not supplied, nor is war3map.w3i file found.')
     }
 
     return await Promise.all(promises)

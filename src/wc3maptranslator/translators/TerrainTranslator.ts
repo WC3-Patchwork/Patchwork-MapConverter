@@ -123,7 +123,9 @@ export function warToJson (buffer: Buffer): Terrain {
 
   const formatVersion = input.readInt()
   if (formatVersion < 3 || formatVersion > 12) {
-    log.warn(`Unknown terrain file format version '${formatVersion}', expected value [3, 12], will attempt parsing...`)
+    log.warn(`Unknown terrain format version '${formatVersion}', expected value [3, 12], will attempt parsing...`)
+  } else {
+    log.info(`Terrain format version is ${formatVersion}.`)
   }
 
   let tileset: string

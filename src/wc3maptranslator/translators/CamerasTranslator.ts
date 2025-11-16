@@ -38,9 +38,11 @@ export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVers
 
 export function warToJson (buffer: Buffer, editorVersion: integer): Camera[] {
   const input = new W3Buffer(buffer)
-  const fileVersion = input.readInt()
-  if (fileVersion !== 0) {
-    log.warn(`Unknown camera file format version ${fileVersion} will attempt reading...`)
+  const formatVersion = input.readInt()
+  if (formatVersion !== 0) {
+    log.warn(`Unknown camera file format version ${formatVersion} will attempt reading...`)
+  } else {
+    log.info(`Camera format version is ${formatVersion}.`)
   }
 
   const result: Camera[] = []

@@ -78,6 +78,8 @@ export function warToJson (buffer: Buffer): Region[] {
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 5) {
     log.warn(`Unknown regions format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Regions format version is ${formatVersion}.`)
   }
 
   const regionCount = input.readInt()

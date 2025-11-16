@@ -46,6 +46,8 @@ export function warToJson (buffer: Buffer): Asset[] {
   const formatVersion = input.readInt()
   if (formatVersion > 1 || formatVersion < 0) {
     log.warn(`Unknown asset file format version=${formatVersion}, expected 0 or 1, will attempt reading...`)
+  } else {
+    log.info(`Asset format version is ${formatVersion}.`)
   }
 
   const importCount = input.readInt()

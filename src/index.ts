@@ -19,6 +19,8 @@ import * as PatchworkTranslator from './translator'
 import * as Converters from './converter'
 import * as Enhancements from './enhancements'
 
+import { LoadTargetProfile } from './converter/ProfileLoader'
+import { type TargetProfile } from './converter/Profile'
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
 require('source-map-support').install()
 
@@ -99,9 +101,14 @@ program
   .description('convert Warcraft III binaries to JSON')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .action(async (input: string, output: string) => {
+  .addArgument(new Argument('<target>', 'target profile name or path').argOptional())
+  .action(async (input: string, output: string, target?: string) => {
     try {
-      await War2JsonService.convert(input, output)
+      let profile: TargetProfile | undefined
+      if (target) {
+        profile = await LoadTargetProfile(target)
+      }
+      await War2JsonService.convert(input, output, profile)
     } catch (exception) {
       log.fatal(exception)
     }
@@ -112,9 +119,10 @@ program
   .description('convert JSON to Warcraft III binaries')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .action(async (input: string, output: string) => {
+  .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
+  .action(async (input: string, output: string, target: string) => {
     try {
-      await Json2WarService.convert(input, output)
+      await Json2WarService.convert(input, output, await LoadTargetProfile(target))
     } catch (exception) {
       log.fatal(exception)
     }
