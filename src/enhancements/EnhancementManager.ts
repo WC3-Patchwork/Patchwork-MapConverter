@@ -15,7 +15,8 @@ const EnhancementManager = {
   mapHeaderFilename: 'header',
   generateTargetProfile: false,
   chunkifyMapData: false,
-  chunkFileExtension: '.json'
+  chunkFileExtension: '.json',
+  chunkSize: {sizeX: 1, sizeY: 1, offsetX: 0, offsetY: 0}
 }
 
 export default EnhancementManager

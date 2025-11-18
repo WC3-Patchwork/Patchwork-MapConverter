@@ -313,7 +313,7 @@ const War2JsonService = {
         const doodadsVal = doodads.status === 'fulfilled' ? doodads.value : ({doodads: [], specialDoodads: []} as DoodadsTranslatorOutput)
         const regionsVal = regions.status === 'fulfilled' ? regions.value : []
         const camerasVal = cameras.status === 'fulfilled' ? cameras.value : []
-        await TerrainChunkifier.chunkifierTerrain(terrain.value, doodadsVal.doodads, doodadsVal.specialDoodads ?? [], unitsVal, regionsVal, camerasVal, EnhancementManager.chunkSize).then(resolve,reject)
+        await TerrainChunkifier.chunkifyTerrain(terrain.value, doodadsVal.doodads, doodadsVal.specialDoodads ?? [], unitsVal, regionsVal, camerasVal, EnhancementManager.chunkSize).then(resolve,reject)
       })
       promises.push(promise)
     }

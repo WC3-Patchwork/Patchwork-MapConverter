@@ -20,6 +20,7 @@ import * as Enhancements from './enhancements'
 
 import { LoadTargetProfile } from './converter/ProfileLoader'
 import { type TargetProfile } from './converter/Profile'
+import { MapSize } from './wc3maptranslator/data/Terrain'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 require('source-map-support').install()
@@ -47,6 +48,7 @@ program
   .addOption(new Option('-mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
   .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
   .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
+  .addOption(new Option('-cs, --chunk-size <sizeX> <sizeY> <offsetX> <offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').default(EnhancementManager.chunkSize))
   .hook('preAction', (thisCommand, actionCommand) => {
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
@@ -88,6 +90,7 @@ program
 
     if (options.chunk === true) EnhancementManager.chunkifyMapData = true
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
+    if ((options.chunkSize != null)) { EnhancementManager.chunkSize = options.chunkSize as MapSize } //TODO: sanitize this
 
     if (options.prettify === true) EnhancementManager.prettify = true
 
