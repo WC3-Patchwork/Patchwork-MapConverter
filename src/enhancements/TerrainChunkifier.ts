@@ -1,8 +1,7 @@
-import { error } from 'console'
 import { FormatConverters } from '../converter/formats/FormatConverters'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
-import { integer } from '../wc3maptranslator/CommonInterfaces'
+import { integer, vector2 } from '../wc3maptranslator/CommonInterfaces'
 import { type Camera, type Unit, type Doodad, type SpecialDoodad, type Terrain, type Region, MapSize } from '../wc3maptranslator/data'
 import { TerrainChunk, type TerrainData } from './data/TerrainChunk'
 import EnhancementManager from './EnhancementManager'
@@ -43,6 +42,32 @@ function calculateChunkSizes(offset: integer, chunkSize: integer, mapSize: integ
     }
   }
   return [startChunkSize, chunkSize, (mapSize - startChunkSize - endChunkSize)/chunkSize, endChunkSize]
+}
+
+function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: integer, midChunkSize: integer, midChunkCount: integer, endChunkSize: integer): number[]{
+  const result: number[] = []
+  const tileSize = 128
+  let index = 0;
+  result[index++] = absOffset + startChunkSize*tileSize
+  for (let i = 0; i <midChunkCount;i++, index++){
+    result[index] = result[i] + midChunkSize*tileSize
+  }
+  result[index] = result[index - 1] + endChunkSize   *  tileSize
+  return result
+}
+
+function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number): integer{
+  const chunks = chunkThresholds.length
+  for (let i = 1; i < chunks; i++){
+    if (objectCoordinate < chunks[i]){
+      return i - 1
+    }
+  }
+  return -1
+}
+
+function calculateRelativeCoordinate(absoluteCoordinate: number, chunkStart: number){
+  return absoluteCoordinate - chunkStart
 }
 
 const TerrainChunkifier = {
@@ -115,7 +140,8 @@ const TerrainChunkifier = {
         boundary,
         cameras: [],
         regions: [],
-        doodad: [],
+        doodads: [],
+        specialDoodads: [],
         units: []
       } satisfies TerrainChunk
     }
@@ -136,6 +162,8 @@ const TerrainChunkifier = {
 
     const [startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX] = calculateChunkSizes(chunkSize.sizeX*4, chunkSize.offsetX, sizeX)
     const [startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY] = calculateChunkSizes(chunkSize.sizeY*4, chunkSize.offsetY, sizeY)
+    const chunkAbsCoordinateThresholdsX = calculateChunkCoordinateThresholds(offsetX, startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX)
+    const chunkAbsCoordinateThresholdsY = calculateChunkCoordinateThresholds(offsetY, startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY)
 
     function readTerrainChunkRow(colStart: integer, colEnd: integer): TerrainChunk[]{
       const row: TerrainChunk[] = []
@@ -168,24 +196,43 @@ const TerrainChunkifier = {
     chunkColEnd = chunkColStart - midChunkSizeY + endChunkSizeY
     chunks.push(readTerrainChunkRow(chunkColStart, chunkColEnd))
 
-    //TODO parse objects and group them in appropriate chunks
+    function sortObjectsIntoChunks<T>(objects: T[], objectPositionGetter: (object: T)=>vector2, objectPositionSetter: (object: T, x: number, y: number)=>void, chunkSaver: (chunk: TerrainChunk, object: T)=>void){
+      for (const object of objects){
+        const [x,y] = objectPositionGetter(object)
+        const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, x)
+        const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, y)
+        if (xIndex === -1 || yIndex === -1){
+          //todo: error
+        }
+        objectPositionSetter(object, calculateRelativeCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex]), calculateRelativeCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex]))
+        chunkSaver(chunks[yIndex][xIndex], object)
+      }
+    }
 
+    sortObjectsIntoChunks(doodads, (doodad)=> doodad.position as unknown as vector2, (doodad, x, y)=>{ doodad.position[0] = x; doodad.position[1] = y}, (chunk, doodad)=> chunk.doodads.push(doodad))
+    sortObjectsIntoChunks(specialDoodads, (doodad)=> doodad.position as unknown as vector2, (doodad, x, y)=>{ doodad.position[0] = x; doodad.position[1] = y}, (chunk, doodad)=> chunk.specialDoodads.push(doodad))
+    sortObjectsIntoChunks(units, (unit)=> unit.position as unknown as vector2, (unit, x, y)=>{ unit.position[0] = x; unit.position[1] = y}, (chunk, unit)=> chunk.units.push(unit))
+    sortObjectsIntoChunks(cameras, (camera)=> [camera.targetX, camera.targetY], (camera, x, y)=>{ camera.targetX = x; camera.targetY = y}, (chunk, camera)=> chunk.cameras.push(camera))
+    for (const region of regions){
+      const regionPosition = region.position
+      const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, regionPosition.left)
+      const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, regionPosition.top)
+      if (xIndex === -1 || yIndex === -1){
+        //todo: error
+      }
+      regionPosition.left = calculateRelativeCoordinate(regionPosition.left, chunkAbsCoordinateThresholdsX[xIndex])
+      regionPosition.right = calculateRelativeCoordinate(regionPosition.right, chunkAbsCoordinateThresholdsX[xIndex])
+      regionPosition.top = calculateRelativeCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex])
+      regionPosition.bottom = calculateRelativeCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex])
+      chunks[yIndex][xIndex].regions.push(region)
+    }
 
-    // Terrain json starts from top-left, but let's process from bottom-left
+    for (let i = 0; i < chunks.length; i++){
+      for (let j = 0; j < chunks[i].length; j++){
+        tasks.push(writeData(chunks[i][j], `terrain-${i}-${j}${EnhancementManager.chunkFileExtension}`))
+      }
+    }
 
-    /**
-         * These 2 offsets are used in the scripts files, doodads and more.
-The original (0,0) coordinate is at the bottom left of the map (looking from the top), but it's easier to work with (0,0) in the middle of the map.
-These offsets are:
-
--1 * (Mx - 1) * 128 / 2 and -1 * (My - 1) * 128 / 2
-
-where:
-
-(Width - 1) and (Height - 1) are the width and the height of the map in tiles 128 is the size of a tile on the map
-/ 2 because we don't want the length, but the middle.
--1 * because we are "translating" the centre of the map, not giving it's new coordinates
-         */
     await Promise.all(tasks)
   }
 }

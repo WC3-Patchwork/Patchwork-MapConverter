@@ -1,5 +1,5 @@
 import { type integer } from '../../wc3maptranslator/CommonInterfaces'
-import { type Region, type Camera, type Unit, type Doodad, type MapSize } from '../../wc3maptranslator/data'
+import { type Region, type Camera, type Unit, type Doodad, type MapSize, SpecialDoodad } from '../../wc3maptranslator/data'
 import { type SingleDigitString, type PaddedDoubleDigitString, type BinaryDigitString, type CSVString } from '../ArrayStringifier'
 
 interface TerrainData {
@@ -27,7 +27,8 @@ interface TerrainChunk {
   boundary: SingleDigitString[]
   cameras: Camera[]
   regions: Region[]
-  doodad: Doodad[]
+  doodads: Doodad[]
+  specialDoodads: SpecialDoodad[]
   units: Unit[]
 }
 
