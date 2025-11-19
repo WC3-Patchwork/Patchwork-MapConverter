@@ -56,18 +56,29 @@ function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: i
   return result
 }
 
-function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number): integer{
+function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number, yCoordinate = false): integer{
   const chunks = chunkThresholds.length
   for (let i = 1; i < chunks; i++){
-    if (objectCoordinate < chunks[i]){
-      return i - 1
+    if (yCoordinate) {
+      if (objectCoordinate > chunks[i]){
+        return i - 1
+      }
+    } else {
+      if (objectCoordinate < chunks[i]){
+        return i - 1
+      }
     }
+
   }
   return -1
 }
 
-function calculateRelativeCoordinate(absoluteCoordinate: number, chunkStart: number){
-  return absoluteCoordinate - chunkStart
+function calculateRelativeCoordinate(absoluteCoordinate: number, chunkStart: number, yCoordinate = false){
+  if (yCoordinate) {
+    return chunkStart - absoluteCoordinate
+  } else {
+    return absoluteCoordinate - chunkStart
+  }
 }
 
 const TerrainChunkifier = {
@@ -163,7 +174,7 @@ const TerrainChunkifier = {
     const [startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX] = calculateChunkSizes(chunkSize.sizeX*4, chunkSize.offsetX, sizeX)
     const [startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY] = calculateChunkSizes(chunkSize.sizeY*4, chunkSize.offsetY, sizeY)
     const chunkAbsCoordinateThresholdsX = calculateChunkCoordinateThresholds(offsetX, startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX)
-    const chunkAbsCoordinateThresholdsY = calculateChunkCoordinateThresholds(offsetY, startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY)
+    const chunkAbsCoordinateThresholdsY = calculateChunkCoordinateThresholds(offsetY, endChunkSizeY, midChunkSizeY, midChunkCountY, startChunkSizeY).reverse() //invert Y for reasons
 
     function readTerrainChunkRow(colStart: integer, colEnd: integer): TerrainChunk[]{
       const row: TerrainChunk[] = []
@@ -200,11 +211,11 @@ const TerrainChunkifier = {
       for (const object of objects){
         const [x,y] = objectPositionGetter(object)
         const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, x)
-        const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, y)
+        const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, y, true)
         if (xIndex === -1 || yIndex === -1){
           //todo: error
         }
-        objectPositionSetter(object, calculateRelativeCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex]), calculateRelativeCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex]))
+        objectPositionSetter(object, calculateRelativeCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex]), calculateRelativeCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex], true))
         chunkSaver(chunks[yIndex][xIndex], object)
       }
     }
@@ -216,14 +227,14 @@ const TerrainChunkifier = {
     for (const region of regions){
       const regionPosition = region.position
       const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, regionPosition.left)
-      const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, regionPosition.top)
+      const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, regionPosition.top, true)
       if (xIndex === -1 || yIndex === -1){
         //todo: error
       }
       regionPosition.left = calculateRelativeCoordinate(regionPosition.left, chunkAbsCoordinateThresholdsX[xIndex])
       regionPosition.right = calculateRelativeCoordinate(regionPosition.right, chunkAbsCoordinateThresholdsX[xIndex])
-      regionPosition.top = calculateRelativeCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex])
-      regionPosition.bottom = calculateRelativeCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex])
+      regionPosition.top = calculateRelativeCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex], true)
+      regionPosition.bottom = calculateRelativeCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex], true)
       chunks[yIndex][xIndex].regions.push(region)
     }
 
