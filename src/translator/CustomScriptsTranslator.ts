@@ -10,7 +10,7 @@ export interface CustomScriptsTranslatorOutput {
   scripts: string[]
 }
 
-export function jsonToWar (json: CustomScriptsTranslatorOutput, formatVersion: integer, formatSubversion?: integer): Buffer {
+export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: integer, formatSubversion?: integer): Buffer {
   if (formatVersion < 0 || formatVersion > 0x80000004) {
     throw new Error(`Unknown map scripts format version=${formatVersion}, expected value from range [0, 0x80000004]`)
   }
@@ -25,7 +25,7 @@ export function jsonToWar (json: CustomScriptsTranslatorOutput, formatVersion: i
   }
   formatSubversion = formatSubversion ?? 0x7FFFFFFF
 
-  const saveCustomScript = function (text: string): void {
+  const saveCustomScript = function(text: string): void {
     if (text.length > 0) {
       const buf = Buffer.from(text, 'utf-8')
       output.addInt(buf.length + 1) // + nul char
@@ -74,7 +74,7 @@ export function jsonToWar (json: CustomScriptsTranslatorOutput, formatVersion: i
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer] {
+export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readUint()
   let formatSubversion: integer
@@ -91,7 +91,7 @@ export function warToJson (buffer: Buffer): [{ headerComment: string, scripts: s
     log.warn(`Unknown map scripts format sub-version ${formatSubversion} will attempt at reading...`)
   }
 
-  const loadCustomScript = function (): string {
+  const loadCustomScript = function(): string {
     const unknownScriptLength = input.readInt()
     if (unknownScriptLength > 0) {
       return input.readString()
@@ -138,7 +138,8 @@ export function warToJson (buffer: Buffer): [{ headerComment: string, scripts: s
         loadCustomScript()
       // eslint-disable-next-line no-constant-condition
       } while (true)
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch(e) {
     // catch EOF
     }
   }

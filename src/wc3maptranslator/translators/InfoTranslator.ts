@@ -8,7 +8,7 @@ import { ForceDefaults, InfoDefaults, PlayerDefaults, RandomGroupDefaults, Upgra
 
 const log = LoggerFactory.createLogger('InfoTranslator')
 
-function playerBitmapToPlayerList (playerBitmap: integer): PlayerList {
+function playerBitmapToPlayerList(playerBitmap: integer): PlayerList {
   const playerList: integer[] = []
   for (let i = 0; i < 24; i++) {
     playerList.push(playerBitmap & (1 << i))
@@ -16,11 +16,11 @@ function playerBitmapToPlayerList (playerBitmap: integer): PlayerList {
   return playerList
 }
 
-function playerListToPlayerBitmap (playerList: PlayerList): integer {
+function playerListToPlayerBitmap(playerList: PlayerList): integer {
   return playerList.map(it => 1 << it).reduce((acc, it) => acc | it)
 }
 
-export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
+export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   if (formatVersion < 0 || formatVersion > 33) {
     throw new Error(`Unknown map info format version=${formatVersion}, expected value from range [0, 33]`)
   }
@@ -345,7 +345,7 @@ export function jsonToWar (infoJson: Info, formatVersion: number): Buffer {
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): [Info, integer, integer] {
+export function warToJson(buffer: Buffer): [Info, integer, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 33) {
@@ -404,11 +404,24 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
     input.readInt()
   }
 
-  const cameraBounds: [number, number, number, number, number, number, number, number] = [
-    input.readFloat(), input.readFloat(),
-    input.readFloat(), input.readFloat(),
-    input.readFloat(), input.readFloat(),
-    input.readFloat(), input.readFloat()
+  const cameraBounds: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number
+  ] = [
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat()
   ]
 
   let cameraMargins: [integer, integer, integer, integer]
@@ -709,7 +722,7 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
 
     players.push({
       slotId: playerSlotId,
-      type: (type => {
+      type  : (type => {
         switch (type) {
           case 1: return PlayerType.HUMAN
           case 2: return PlayerType.COMPUTER
@@ -728,10 +741,10 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
           default: return PlayerDefaults.race
         }
       })(playerRace),
-      name: playerName,
+      name         : playerName,
       startLocation: {
-        x: playerStartX,
-        y: playerStartY,
+        x    : playerStartX,
+        y    : playerStartY,
         fixed: !!(playerFlags & 0x01)
       },
       allyLowPriorities,
@@ -750,15 +763,15 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
       const forceFlag = input.readInt()
       forces.push({
         flags: {
-          allied: !!(forceFlag & 0x01),
-          alliedVictory: !!(forceFlag & 0x02),
+          allied             : !!(forceFlag & 0x01),
+          alliedVictory      : !!(forceFlag & 0x02),
           // 0x04: share vision (the documentation has this incorrect)
-          shareVision: !!(forceFlag & 0x08),
-          shareUnitControl: !!(forceFlag & 0x10),
+          shareVision        : !!(forceFlag & 0x08),
+          shareUnitControl   : !!(forceFlag & 0x10),
           shareAdvUnitControl: !!(forceFlag & 0x20)
         },
         players: playerBitmapToPlayerList(input.readInt()),
-        name: input.readString()
+        name   : input.readString()
       })
     }
   }
@@ -769,10 +782,10 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
     const upgradeCount = input.readInt()
     for (let i = 0; i < upgradeCount; i++) {
       upgrades.push({
-        players: playerBitmapToPlayerList(input.readInt()),
+        players  : playerBitmapToPlayerList(input.readInt()),
         upgradeId: input.readChars(4), // upgrade id (as in UpgradeData.slk)
-        level: input.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
-        state: (val => {
+        level    : input.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
+        state    : (val => {
           switch (val) {
             case 0: return ResearchState.UNAVAILABLE
             case 1: return ResearchState.AVAILABLE
@@ -793,7 +806,7 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
     for (let i = 0; i < techCount; i++) {
       techtree.push({
         players: playerBitmapToPlayerList(input.readInt()),
-        techId: input.readChars(4) // tech id (this can be an item, unit or ability)
+        techId : input.readChars(4) // tech id (this can be an item, unit or ability)
       })
     }
   } else {
@@ -806,7 +819,7 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
     const randomUnitCount = input.readInt()
     for (let i = 0; i < randomUnitCount; i++) {
       const randomUnitTable: RandomGroup = {
-        id: input.readInt(),
+        id  : input.readInt(),
         name: input.readString(),
         sets: []
       }
@@ -829,7 +842,7 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
               default: return RandomGroupSetType.ANY_UNIT
             }
           })(types[j]),
-          chance: input.readInt(), // Chance of the unit/item (percentage)
+          chance : input.readInt(), // Chance of the unit/item (percentage)
           objects: []
         }
         randomUnitTable.sets.push(randomGroupSet)
@@ -850,8 +863,8 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
     for (let i = 0; i < itemTableCount; i++) {
       const tableRows: ObjectChance[][] = []
       randomItemTables.push({
-        id: input.readInt(), // Group number
-        name: input.readString(), // Group name
+        id   : input.readInt(), // Group number
+        name : input.readString(), // Group name
         table: tableRows
       })
 
@@ -863,7 +876,7 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
         const itemsInItemSet = input.readInt() // Number "i" of items on the current item set
         for (let k = 0; k < itemsInItemSet; k++) {
           objects.push({
-            chance: input.readInt(), // Percentual chance
+            chance  : input.readInt(), // Percentual chance
             objectId: input.readChars(4) // Item id (as in ItemData.slk)
           })
         }
@@ -930,12 +943,12 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
         forceMinCameraZoom
       },
       mainTileType: tileset,
-      fog: {
-        type: fogStyle,
+      fog         : {
+        type       : fogStyle,
         startHeight: fogZStart,
-        endHeight: fogZEnd,
-        density: fogDensity,
-        color: fogColor
+        endHeight  : fogZEnd,
+        density    : fogDensity,
+        color      : fogColor
       },
       globalWeatherEffect,
       customSoundEnvironment,
@@ -943,24 +956,24 @@ export function warToJson (buffer: Buffer): [Info, integer, integer] {
       waterColor
     },
     camera: {
-      bounds: cameraBounds,
+      bounds : cameraBounds,
       margins: cameraMargins,
       forcedDefaultCamDistance,
       forcedMaxCamDistance,
       forcedMinCamDistance
     },
     gameDataSet: prologueScreenImageId,
-    prologue: {
-      path: prologueScreenImageFile,
-      text: prologueScreenText,
-      title: prologueScreenTitle,
+    prologue   : {
+      path    : prologueScreenImageFile,
+      text    : prologueScreenText,
+      title   : prologueScreenTitle,
       subtitle: prologueScreenSubtitle
     },
     loadingScreen: {
-      imageId: loadingScreenImageId,
-      path: loadingScreenImageFile,
-      text: loadingScreenText,
-      title: loadingScreenTitle,
+      imageId : loadingScreenImageId,
+      path    : loadingScreenImageFile,
+      text    : loadingScreenText,
+      title   : loadingScreenTitle,
       subtitle: loadingScreenSubtitle
     },
     players,

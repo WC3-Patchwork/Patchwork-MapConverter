@@ -12,12 +12,12 @@ let minLogLevel = LOG_DEBUG
 const loggerInstances: Record<string, Logger<ILogObj>> = {}
 
 const LoggerFactory = {
-  setLogLevel: function (logLevel: number) {
+  setLogLevel: function(logLevel: number) {
     minLogLevel = logLevel
     Object.values(loggerInstances).forEach((logger) => { logger.settings.minLevel = logLevel })
   },
 
-  createLogger: function (module: string) {
+  createLogger: function(module: string) {
     const logger = new Logger<ILogObj>({ name: module, minLevel: minLogLevel, hideLogPositionForProduction: true })
     loggerInstances[module] = logger
     return logger

@@ -21,7 +21,4 @@ import { StatementTypeEnumConverter } from './util/StatementTypeEnumConverter'
 
 const translators = { CustomScriptsTranslator, TriggersTranslator }
 export { translators, ContentTypeEnumConverter, ParameterTypeEnumConverter, StatementTypeEnumConverter }
-export type {
-  TriggerContainer, MapHeader, CustomScript, GlobalVariable, GUITrigger, ScriptContent, ScriptedTrigger, TriggerComment, TriggerContent,
-  Parameter, ParameterType, Describable, Enableable, Statement, StatementType
-}
+export type { TriggerContainer,MapHeader,CustomScript,GlobalVariable,GUITrigger,ScriptContent,ScriptedTrigger,TriggerComment,TriggerContent, Parameter,ParameterType,Describable,Enableable,Statement,StatementType }

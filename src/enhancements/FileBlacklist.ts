@@ -7,7 +7,7 @@ const log = LoggerFactory.createLogger('FileBlacklist')
 const blacklist: RegExp[] = []
 
 const FileBlacklist = {
-  readBlacklist: function (blacklistFilePath: string): void {
+  readBlacklist: function(blacklistFilePath: string): void {
     if (!existsSync(blacklistFilePath)) {
       return
     }
@@ -25,11 +25,11 @@ const FileBlacklist = {
     }
   },
 
-  isDirectoryTreeBlacklisted: function (path: DirectoryTree): boolean {
+  isDirectoryTreeBlacklisted: function(path: DirectoryTree): boolean {
     return this.isNameBlacklisted(path.name) || this.isNameBlacklisted(`${path.path}${path.name}`)
   },
 
-  isNameBlacklisted: function (path: string): boolean {
+  isNameBlacklisted: function(path: string): boolean {
     for (const regex of blacklist) {
       if (regex.test(path)) {
         return true

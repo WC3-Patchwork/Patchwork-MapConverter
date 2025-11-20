@@ -8,29 +8,29 @@ import { SoundDefaults } from '../default/Sound'
 const log = LoggerFactory.createLogger('SoundsTranslator')
 
 const soundChannelEnum = {
-  0: SoundChannel.GENERAL,
-  1: SoundChannel.UNIT_SELECTION,
-  2: SoundChannel.UNIT_ACKNOWLEDGEMENT,
-  3: SoundChannel.UNIT_MOVEMENT,
-  4: SoundChannel.UNIT_READY,
-  5: SoundChannel.COMBAT,
-  6: SoundChannel.ERROR,
-  7: SoundChannel.MUSIC,
-  8: SoundChannel.USER_INTERFACE,
-  9: SoundChannel.LOOPING_MOVEMENT,
-  10: SoundChannel.LOOPING_AMBIENT,
-  11: SoundChannel.ANIMATIONS,
-  12: SoundChannel.CONSTRUCTIONS,
-  13: SoundChannel.BIRTH,
-  14: SoundChannel.FIRE,
-  15: SoundChannel.LEGACY_MIDI,
-  16: SoundChannel.CINEMATIC_GENERAL,
-  17: SoundChannel.CINEMATIC_AMBIENT,
-  18: SoundChannel.CINEMATIC_MUSIC,
-  19: SoundChannel.CINEMATIC_DIALOGUE,
-  20: SoundChannel.CINEMATIC_SFX1,
-  21: SoundChannel.CINEMATIC_SFX2,
-  22: SoundChannel.CINEMATIC_SFX3,
+  0         : SoundChannel.GENERAL,
+  1         : SoundChannel.UNIT_SELECTION,
+  2         : SoundChannel.UNIT_ACKNOWLEDGEMENT,
+  3         : SoundChannel.UNIT_MOVEMENT,
+  4         : SoundChannel.UNIT_READY,
+  5         : SoundChannel.COMBAT,
+  6         : SoundChannel.ERROR,
+  7         : SoundChannel.MUSIC,
+  8         : SoundChannel.USER_INTERFACE,
+  9         : SoundChannel.LOOPING_MOVEMENT,
+  10        : SoundChannel.LOOPING_AMBIENT,
+  11        : SoundChannel.ANIMATIONS,
+  12        : SoundChannel.CONSTRUCTIONS,
+  13        : SoundChannel.BIRTH,
+  14        : SoundChannel.FIRE,
+  15        : SoundChannel.LEGACY_MIDI,
+  16        : SoundChannel.CINEMATIC_GENERAL,
+  17        : SoundChannel.CINEMATIC_AMBIENT,
+  18        : SoundChannel.CINEMATIC_MUSIC,
+  19        : SoundChannel.CINEMATIC_DIALOGUE,
+  20        : SoundChannel.CINEMATIC_SFX1,
+  21        : SoundChannel.CINEMATIC_SFX2,
+  22        : SoundChannel.CINEMATIC_SFX3,
   0xFFFFFFFF: SoundChannel.GENERAL // this key takes priority in reverse
 } as Record<integer, SoundChannel>
 
@@ -39,7 +39,7 @@ const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc: Re
   return acc
 }, {}) as Record<SoundChannel, integer>
 
-export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer {
+export function jsonToWar(soundsJson: Sound[], formatVersion: integer): Buffer {
   if (formatVersion > 3 || formatVersion < 1) {
     throw new Error(`Unknown sounds format version ${formatVersion}`)
   }
@@ -101,7 +101,7 @@ export function jsonToWar (soundsJson: Sound[], formatVersion: integer): Buffer 
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): [Sound[], integer] {
+export function warToJson(buffer: Buffer): [Sound[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion > 3) {
@@ -174,10 +174,10 @@ export function warToJson (buffer: Buffer): [Sound[], integer] {
     }
 
     const flags = {
-      looping: !!(flagsValue & 0x01),
-      '3dSound': !!(flagsValue & 0x02),
+      looping       : !!(flagsValue & 0x01),
+      '3dSound'     : !!(flagsValue & 0x02),
       stopOutOfRange: !!(flagsValue & 0x04),
-      music: !!(flagsValue & 0x08),
+      music         : !!(flagsValue & 0x08),
       customImported: !!(flagsValue & 0x10)
     }
 
@@ -197,13 +197,13 @@ export function warToJson (buffer: Buffer): [Sound[], integer] {
       pitchVariance,
       priority,
       channel,
-      '3d': {
+      '3d'    : {
         distance: { min: distanceMin, max: distanceMax, cutoff: distanceCutoff },
-        cone: {
-          insideAngle: coneInsideAngle,
-          outsideAngle: coneOutsideAngle,
+        cone    : {
+          insideAngle  : coneInsideAngle,
+          outsideAngle : coneOutsideAngle,
           outsideVolume: coneOutsideVolume,
-          orientation: [coneOrientationX, coneOrientationY, coneOrientationZ]
+          orientation  : [coneOrientationX, coneOrientationY, coneOrientationZ]
         }
       },
       labelSLK,

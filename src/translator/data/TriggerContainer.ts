@@ -2,10 +2,10 @@ import { type TriggerContent } from './content/TriggerContent'
 
 interface TriggerContainer extends TriggerContent {
   isExpanded: boolean
-  children: Array<TriggerContainer | TriggerContent>
+  children: (TriggerContainer | TriggerContent)[]
 }
 
-function GetTriggerContainerChildren (node: TriggerContent): TriggerContent[] {
+function GetTriggerContainerChildren(node: TriggerContent): TriggerContent[] {
   return (node as TriggerContainer).children
 }
 

@@ -10,7 +10,7 @@ import { mergeBoolRecords } from '../Util'
 
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
-export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversion: integer, editorVersion: integer): Buffer {
+export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversion: integer, editorVersion: integer): Buffer {
   if (formatVersion < 9) {
     throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
   }
@@ -140,7 +140,7 @@ export function jsonToWar (units: Unit[], formatVersion: integer, formatSubversi
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): [Unit[], integer, integer] {
+export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], integer, integer] {
   const input = new W3Buffer(buffer)
   const fileId = input.readChars(4)
   if (fileId !== 'W3do') {
@@ -250,8 +250,8 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Unit[], int
       for (let j = 0; j < numModifiedAbil; j++) {
         abilities[j] = {
           ability: input.readChars(4), // Ability ID
-          active: input.readInt() === 1, // autocast active? 0=no, 1=active
-          level: input.readInt()
+          active : input.readInt() === 1, // autocast active? 0=no, 1=active
+          level  : input.readInt()
         }
       }
     } else {
@@ -318,8 +318,8 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Unit[], int
 
       if (randomType > 0) {
         random = {
-          type: randomType,
-          level: randomLevel,
+          type   : randomType,
+          level  : randomLevel,
           itemClass,
           groupIndex,
           columnIndex,
@@ -345,7 +345,29 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Unit[], int
     } else {
       id = 0
     }
-    result[i] = { type, variation, position, angle, scale, skin, flags, player, hitpoints, mana, randomItemSetPtr, droppedItemSets, gold, targetAcquisition, hero, inventory, abilities, random, playerColor, waygate, id }
+    result[i] = {
+      type,
+      variation,
+      position,
+      angle,
+      scale,
+      skin,
+      flags,
+      player,
+      hitpoints,
+      mana,
+      randomItemSetPtr,
+      droppedItemSets,
+      gold,
+      targetAcquisition,
+      hero,
+      inventory,
+      abilities,
+      random,
+      playerColor,
+      waygate,
+      id
+    }
   }
 
   return [result, formatVersion, formatSubversion]

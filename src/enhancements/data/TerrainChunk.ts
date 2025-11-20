@@ -10,8 +10,16 @@ interface TerrainData {
   map: MapSize
 }
 
+interface TerrainChunkObjects {
+  cameras: Camera[]
+  regions: Region[]
+  doodads: Doodad[]
+  specialDoodads: SpecialDoodad[]
+  units: Unit[]
+}
+
 // Offset goes to filename
-interface TerrainChunk {
+interface TerrainChunk extends TerrainChunkObjects {
   sizeX: integer
   sizeY: integer
   groundTexture: PaddedDoubleDigitString[]
@@ -25,11 +33,6 @@ interface TerrainChunk {
   blight: BinaryDigitString[]
   water: BinaryDigitString[]
   boundary: SingleDigitString[]
-  cameras: Camera[]
-  regions: Region[]
-  doodads: Doodad[]
-  specialDoodads: SpecialDoodad[]
-  units: Unit[]
 }
 
-export type { TerrainData, TerrainChunk }
+export type { TerrainData, TerrainChunkObjects, TerrainChunk }

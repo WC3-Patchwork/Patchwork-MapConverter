@@ -294,21 +294,19 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
   return [{
     tileset,
     customTileset,
-    tilePalette: tileIds,
+    tilePalette     : tileIds,
     cliffTilePalette: cliffTileIds,
-    map: {
-      sizeX, sizeY, offsetX, offsetY
-    },
-    groundTexture: arrGroundTexture,
-    groundVariation: arrGroundVariation,
-    cliffTexture: arrCliffTexture,
-    cliffVariation: arrCliffVariation,
-    cliffLevel: arrCliffLevel,
-    groundHeight: arrGroundHeight,
-    waterHeight: arrWaterHeight,
-    boundary: arrBoundaryFlag,
-    ramp: arrRampFlag,
-    blight: arrBlightFlag,
-    water: arrWaterFlag
+    map             : { sizeX, sizeY, offsetX, offsetY },
+    groundTexture   : arrGroundTexture,
+    groundVariation : arrGroundVariation,
+    cliffTexture    : arrCliffTexture,
+    cliffVariation  : arrCliffVariation,
+    cliffLevel      : arrCliffLevel,
+    groundHeight    : arrGroundHeight,
+    waterHeight     : arrWaterHeight,
+    boundary        : arrBoundaryFlag,
+    ramp            : arrRampFlag,
+    blight          : arrBlightFlag,
+    water           : arrWaterFlag
   }, formatVersion]
 }

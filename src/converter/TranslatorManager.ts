@@ -1,13 +1,13 @@
 import { TerrainTranslator, UnitsTranslator, DoodadsTranslator, RegionsTranslator, CamerasTranslator, SoundsTranslator, ObjectsTranslator, StringsTranslator, InfoTranslator, AssetsTranslator } from '../wc3maptranslator/translators'
 import { type ObjectModificationTable, ObjectType } from '../wc3maptranslator/data/ObjectModificationTable'
-import { type Terrain, type Unit, type Asset, type Info, type Doodad, type SpecialDoodad, type Region, type Camera, type Sound } from '../wc3maptranslator/data'
+import { type Terrain, type Unit, type Asset, type Info, type Region, type Camera, type Sound } from '../wc3maptranslator/data'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
 import { translators } from '../translator'
 import { type TargetProfile } from './Profile'
 import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
 
-const TranslatorManager = {
-  FindAppropriateTranslationMethodText2Binary: function (filename: string, profile: TargetProfile): ((json: object) => Buffer) | null {
+export const TranslatorManager = {
+  FindAppropriateTranslationMethodText2Binary: function(filename: string, profile: TargetProfile): ((json: object) => Buffer) | null {
     // World files
     if (filename.endsWith('.w3e')) {
       return (terrain) => TerrainTranslator.jsonToWar(terrain as unknown as Terrain, profile.w3eFormatVersion)
@@ -63,4 +63,3 @@ const TranslatorManager = {
     return null
   }
 }
-export { TranslatorManager }

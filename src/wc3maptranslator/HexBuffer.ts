@@ -27,13 +27,13 @@ const charToHex = (character: string): string => {
 export class HexBuffer {
   private readonly _buffer: string[] = []
 
-  public addString (str: string): void {
+  public addString(str: string): void {
     this.addStringNoNullTerminator(str)
     this.addNullTerminator()
   }
 
   // as opposed to addChar(s) it can handle any unicode char instead of blindly converting to ascii, thus loosing data.
-  public addStringNoNullTerminator (str: string): void {
+  public addStringNoNullTerminator(str: string): void {
     // Write each char to the buffer
     // "ascii" | "utf8" | "utf-8" | "utf16le" | "ucs2"
     // | "ucs-2" | "base64" | "latin1" | "binary" | "hex"
@@ -44,34 +44,34 @@ export class HexBuffer {
     }
   }
 
-  public addNewLine (): void {
+  public addNewLine(): void {
     this._buffer.push('0x0d') // carriage return
     this._buffer.push('0x0a') // line feed
   }
 
-  public addChar (char: string): void {
+  public addChar(char: string): void {
     this._buffer.push(charToHex(char))
   }
 
-  public addChars (chars: string): void {
+  public addChars(chars: string): void {
     chars.split('').forEach(char => {
       this.addChar(char)
     })
   }
 
-  public addInt (int: number, isShort = false): void {
+  public addInt(int: number, isShort = false): void {
     this._buffer.push(...intToHex(int, isShort, false))
   }
 
-  public addUInt (int: number, isShort = false): void {
+  public addUInt(int: number, isShort = false): void {
     this._buffer.push(...intToHex(int, isShort, true))
   }
 
-  public addShort (short: number): void {
+  public addShort(short: number): void {
     this.addInt(short, true)
   }
 
-  public addFloat (float: number): void {
+  public addFloat(float: number): void {
     const buf = Buffer.alloc(4)
 
     // ieee754.write(buffer, value, buffer offset, little-endian, mantissa length, bytes);
@@ -80,15 +80,15 @@ export class HexBuffer {
     buf.forEach((byte) => this._buffer.push(`0x${byte.toString(16)}`))
   }
 
-  public addByte (byte: number): void {
+  public addByte(byte: number): void {
     this._buffer.push(`0x${byte.toString(16)}`)
   }
 
-  public addNullTerminator (): void {
+  public addNullTerminator(): void {
     this._buffer.push('0x0')
   }
 
-  public getBuffer (): Buffer {
+  public getBuffer(): Buffer {
     return Buffer.from(this._buffer as unknown as WithImplicitCoercion<string>, 'hex')
   }
 }

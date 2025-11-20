@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import { type Stream } from 'stream'
 
-async function WriteAndCreatePath (
+async function WriteAndCreatePath(
   output: string,
   data: string | NodeJS.ArrayBufferView | Iterable<string | NodeJS.ArrayBufferView> | AsyncIterable<string | NodeJS.ArrayBufferView> | Buffer | Stream,
   options?:

@@ -12,7 +12,7 @@ enum TriggerDataSections {
   TRIGGER_CALLS = 'TriggerCalls'
 }
 
-function convertToSectionRowData (section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
+function convertToSectionRowData(section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
   const values = value.split(',') as [unknown, unknown, unknown, unknown, ...unknown[]]
 
   switch (section) {
@@ -36,7 +36,7 @@ const registry = new Map<TriggerDataSections, Record<string, number | undefined>
 let loaded = false
 
 const TriggerDataRegistry = {
-  loadTriggerData: function (triggerDataFilePath: string) {
+  loadTriggerData: function(triggerDataFilePath: string) {
     log.info('Loading trigger data from', triggerDataFilePath)
     if (!existsSync(triggerDataFilePath)){
       throw new Error(`File ${triggerDataFilePath} not found, missing trigger data.`)
@@ -69,7 +69,7 @@ const TriggerDataRegistry = {
     loaded = true
   },
 
-  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number {
+  getParameterCount: function(classification: StatementType | TriggerDataSections, name: string): number {
     let sectionRegistry: Record<string, number | undefined> | undefined
     if (!loaded) {
       throw new Error('TriggerData has not been provided, therefore GUI triggers cannot be converted!')

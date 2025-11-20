@@ -14,7 +14,7 @@ export interface DoodadsTranslatorOutput {
   specialDoodads: SpecialDoodad[]|undefined
 }
 
-export function jsonToWar ({doodads, specialDoodads}: DoodadsTranslatorOutput, formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
+export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
   if (formatVersion < 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
@@ -89,7 +89,7 @@ export function jsonToWar ({doodads, specialDoodads}: DoodadsTranslatorOutput, f
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): [DoodadsTranslatorOutput, integer, integer | undefined, integer | undefined] {
+export function warToJson(buffer: Buffer, editorVersion: integer): [DoodadsTranslatorOutput, integer, integer | undefined, integer | undefined] {
   const input = new W3Buffer(buffer)
   const fileMagicNumber = input.readChars(4)
   if (fileMagicNumber !== 'W3do') {
@@ -202,11 +202,11 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [DoodadsTran
     const specialDoodadCount = input.readInt()
     for (let i = 0; i < specialDoodadCount; i++) {
       specialDoodads[i] = {
-        type: input.readChars(4),
+        type    : input.readChars(4),
         position: [input.readFloat(), input.readFloat(), input.readFloat()]
       }
     }
   }
 
-  return [{doodads, specialDoodads}, formatVersion, formatSubversion, specialDoodadFormatVersion]
+  return [{ doodads, specialDoodads }, formatVersion, formatSubversion, specialDoodadFormatVersion]
 }

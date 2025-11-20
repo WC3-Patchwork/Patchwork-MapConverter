@@ -6,7 +6,7 @@ import { AssetType, type Asset } from '../data/Asset'
 
 const log = LoggerFactory.createLogger('AssetsTranslator')
 
-export function jsonToWar (imports: Asset[], formatVersion: number): Buffer {
+export function jsonToWar(imports: Asset[], formatVersion: number): Buffer {
   if (formatVersion > 1 || formatVersion < 0) {
     throw new Error(`Unknown imports list file format version=${formatVersion}, expected 0 or 1`)
   }
@@ -42,7 +42,7 @@ export function jsonToWar (imports: Asset[], formatVersion: number): Buffer {
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): [Asset[], integer] {
+export function warToJson(buffer: Buffer): [Asset[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion > 1 || formatVersion < 0) {

@@ -22,7 +22,7 @@ import { type TargetProfile } from './Profile'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
-async function processFile (input: string, translator: ((json: object) => Buffer), output: string): Promise<void> {
+async function processFile(input: string, translator: ((json: object) => Buffer), output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   asyncLog.info('Processing', input)
   const data = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as object
@@ -30,7 +30,7 @@ async function processFile (input: string, translator: ((json: object) => Buffer
   asyncLog.info('Finished processing', output)
 }
 
-async function exportImportsFile (data: Asset[], output: string, profile: TargetProfile): Promise<void> {
+async function exportImportsFile(data: Asset[], output: string, profile: TargetProfile): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `AssetsTranslator-${translatorCount++}` }) // TODO: move this log
   asyncLog.info('Exporting generated war3map.imp file.')
   const buffer = AssetsTranslator.jsonToWar(data, profile.impFormatVersion)
@@ -38,7 +38,7 @@ async function exportImportsFile (data: Asset[], output: string, profile: Target
   asyncLog.info('Finished exporting', output)
 }
 
-function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
+function getAllContentForScriptFile(root: TriggerContainer): TriggerContent[] {
   const triggerStack: TriggerContent[] = [root]
   const result: TriggerContent[] = []
   while (triggerStack.length > 0) {
@@ -63,11 +63,11 @@ function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
   return result
 }
 
-async function exportTriggers (triggersJson: TriggerContainer, output: string, profile: TargetProfile): Promise<void> {
+async function exportTriggers(triggersJson: TriggerContainer, output: string, profile: TargetProfile): Promise<void> {
   const tasks: Promise<unknown>[] = []
   const triggerLog = log.getSubLogger({ name: `${translators.TriggersTranslator.constructor.name}-${translatorCount++}` }) // TODO: move this log
   const triggerAndScript: TriggerTranslatorOutput = {
-    root: triggersJson,
+    root            : triggersJson,
     scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
   }
 
@@ -96,14 +96,14 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string, p
   await Promise.all(tasks)
 }
 
-async function processTriggers (input: string, output: string, profile: TargetProfile): Promise<void> {
+async function processTriggers(input: string, output: string, profile: TargetProfile): Promise<void> {
   log.info('Reading triggers file')
   const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
   await exportTriggers(buffer[0], output, profile)
 }
 
-const Json2WarService = {
-  convert: async function (inputPath: string, outputPath: string, profile: TargetProfile): Promise<void> {
+export const Json2WarService = {
+  async convert(inputPath: string, outputPath: string, profile: TargetProfile): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
     const promises: Promise<void>[] = []
@@ -123,7 +123,7 @@ const Json2WarService = {
 
         if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
           log.debug('ComposeTriggers requested')
-          promises.push((async (): Promise<void> => {
+          promises.push((async(): Promise<void> => {
             const triggerJson = await TriggerComposer.composeTriggerJson(file)
             await exportTriggers(triggerJson, outputPath, profile)
           })())
@@ -192,5 +192,3 @@ const Json2WarService = {
     await Promise.all(promises)
   }
 }
-
-export default Json2WarService

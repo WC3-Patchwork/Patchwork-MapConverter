@@ -5,11 +5,6 @@ import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
 import { type ILogObj, type Logger } from 'tslog'
 import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
-import War2JsonService from './converter/War2JsonService'
-import Json2WarService from './converter/Json2WarService'
-import EnhancementManager from './enhancements/EnhancementManager'
-import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
-import { FileBlacklist } from './enhancements/FileBlacklist'
 import path from 'path'
 import fs from 'fs'
 
@@ -18,14 +13,11 @@ import * as PatchworkTranslator from './translator'
 import * as Converters from './converter'
 import * as Enhancements from './enhancements'
 
-import { LoadTargetProfile } from './converter/ProfileLoader'
-import { type TargetProfile } from './converter/Profile'
-import { MapSize } from './wc3maptranslator/data/Terrain'
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 require('source-map-support').install()
 
 let log: Logger<ILogObj>
+const EnhancementManager = Enhancements.EnhancementManager
 
 program
   .name(NAME)
@@ -73,7 +65,7 @@ program
       EnhancementManager.sourceFolder = options.sourceFolder as string
     }
 
-    FileBlacklist.readBlacklist(options.ignore as string)
+    Enhancements.FileBlacklist.readBlacklist(options.ignore as string)
 
     if (/\\|\//.test(options.sourceFolder as string)) {
       throw new Error(`Invalid importsFolderName '${options.importsFolderName as string}' must not be a path!`)
@@ -90,7 +82,7 @@ program
 
     if (options.chunk === true) EnhancementManager.chunkifyMapData = true
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
-    if ((options.chunkSize != null)) { EnhancementManager.chunkSize = options.chunkSize as MapSize } //TODO: sanitize this
+    if ((options.chunkSize != null)) { EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize } //TODO: sanitize this
 
     if (options.prettify === true) EnhancementManager.prettify = true
 
@@ -100,7 +92,7 @@ program
       EnhancementManager.mapHeaderFilename = options.mapHeader as string
     }
     if (options.triggerData != null && fs.existsSync(options.triggerData as string)) {
-      TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+      Enhancements.TriggerDataRegistry.loadTriggerData(options.triggerData as string)
     }
   })
 
@@ -116,14 +108,14 @@ program
     if (options.generateTargetProfile) EnhancementManager.generateTargetProfile = true
     log.info('Will generate target profile JSON file')
   })
-  .action(async (input: string, output: string, target?: string) => {
+  .action(async(input: string, output: string, target?: string) => {
     try {
-      let profile: TargetProfile | undefined
+      let profile: Converters.TargetProfile|undefined
       if (target) {
-        profile = await LoadTargetProfile(target)
+        profile = await Converters.ProfileLoader.LoadTargetProfile(target)
       }
-      await War2JsonService.convert(input, output, profile)
-    } catch (exception) {
+      await Converters.War2JsonService.convert(input, output, profile)
+    } catch(exception) {
       log.fatal(exception)
     }
   })
@@ -134,10 +126,10 @@ program
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
-  .action(async (input: string, output: string, target: string) => {
+  .action(async(input: string, output: string, target: string) => {
     try {
-      await Json2WarService.convert(input, output, await LoadTargetProfile(target))
-    } catch (exception) {
+      await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
+    } catch(exception) {
       log.fatal(exception)
     }
   })

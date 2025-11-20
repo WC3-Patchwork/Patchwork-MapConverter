@@ -7,25 +7,25 @@ import { RegionDefaults } from '../default/Region'
 
 const log = LoggerFactory.createLogger('RegionTranslator')
 
-function bytesToHexString (...byteArray: integer[]): string {
-  return Array.from(byteArray, function (byte) {
+function bytesToHexString(...byteArray: integer[]): string {
+  return Array.from(byteArray, function(byte) {
     return ('0' + (byte & 0xFF).toString(16)).slice(-2)
   }).join('')
 }
 
-function hexStringToBytes (hex: string): integer[] {
+function hexStringToBytes(hex: string): integer[] {
   const bytes: integer[] = []
   for (let c = 0; c < hex.length; c += 2) { bytes.push(parseInt(hex.substring(c, 2), 16)) }
   return bytes
 }
 
 // json wants it in ARGB, but .w3r file stores it as BB GG RR AA
-function colorBytesToHex (blue: integer, green: integer, red: integer, alpha: integer): color {
+function colorBytesToHex(blue: integer, green: integer, red: integer, alpha: integer): color {
   return `#${bytesToHexString(blue, green, red, alpha)}`
 }
 
 // The order in .w3r is BB GG RR AA, whereas the JSON spec order is #AARRGGBB
-function colorHexToBytes (hex: color): [integer, integer, integer, integer] {
+function colorHexToBytes(hex: color): [integer, integer, integer, integer] {
   if (hex.startsWith('#') && hex.length === 9) {
     return hexStringToBytes(hex.substring(1)).reverse() as [integer, integer, integer, integer]
   } else {
@@ -33,7 +33,7 @@ function colorHexToBytes (hex: color): [integer, integer, integer, integer] {
   }
 }
 
-export function jsonToWar (regionsJson: Region[], formatVersion: integer): Buffer {
+export function jsonToWar(regionsJson: Region[], formatVersion: integer): Buffer {
   if (formatVersion < 0 || formatVersion > 5) {
     throw new Error(`Unknown regions format version=${formatVersion}, expected value from range [0, 5]`)
   }
@@ -72,7 +72,7 @@ export function jsonToWar (regionsJson: Region[], formatVersion: integer): Buffe
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): [Region[], integer] {
+export function warToJson(buffer: Buffer): [Region[], integer] {
   const result: Region[] = []
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()

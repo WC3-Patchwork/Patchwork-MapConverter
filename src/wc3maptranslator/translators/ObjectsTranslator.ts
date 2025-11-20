@@ -12,7 +12,7 @@ enum TableType {
   custom = 'custom'
 }
 
-export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType, formatVersion: integer): Buffer {
+export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType, formatVersion: integer): Buffer {
   if (formatVersion < 0 || formatVersion > 3) {
     throw new Error(`Unknown object definition format version=${formatVersion}, expected value from range [0, 3]`)
   }
@@ -42,7 +42,7 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
       for (const modification of objectData.modifications) {
         output.addChars(modification.id)
 
-        const fieldTypeValue = (function (fieldType: ModificationType): integer {
+        const fieldTypeValue = (function(fieldType: ModificationType): integer {
           switch (fieldType) {
             case ModificationType.INTEGER:
               return 0
@@ -103,7 +103,7 @@ export function jsonToWar (json: ObjectModificationTable, objectType: ObjectType
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModificationTable, integer] {
+export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModificationTable, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion < 0 || formatVersion > 3) {
@@ -189,9 +189,9 @@ export function warToJson (buffer: Buffer, objectType: ObjectType): [ObjectModif
           }
 
           modifications.push({
-            id: fieldId,
-            type: fieldType,
-            value: fieldValue,
+            id            : fieldId,
+            type          : fieldType,
+            value         : fieldValue,
             levelVariation: levelVariant,
             dataPointer
           })

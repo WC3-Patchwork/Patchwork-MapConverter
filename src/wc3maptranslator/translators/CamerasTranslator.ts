@@ -7,7 +7,7 @@ import { CameraDefaults } from '../default/Camera'
 
 const log = LoggerFactory.createLogger('CamerasTranslator')
 
-export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVersion: integer): Buffer {
+export function jsonToWar(cameras: Camera[], formatVersion: integer, editorVersion: integer): Buffer {
   if (formatVersion !== 0) {
     throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
   }
@@ -36,7 +36,7 @@ export function jsonToWar (cameras: Camera[], formatVersion: integer, editorVers
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer, editorVersion: integer): [Camera[], integer] {
+export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
   if (formatVersion !== 0) {
@@ -71,7 +71,22 @@ export function warToJson (buffer: Buffer, editorVersion: integer): [Camera[], i
       localRoll = CameraDefaults.localRoll
     }
     const name = input.readString()
-    result[i] = { targetX, targetY, offsetZ, rotation, angleOfAttack, distance, roll, fieldOfView, farClipping, nearClipping, localPitch, localRoll, localYaw, name }
+    result[i] = {
+      targetX,
+      targetY,
+      offsetZ,
+      rotation,
+      angleOfAttack,
+      distance,
+      roll,
+      fieldOfView,
+      farClipping,
+      nearClipping,
+      localPitch,
+      localRoll,
+      localYaw,
+      name
+    }
   }
 
   return [result, formatVersion]

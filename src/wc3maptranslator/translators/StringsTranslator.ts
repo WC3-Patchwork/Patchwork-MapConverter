@@ -1,6 +1,6 @@
 import { HexBuffer } from '../HexBuffer'
 
-export function jsonToWar (stringsJson: Record<string, string>): Buffer {
+export function jsonToWar(stringsJson: Record<string, string>): Buffer {
   const output = new HexBuffer()
   Object.keys(stringsJson).forEach((key) => {
     output.addChars('STRING ' + key)
@@ -17,7 +17,7 @@ export function jsonToWar (stringsJson: Record<string, string>): Buffer {
   return output.getBuffer()
 }
 
-export function warToJson (buffer: Buffer): Record<string, string> {
+export function warToJson(buffer: Buffer): Record<string, string> {
   const wts = buffer.toString().replace(/\r\n/g, '\n') // may contain Windows linebreaks (\r\n), but below regex just assumes \n
   const matchStringDefinitionBlock = /STRING ([0-9]+)\n?(?:.*\n)?{\n((?:.|\n)*?)\n}/g // see: https://regexr.com/3r572
 
