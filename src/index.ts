@@ -80,9 +80,11 @@ program
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
     if ((options.mapDataExtension as string).startsWith('.')) EnhancementManager.mapDataExtension = options.mapDataExtension as string
 
-    if (options.chunk === true) EnhancementManager.chunkifyMapData = true
+    if (options.chunkify === true) EnhancementManager.chunkifyMapData = true
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
-    if ((options.chunkSize != null)) { EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize } //TODO: sanitize this
+    if ((options.chunkSize != null)) {
+      EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
+    } // TODO: sanitize this
 
     if (options.prettify === true) EnhancementManager.prettify = true
 
@@ -108,14 +110,14 @@ program
     if (options.generateTargetProfile) EnhancementManager.generateTargetProfile = true
     log.info('Will generate target profile JSON file')
   })
-  .action(async(input: string, output: string, target?: string) => {
+  .action(async (input: string, output: string, target?: string) => {
     try {
-      let profile: Converters.TargetProfile|undefined
+      let profile: Converters.TargetProfile | undefined
       if (target) {
         profile = await Converters.ProfileLoader.LoadTargetProfile(target)
       }
       await Converters.War2JsonService.convert(input, output, profile)
-    } catch(exception) {
+    } catch (exception) {
       log.fatal(exception)
     }
   })
@@ -126,10 +128,10 @@ program
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
-  .action(async(input: string, output: string, target: string) => {
+  .action(async (input: string, output: string, target: string) => {
     try {
       await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
-    } catch(exception) {
+    } catch (exception) {
       log.fatal(exception)
     }
   })

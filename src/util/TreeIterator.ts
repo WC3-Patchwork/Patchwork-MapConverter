@@ -1,4 +1,4 @@
-function * TreeIterator<NODE>(root: NODE, getChildNodes: (parent: NODE) => NODE[] | undefined): Generator<[NODE[], NODE]> {
+function* TreeIterator<NODE>(root: NODE, getChildNodes: (parent: NODE) => NODE[] | undefined): Generator<[NODE[], NODE]> {
   const traversalStack = [root]
   const parentMaps = new Map<NODE, NODE[]>()
 

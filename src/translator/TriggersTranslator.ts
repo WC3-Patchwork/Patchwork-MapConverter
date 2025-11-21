@@ -117,7 +117,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveGlobals = function(variables: GlobalVariable[], parentReference: Map<TriggerContent, integer>): void {
+  const saveGlobals = function (variables: GlobalVariable[], parentReference: Map<TriggerContent, integer>): void {
     output.addInt(variableFormatVersion)
     output.addInt(variables.length)
     for (const variable of variables) {
@@ -133,7 +133,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       }
       output.addString(variable.initialValue)
 
-      if (formatVersion >= 2147483648) {
+      if (finalFormatSubversion >= 0x80000000) {
         const elementId = elementReference.get(variable)
         if (elementId == null) {
           throw new Error(`Variable ${variable.name} missing ID`)
@@ -144,7 +144,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveContainer = function(elementId: integer, container: TriggerContainer, parentContainerId: integer): void {
+  const saveContainer = function (elementId: integer, container: TriggerContainer, parentContainerId: integer): void {
     output.addInt(elementId)
     output.addString(container.name)
     if (formatVersion > 6) {
@@ -157,7 +157,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveTrigger = function(elementId: integer, trigger: TriggerContent, parentContainerId: integer): void {
+  const saveTrigger = function (elementId: integer, trigger: TriggerContent, parentContainerId: integer): void {
     const triggerName = trigger.name
     let triggerDescription: string
     let isComment: boolean
@@ -178,10 +178,10 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
         isCustomScript = false
         initiallyOff = (trigger as GUITrigger)?.initiallyOff ?? TriggerDefaults.initiallyOff
         runOnMapInit = (trigger as BaseTrigger)?.runOnMapInit ?? TriggerDefaults.runOnMapInit
-        triggerFunctionCount = (function(trigger: GUITrigger): integer {
-          return (trigger.events ?? TriggerDefaults.events).length +
-          (trigger.conditions ?? TriggerDefaults.conditions).length +
-          (trigger.actions ?? TriggerDefaults.actions).length
+        triggerFunctionCount = (function (trigger: GUITrigger): integer {
+          return (trigger.events ?? TriggerDefaults.events).length
+            + (trigger.conditions ?? TriggerDefaults.conditions).length
+            + (trigger.actions ?? TriggerDefaults.actions).length
         })(trigger as GUITrigger)
         break
       case ContentType.TRIGGER_SCRIPTED:
@@ -244,7 +244,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveTriggerFunctions = function(trigger: GUITrigger): void {
+  const saveTriggerFunctions = function (trigger: GUITrigger): void {
     for (const event of trigger.events) {
       output.addInt(StatementTypeEnumConverter.toIdentifier(event.type))
       saveTriggerFunction(event)
@@ -259,7 +259,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveTriggerFunction = function(triggerFunction: Statement): void {
+  const saveTriggerFunction = function (triggerFunction: Statement): void {
     output.addString(triggerFunction.name)
     if (formatVersion > 2) {
       output.addInt(+triggerFunction.isEnabled)
@@ -287,7 +287,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveTriggerFunctionParameter = function(param: Parameter): void {
+  const saveTriggerFunctionParameter = function (param: Parameter): void {
     output.addInt(ParameterTypeEnumConverter.toIdentifier(param.type))
     output.addString(param.value)
     output.addInt(+(param.statement != null))
@@ -301,7 +301,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     }
   }
 
-  const saveTriggerVariable = function(elementId: integer, variable: GlobalVariable, parentContainerId: integer): void {
+  const saveTriggerVariable = function (elementId: integer, variable: GlobalVariable, parentContainerId: integer): void {
     output.addInt(elementId)
     output.addString(variable.name)
     output.addInt(parentContainerId)
@@ -312,17 +312,17 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     totalElements = totalElements + elements.length
   }
 
-  if (formatVersion < 2147483648) {
+  if (finalFormatSubversion < 0x80000000) {
     output.addInt((triggersByContentType.get(ContentType.CATEGORY) as []).length)
     for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
       saveContainer(elementReference.get(category)!, category, parentReference.get(category)!)
     }
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
 
-    const triggerContentCount =
-      (triggersByContentType.get(ContentType.COMMENT) as []).length +
-      (triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as []).length +
-      (triggersByContentType.get(ContentType.TRIGGER) as []).length
+    const triggerContentCount
+      = (triggersByContentType.get(ContentType.COMMENT) as []).length
+        + (triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as []).length
+        + (triggersByContentType.get(ContentType.TRIGGER) as []).length
 
     output.addInt(triggerContentCount)
     for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
@@ -391,30 +391,36 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
 export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, integer] {
   const input = new W3Buffer(buffer)
 
+  const elementRelations = new Map<number, number>()
+  const containers: Record<number, TriggerContainer> = {}
+  const content: Record<number, TriggerContent> = {}
+  const customScripts: (ScriptContent | null)[] = []
+  const allGlobalVariables: Record<number, GlobalVariable> = {}
+
   try {
     const fileId = input.readChars(4) // WTG!
     if (fileId !== 'WTG!') {
       log.warn(`Mismatched file format magic number, found '${fileId}', expected 'WTG!', will attempt parsing...`)
     }
 
-    const formatVersion = input.readUint() // 04 00 00 80
-    if (formatVersion < 0 || formatVersion > 2147483652) {
-      log.warn(`Unknown terrain file format version '${formatVersion}', expected value [3, 2147483652], will attempt parsing...`)
-    }
+    let formatVersion = input.readUint()
 
     let formatSubversion: integer
-    if (formatVersion > 2147483647) {
-      formatSubversion = input.readInt() // 4 = Roc, 7 = TFT
+    if (formatVersion > 0x7FFFFFFF) {
+      formatSubversion = formatVersion
+      formatVersion = input.readInt() // 4 = Roc, 7 = TFT
     } else {
       formatSubversion = 0x7FFFFFFF
     }
 
-    const elementRelations = new Map<number, number>()
-    const containers: Record<number, TriggerContainer> = {}
-    const content: Record<number, TriggerContent> = {}
-    const customScripts: (ScriptContent | null)[] = []
-    const allGlobalVariables: Record<number, GlobalVariable> = {}
-    const loadGlobals = function(): void {
+    if (formatVersion < 0 || formatVersion > 2147483652) {
+      log.warn(`Unknown trigger file format version '${formatVersion}', expected value [0, 2147483652], will attempt parsing...`)
+    } else {
+      log.info(`Trigger file format version is ${formatVersion}`)
+    }
+    log.info(`Trigger file format subversion is ${formatSubversion}`)
+
+    const loadGlobals = function (): void {
       const variableFormatVersion = input.readInt() // [0, 2]
       const existingVariablesCount = input.readInt()
       for (let i = 0; i < existingVariablesCount; i++) {
@@ -450,7 +456,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
           initialValue
         }
 
-        if (formatVersion >= 2147483648) {
+        if (formatSubversion >= 0x80000000) {
           const variableId = input.readInt() // last byte 06?
           allGlobalVariables[variableId] = globalVariable
           content[variableId] = globalVariable
@@ -462,11 +468,11 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       }
     }
 
-    const loadContainer = function(type: ContentType): TriggerContainer {
+    const loadContainer = function (type: ContentType): TriggerContainer {
       const elementId = input.readInt()
       const name = input.readString()
       if (formatVersion > 6) {
-        input.readInt() //isComment: boolean - pretty sure this will always be false.
+        input.readInt() // isComment: boolean - pretty sure this will always be false.
       }
 
       let isExpanded: boolean
@@ -489,7 +495,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       return container
     }
 
-    const loadTrigger = function(index: integer, contentType: ContentType): void {
+    const loadTrigger = function (index: integer, contentType: ContentType): void {
       const name = input.readString()
       const description = input.readString()
 
@@ -607,7 +613,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       }
     }
 
-    const loadTriggerFunction = function(type: StatementType): Statement {
+    const loadTriggerFunction = function (type: StatementType): Statement {
       const name = input.readString()
       let isEnabled: boolean
       if (formatVersion > 2) {
@@ -649,7 +655,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       return triggerFunction
     }
 
-    const loadTriggerFunctionParameter = function(): Parameter {
+    const loadTriggerFunctionParameter = function (): Parameter {
       const type = ParameterTypeEnumConverter.toEnum(input.readInt())
       const value = input.readString()
       const hasSubParams = !!input.readInt()
@@ -671,7 +677,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       } satisfies Parameter
     }
 
-    const loadTriggerVariable = function(): void {
+    const loadTriggerVariable = function (): void {
       const elementId = input.readInt()
       input.readString() // excess data - name
       const parentContainerId = input.readInt()
@@ -679,7 +685,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       elementRelations.set(elementId, parentContainerId)
     }
 
-    if (formatVersion < 2147483648) {
+    if (formatSubversion < 0x80000000) {
       const header = {
         name       : 'header',
         description: '',
@@ -700,14 +706,20 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       }
     } else {
       // counts: headers. libraries, categories, triggers, comments, custom scripts, variables, unknown element
+      let expectedElementCount = 0
       for (let i = 0; i < 8; i++) {
-        const elementCount = input.readInt()
-        for (let j = 0; j < elementCount; j++) {
+        expectedElementCount += input.readInt()
+        const deletedElementCount = input.readInt()
+        for (let j = 0; j < deletedElementCount; j++) {
           input.readInt() // deleted element id
         }
       }
       loadGlobals()
+
       const elementCount = input.readInt()
+      if (expectedElementCount !== elementCount) {
+        log.warn(`Expected element count is ${expectedElementCount}, actual count is ${elementCount}`)
+      }
       for (let i = 0; i < elementCount; i++) {
         let element: TriggerContent
         const type = ContentTypeEnumConverter.toEnum(input.readInt())
@@ -777,7 +789,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       } satisfies TriggerContainer,
       scriptReferences: customScripts
     }, formatVersion, formatSubversion]
-  } catch(e) {
+  } catch (e) {
     log.error(`Error at offset: ${(input as unknown as { _offset: number })._offset}`)
     throw e
   }

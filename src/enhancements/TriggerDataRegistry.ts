@@ -36,9 +36,9 @@ const registry = new Map<TriggerDataSections, Record<string, number | undefined>
 let loaded = false
 
 const TriggerDataRegistry = {
-  loadTriggerData: function(triggerDataFilePath: string) {
+  loadTriggerData: function (triggerDataFilePath: string) {
     log.info('Loading trigger data from', triggerDataFilePath)
-    if (!existsSync(triggerDataFilePath)){
+    if (!existsSync(triggerDataFilePath)) {
       throw new Error(`File ${triggerDataFilePath} not found, missing trigger data.`)
     }
     const iniData = readFileSync(triggerDataFilePath, { encoding: 'utf8' })
@@ -50,8 +50,8 @@ const TriggerDataRegistry = {
         currentSection = line.substring(1, line.length - 1) as TriggerDataSections
         continue
       }
-      if (currentSection !== TriggerDataSections.TRIGGER_ACTIONS && currentSection !== TriggerDataSections.TRIGGER_CALLS &&
-        currentSection !== TriggerDataSections.TRIGGER_CONDITIONS && currentSection !== TriggerDataSections.TRIGGER_EVENTS) {
+      if (currentSection !== TriggerDataSections.TRIGGER_ACTIONS && currentSection !== TriggerDataSections.TRIGGER_CALLS
+        && currentSection !== TriggerDataSections.TRIGGER_CONDITIONS && currentSection !== TriggerDataSections.TRIGGER_EVENTS) {
         continue // ignore irrelevant sections
       }
       if (line.startsWith('_')) continue // ignore irrelevant properties
@@ -69,7 +69,7 @@ const TriggerDataRegistry = {
     loaded = true
   },
 
-  getParameterCount: function(classification: StatementType | TriggerDataSections, name: string): number {
+  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number {
     let sectionRegistry: Record<string, number | undefined> | undefined
     if (!loaded) {
       throw new Error('TriggerData has not been provided, therefore GUI triggers cannot be converted!')

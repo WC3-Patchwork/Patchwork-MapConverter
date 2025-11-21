@@ -1,28 +1,28 @@
 import { type vector3, type integer } from '../CommonInterfaces'
 
 interface Sound {
-  name: string
-  path: string
-  eax: SoundEnvironment
-  flags: SoundFlags
-  fadeRate: FadeRate
-  volume: integer
-  pitch: number
-  pitchVariance: number
-  priority: integer
-  channel: SoundChannel
+  'name': string
+  'path': string
+  'eax': SoundEnvironment
+  'flags': SoundFlags
+  'fadeRate': FadeRate
+  'volume': integer
+  'pitch': number
+  'pitchVariance': number
+  'priority': integer
+  'channel': SoundChannel
   '3d': ThreeDSound
-  labelSLK: string
-  dialogueId: integer
-  productionComments: string
-  speakerNameId: integer
-  listenerName: string
-  assetFlags: integer // unknown flags - no use found
-  speakerUnitId: string
-  animationLabel: string
-  animationGroup: string
-  animationSetFilepath: string
-  animationSetFilepathIsMapRelative: boolean
+  'labelSLK': string
+  'dialogueId': integer
+  'productionComments': string
+  'speakerNameId': integer
+  'listenerName': string
+  'assetFlags': integer // unknown flags - no use found
+  'speakerUnitId': string
+  'animationLabel': string
+  'animationGroup': string
+  'animationSetFilepath': string
+  'animationSetFilepathIsMapRelative': boolean
 }
 
 interface FadeRate {
@@ -31,11 +31,11 @@ interface FadeRate {
 }
 
 interface SoundFlags {
-  looping: boolean
+  'looping': boolean
   '3dSound': boolean
-  stopOutOfRange: boolean
-  music: boolean
-  customImported: boolean
+  'stopOutOfRange': boolean
+  'music': boolean
+  'customImported': boolean
 }
 
 interface ThreeDSound {
@@ -89,7 +89,7 @@ enum SoundChannel {
   CINEMATIC_DIALOGUE = 'Cinematic Dialogue',
   CINEMATIC_SFX1 = 'Cinematic SFX 1',
   CINEMATIC_SFX2 = 'Cinematic SFX 2',
-  CINEMATIC_SFX3 = 'Cinematic SFX 3',
+  CINEMATIC_SFX3 = 'Cinematic SFX 3'
 }
 
 export type { Sound, FadeRate, SoundFlags, Distance }

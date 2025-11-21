@@ -11,7 +11,7 @@ const log = LoggerFactory.createLogger('DoodadsTranslator')
 
 export interface DoodadsTranslatorOutput {
   doodads: Doodad[]
-  specialDoodads: SpecialDoodad[]|undefined
+  specialDoodads: SpecialDoodad[] | undefined
 }
 
 export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
@@ -61,9 +61,9 @@ export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, 
       const droppedItemSets = doodad.droppedItemSets ?? DoodadDefaults.droppedItemSets
       output.addInt(doodad.randomItemSetPtr ?? DoodadDefaults.randomItemSetPtr)
       output.addInt(droppedItemSets.length)
-      droppedItemSets.forEach(itemSet => {
+      droppedItemSets.forEach((itemSet) => {
         output.addInt(itemSet.items?.length ?? 0)
-        itemSet.items?.forEach(item => {
+        itemSet.items?.forEach((item) => {
           output.addChars(item.itemId)
           output.addInt(item.chance)
         })
@@ -79,7 +79,7 @@ export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, 
     specialDoodadFormatVersion = specialDoodadFormatVersion ?? 0
     output.addInt(specialDoodadFormatVersion)
     output.addInt(specialDoodads?.length ?? 0)
-    specialDoodads?.forEach(specialDoodad => {
+    specialDoodads?.forEach((specialDoodad) => {
       output.addChars(specialDoodad.type)
       output.addInt(specialDoodad.position[0])
       output.addInt(specialDoodad.position[1])

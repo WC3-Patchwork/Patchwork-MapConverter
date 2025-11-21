@@ -58,7 +58,7 @@ export class W3Buffer {
       this._offset += 1
     }
 
-    return string.map((ch) => String.fromCharCode(ch)).join('')
+    return string.map(ch => String.fromCharCode(ch)).join('')
   }
 
   public readByte(): number {

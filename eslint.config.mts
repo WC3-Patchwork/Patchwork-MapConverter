@@ -9,6 +9,7 @@ export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.stylisticTypeChecked,
   tseslint.configs.recommendedTypeChecked,
+  stylistic.configs.recommended,
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,
@@ -33,10 +34,6 @@ export default defineConfig(
       "@typescript-eslint/restrict-template-expressions": "error",
       "@typescript-eslint/strict-boolean-expressions": "off",
       "require-await": "off",
-      "@stylistic/space-infix-ops": ["warn", { "int32Hint": true, "ignoreTypes": true}],
-      "@stylistic/quotes": ["warn", "single", {"allowTemplateLiterals": "always"}],
-      "@stylistic/indent": ["warn", 2],
-      "@stylistic/space-before-function-paren": ["warn", "never"],
       "@stylistic/key-spacing": [ "warn",
         {
           "mode": "strict",
@@ -45,29 +42,12 @@ export default defineConfig(
           "ignoredNodes": ["TSInterfaceBody", "ClassBody", "TSTypeLiteral"]
         }
       ],
-      "@stylistic/block-spacing": ["warn", "always"],
-      "@stylistic/arrow-spacing": [ "warn",
-        {"before": true, "after": true}        
-      ],
       "@stylistic/type-annotation-spacing": ["warn",
         {"after": true}
       ],
       "@stylistic/eol-last": ["warn", "never"],
-      "@stylistic/exp-list-style":["warn",
-        { 
-          "singleLine": {
-            "maxItems": 8
-          },
-          "multiLine":{
-            "minItems": 1
-          },
-          "overrides": {
-            "ImportDeclaration": listStyleDefault,
-            "ImportAttributes": listStyleDefault,
-            "ExportNamedDeclaration": listStyleDefault
-          }
-        }
-      ]
+      "@stylistic/brace-style": ["warn", "1tbs"],
+      "@stylistic/comma-dangle": ["warn", "never"]
     }
   }
 );

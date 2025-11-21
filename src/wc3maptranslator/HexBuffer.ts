@@ -54,7 +54,7 @@ export class HexBuffer {
   }
 
   public addChars(chars: string): void {
-    chars.split('').forEach(char => {
+    chars.split('').forEach((char) => {
       this.addChar(char)
     })
   }
@@ -77,7 +77,7 @@ export class HexBuffer {
     // ieee754.write(buffer, value, buffer offset, little-endian, mantissa length, bytes);
     ieee754.write(buf as Uint8Array, float, 0, true, 23, 4)
 
-    buf.forEach((byte) => this._buffer.push(`0x${byte.toString(16)}`))
+    buf.forEach(byte => this._buffer.push(`0x${byte.toString(16)}`))
   }
 
   public addByte(byte: number): void {

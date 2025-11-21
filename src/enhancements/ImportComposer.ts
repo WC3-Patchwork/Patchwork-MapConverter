@@ -8,7 +8,7 @@ const log = LoggerFactory.createLogger('ImportComposer')
 
 const ImportComposer = {
 
-  composeImportRegistry: function(importsFolderTree: DirectoryTree): Asset[] {
+  composeImportRegistry: function (importsFolderTree: DirectoryTree): Asset[] {
     log.info('Composing war3map.imp file from', importsFolderTree.path, 'directory')
 
     const imports: Asset[] = []
@@ -39,7 +39,7 @@ const ImportComposer = {
     return imports
   },
 
-  getImportedFilePaths: function(inputPath: string, importRegistry: Asset[]): string[] {
+  getImportedFilePaths: function (inputPath: string, importRegistry: Asset[]): string[] {
     log.info('Reading imported files registry')
     const importedFiles: string[] = []
 

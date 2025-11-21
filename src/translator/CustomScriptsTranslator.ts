@@ -25,7 +25,7 @@ export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: in
   }
   formatSubversion = formatSubversion ?? 0x7FFFFFFF
 
-  const saveCustomScript = function(text: string): void {
+  const saveCustomScript = function (text: string): void {
     if (text.length > 0) {
       const buf = Buffer.from(text, 'utf-8')
       output.addInt(buf.length + 1) // + nul char
@@ -86,12 +86,16 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
 
   if (formatVersion < 0 || formatVersion > 0x80000004) {
     log.warn(`Unknown map scripts format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Map scripts format version is ${formatVersion}`)
   }
   if (formatSubversion !== 0x7FFFFFFF && formatSubversion > 1) {
-    log.warn(`Unknown map scripts format sub-version ${formatSubversion} will attempt at reading...`)
+    log.warn(`Unknown map scripts format subversion ${formatSubversion} will attempt at reading...`)
+  } else {
+    log.info(`Map scripts format subversion is ${formatSubversion}`)
   }
 
-  const loadCustomScript = function(): string {
+  const loadCustomScript = function (): string {
     const unknownScriptLength = input.readInt()
     if (unknownScriptLength > 0) {
       return input.readString()
@@ -135,11 +139,11 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
   } else {
     try {
       do {
-        loadCustomScript()
+        scripts.push(loadCustomScript())
       // eslint-disable-next-line no-constant-condition
       } while (true)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch(e) {
+    } catch (e) {
     // catch EOF
     }
   }

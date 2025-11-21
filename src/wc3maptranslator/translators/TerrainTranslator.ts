@@ -240,7 +240,7 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
           }
         }
 
-        waterHeight ??= TerrainDefaults.waterHeight;
+        waterHeight ??= TerrainDefaults.waterHeight
         boundaryFlag = Boundary.None
       } else {
         groundHeight = input.readShort()

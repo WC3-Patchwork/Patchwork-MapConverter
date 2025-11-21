@@ -6,7 +6,7 @@ type BinaryDigitString = string
 type CSVString = string
 
 const ArrayStringifier = {
-  ConvertToPaddedDoubleDigitString: function(data: integer[]): PaddedDoubleDigitString {
+  ConvertToPaddedDoubleDigitString: function (data: integer[]): PaddedDoubleDigitString {
     const result: string[] = []
     for (const bit of data) {
       if (bit >= 0 && bit <= 9) {
@@ -17,7 +17,7 @@ const ArrayStringifier = {
     return result.join('')
   },
 
-  ConvertFromPaddedDoubleDigitString: function(stringData: PaddedDoubleDigitString): integer[] {
+  ConvertFromPaddedDoubleDigitString: function (stringData: PaddedDoubleDigitString): integer[] {
     const result: integer[] = []
     for (let i = 0; i < stringData.length - 1; i += 2) {
       const bit = stringData.substring(i, i + 2)
@@ -26,7 +26,7 @@ const ArrayStringifier = {
     return result
   },
 
-  ConvertToSingleDigitString: function(data: integer[]): SingleDigitString {
+  ConvertToSingleDigitString: function (data: integer[]): SingleDigitString {
     const result: string[] = []
     for (const bit of data) {
       result.push(bit.toFixed(0).substring(0, 1)) // just to make sure
@@ -34,7 +34,7 @@ const ArrayStringifier = {
     return result.join('')
   },
 
-  ConvertFromSingleDigitString: function(stringData: SingleDigitString): integer[] {
+  ConvertFromSingleDigitString: function (stringData: SingleDigitString): integer[] {
     const result: integer[] = []
     for (let i = 0; i < stringData.length; i++) {
       const bit = stringData.substring(i, i + 1)
@@ -43,7 +43,7 @@ const ArrayStringifier = {
     return result
   },
 
-  ConvertToBinaryDigitString: function(data: boolean[]): BinaryDigitString {
+  ConvertToBinaryDigitString: function (data: boolean[]): BinaryDigitString {
     const result: string[] = []
     for (const bit of data) {
       result.push(bit ? '1' : '0')
@@ -51,7 +51,7 @@ const ArrayStringifier = {
     return result.join('')
   },
 
-  ConvertFromBinaryDigitString: function(stringData: BinaryDigitString): boolean[] {
+  ConvertFromBinaryDigitString: function (stringData: BinaryDigitString): boolean[] {
     const result: boolean[] = []
     for (let i = 0; i < stringData.length; i++) {
       const bit = stringData.substring(i, i + 1)
@@ -60,7 +60,7 @@ const ArrayStringifier = {
     return result
   },
 
-  ConvertToCSVString: function(data: unknown[]): CSVString {
+  ConvertToCSVString: function (data: unknown[]): CSVString {
     return data.join(',')
   },
 

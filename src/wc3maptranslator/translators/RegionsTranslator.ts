@@ -8,14 +8,16 @@ import { RegionDefaults } from '../default/Region'
 const log = LoggerFactory.createLogger('RegionTranslator')
 
 function bytesToHexString(...byteArray: integer[]): string {
-  return Array.from(byteArray, function(byte) {
+  return Array.from(byteArray, function (byte) {
     return ('0' + (byte & 0xFF).toString(16)).slice(-2)
   }).join('')
 }
 
 function hexStringToBytes(hex: string): integer[] {
   const bytes: integer[] = []
-  for (let c = 0; c < hex.length; c += 2) { bytes.push(parseInt(hex.substring(c, 2), 16)) }
+  for (let c = 0; c < hex.length; c += 2) {
+    bytes.push(parseInt(hex.substring(c, 2), 16))
+  }
   return bytes
 }
 
@@ -40,7 +42,7 @@ export function jsonToWar(regionsJson: Region[], formatVersion: integer): Buffer
   const output = new HexBuffer()
   output.addInt(formatVersion)
   output.addInt(regionsJson?.length ?? 0) // number of regions
-  regionsJson?.forEach(region => {
+  regionsJson?.forEach((region) => {
     if (formatVersion < 0x02) {
       output.addInt(region.position.left)
       output.addInt(region.position.bottom)
@@ -64,7 +66,7 @@ export function jsonToWar(regionsJson: Region[], formatVersion: integer): Buffer
       output.addString(region.ambientSound ?? RegionDefaults.ambientSound)
     }
 
-    colorHexToBytes(region.color ?? RegionDefaults.color).forEach(it => {
+    colorHexToBytes(region.color ?? RegionDefaults.color).forEach((it) => {
       output.addByte(it)
     })
   })

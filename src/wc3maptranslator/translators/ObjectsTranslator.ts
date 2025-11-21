@@ -42,7 +42,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
       for (const modification of objectData.modifications) {
         output.addChars(modification.id)
 
-        const fieldTypeValue = (function(fieldType: ModificationType): integer {
+        const fieldTypeValue = (function (fieldType: ModificationType): integer {
           switch (fieldType) {
             case ModificationType.INTEGER:
               return 0

@@ -123,7 +123,7 @@ export const Json2WarService = {
 
         if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
           log.debug('ComposeTriggers requested')
-          promises.push((async(): Promise<void> => {
+          promises.push((async (): Promise<void> => {
             const triggerJson = await TriggerComposer.composeTriggerJson(file)
             await exportTriggers(triggerJson, outputPath, profile)
           })())

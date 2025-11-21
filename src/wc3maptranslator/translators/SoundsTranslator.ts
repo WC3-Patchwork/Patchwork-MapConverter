@@ -134,7 +134,7 @@ export function warToJson(buffer: Buffer): [Sound[], integer] {
     const coneOrientationX = input.readFloat()
     const coneOrientationY = input.readFloat()
     const coneOrientationZ = input.readFloat()
-    let channel = soundChannelEnum[channelValue] as SoundChannel|undefined
+    let channel = soundChannelEnum[channelValue] as SoundChannel | undefined
 
     let labelSLK = ''
     let dialogueId = 0xFFFFFFFF
@@ -168,17 +168,17 @@ export function warToJson(buffer: Buffer): [Sound[], integer] {
       }
     }
 
-    if (Object.keys(SoundEnvironment).findIndex(it => it as SoundEnvironment === eax) === -1) {
+    if (Object.values(SoundEnvironment).findIndex(it => it === eax) === -1) {
       log.warn(`EAX value='${eax}' is not valid for sound '${name}', defaulting to DEFAULT`)
       eax = SoundEnvironment.DEFAULT
     }
 
     const flags = {
-      looping       : !!(flagsValue & 0x01),
-      '3dSound'     : !!(flagsValue & 0x02),
-      stopOutOfRange: !!(flagsValue & 0x04),
-      music         : !!(flagsValue & 0x08),
-      customImported: !!(flagsValue & 0x10)
+      'looping'       : !!(flagsValue & 0x01),
+      '3dSound'       : !!(flagsValue & 0x02),
+      'stopOutOfRange': !!(flagsValue & 0x04),
+      'music'         : !!(flagsValue & 0x08),
+      'customImported': !!(flagsValue & 0x10)
     }
 
     if (channel == null) {
@@ -191,13 +191,13 @@ export function warToJson(buffer: Buffer): [Sound[], integer] {
       path,
       eax,
       flags,
-      fadeRate: { in: fadeInRate, out: fadeOutRate },
+      'fadeRate': { in: fadeInRate, out: fadeOutRate },
       volume,
       pitch,
       pitchVariance,
       priority,
       channel,
-      '3d'    : {
+      '3d'      : {
         distance: { min: distanceMin, max: distanceMax, cutoff: distanceCutoff },
         cone    : {
           insideAngle  : coneInsideAngle,

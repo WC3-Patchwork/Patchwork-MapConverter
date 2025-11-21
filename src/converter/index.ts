@@ -1,4 +1,4 @@
-import { War2JsonService }  from './War2JsonService'
+import { War2JsonService } from './War2JsonService'
 import { Json2WarService } from './Json2WarService'
 import * as FileCopier from './FileCopier'
 import { type FormatConverter } from './formats/FormatConverter'

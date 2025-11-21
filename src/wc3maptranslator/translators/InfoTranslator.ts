@@ -143,7 +143,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   if (formatVersion > 0x12) {
-    output.addInt((type => {
+    output.addInt(((type) => {
       switch (type) {
         case FogType.LINEAR: return 0
         case FogType.EXPONENTIAL1: return 1
@@ -178,7 +178,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
     output.addByte(infoJson.map?.waterColor[3] ?? InfoDefaults.map.waterColor[3])
   }
 
-  const scriptLanguageValue = (val => {
+  const scriptLanguageValue = ((val) => {
     switch (val) {
       case ScriptLanguage.JASS: return 0
       case ScriptLanguage.LUA: return 1
@@ -210,9 +210,9 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   output.addInt(infoJson.players?.length ?? 0)
-  infoJson.players?.forEach(player => {
+  infoJson.players?.forEach((player) => {
     output.addInt(player.slotId)
-    output.addInt((type => {
+    output.addInt(((type) => {
       switch (type) {
         case PlayerType.HUMAN: return 1
         case PlayerType.COMPUTER: return 2
@@ -220,7 +220,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
         case PlayerType.RESCUABLE: return 4
       }
     })(player.type ?? PlayerDefaults.type))
-    output.addInt((race => {
+    output.addInt(((race) => {
       switch (race) {
         case Race.RANDOM: return 0 // Check
         case Race.HUMAN: return 1
@@ -250,7 +250,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   if (formatVersion >= 0x03) {
     output.addInt(infoJson.forces?.length ?? 0)
     let firstForce = true
-    infoJson.forces?.forEach(force => {
+    infoJson.forces?.forEach((force) => {
       let forceFlags = 0
       if (force.flags.allied) forceFlags |= 0x0001
       if (force.flags.alliedVictory) forceFlags |= 0x0002
@@ -275,11 +275,11 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
 
   if (formatVersion >= 0x06) {
     output.addInt(infoJson.upgrades?.length ?? 0)
-    infoJson.upgrades?.forEach(upgrade => {
+    infoJson.upgrades?.forEach((upgrade) => {
       output.addInt(playerListToPlayerBitmap(upgrade.players))
       output.addChars(upgrade.upgradeId)
       output.addInt(upgrade.level)
-      output.addInt((val => {
+      output.addInt(((val) => {
         switch (val) {
           case ResearchState.UNAVAILABLE: return 0
           case ResearchState.AVAILABLE: return 1
@@ -291,7 +291,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
 
   if (formatVersion > 0x07) {
     output.addInt(infoJson.techtree?.length ?? 0)
-    infoJson.techtree?.forEach(tech => {
+    infoJson.techtree?.forEach((tech) => {
       output.addInt(playerListToPlayerBitmap(tech.players))
       output.addChars(tech.techId)
     })
@@ -299,13 +299,13 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
 
   if (formatVersion > 0x0C) {
     output.addInt(infoJson.randomGroups?.length ?? 0)
-    infoJson.randomGroups?.forEach(randomUnitTable => {
+    infoJson.randomGroups?.forEach((randomUnitTable) => {
       output.addInt(randomUnitTable.id)
       output.addString(randomUnitTable.name)
 
       output.addInt(randomUnitTable.sets?.length ?? 0)
-      randomUnitTable.sets?.forEach(set => {
-        output.addInt((type => {
+      randomUnitTable.sets?.forEach((set) => {
+        output.addInt(((type) => {
           switch (type) {
             case RandomGroupSetType.ANY_UNIT: return 0
             case RandomGroupSetType.ANY_BUILDING: return 1
@@ -314,23 +314,25 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
         })(set.type ?? RandomGroupDefaults.set.type))
       })
       output.addInt(randomUnitTable.sets?.length ?? 0)
-      randomUnitTable.sets?.forEach(chance => {
+      randomUnitTable.sets?.forEach((chance) => {
         output.addInt(chance.chance)
-        chance.objects.forEach(objectId => { output.addChars(objectId) })
+        chance.objects.forEach((objectId) => {
+          output.addChars(objectId)
+        })
       })
     })
   }
 
   if (formatVersion >= 0x18) {
     output.addInt(infoJson.randomItemTables?.length ?? 0)
-    infoJson.randomItemTables?.forEach(randomItemTable => {
+    infoJson.randomItemTables?.forEach((randomItemTable) => {
       output.addInt(randomItemTable.id)
       output.addString(randomItemTable.name)
 
       output.addInt(randomItemTable.table?.length ?? 0)
-      randomItemTable.table?.forEach(randomItemPool => {
+      randomItemTable.table?.forEach((randomItemPool) => {
         output.addInt(randomItemPool.length ?? 0)
-        randomItemPool.forEach(randomItem => {
+        randomItemPool.forEach((randomItem) => {
           output.addInt(randomItem.chance)
           output.addChars(randomItem.objectId)
         })
@@ -722,7 +724,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
 
     players.push({
       slotId: playerSlotId,
-      type  : (type => {
+      type  : ((type) => {
         switch (type) {
           case 1: return PlayerType.HUMAN
           case 2: return PlayerType.COMPUTER
@@ -731,7 +733,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
           default: return PlayerDefaults.type
         }
       })(playerType),
-      race: (race => {
+      race: ((race) => {
         switch (race) {
           case 0: return Race.RANDOM
           case 1: return Race.HUMAN
@@ -785,7 +787,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
         players  : playerBitmapToPlayerList(input.readInt()),
         upgradeId: input.readChars(4), // upgrade id (as in UpgradeData.slk)
         level    : input.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
-        state    : (val => {
+        state    : ((val) => {
           switch (val) {
             case 0: return ResearchState.UNAVAILABLE
             case 1: return ResearchState.AVAILABLE
@@ -834,7 +836,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
       const randomGroupSetCount = input.readInt()
       for (let j = 0; j < randomGroupSetCount; j++) {
         const randomGroupSet: RandomGroupSet = {
-          type: (type => {
+          type: ((type) => {
             switch (type) {
               case 0: return RandomGroupSetType.ANY_UNIT
               case 1: return RandomGroupSetType.ANY_BUILDING
@@ -899,7 +901,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
       build: gameVersionBuild
     },
     editorVersion,
-    scriptLanguage: (scriptLanguage => {
+    scriptLanguage: ((scriptLanguage) => {
       switch (scriptLanguage) {
         case 0: return ScriptLanguage.JASS
         case 1: return ScriptLanguage.LUA

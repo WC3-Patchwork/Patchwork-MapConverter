@@ -63,7 +63,7 @@ function safeReplaceTriggerName(name: string): string {
 function generateTriggerOrder(parent: TriggerContainer): string[] {
   const commentCounts: Record<string, number> = {}
 
-  return parent.children.map(it => {
+  return parent.children.map((it) => {
     it.name = safeReplaceTriggerName(it.name)
     if (it.contentType === ContentType.COMMENT) {
       if (commentCounts[it.name] != null) {
@@ -86,7 +86,7 @@ function sortTriggerContent(root: OrderedTriggerContainer): void {
     ret[value.name] = value
     return ret
   }, {})
-  root.order ??= [];
+  root.order ??= []
   const orderedContentRecord = Object.entries(root.order).reduce((ret: Record<string, number>, [key, value]) => {
     ret[value] = Number.parseInt(key)
     return ret
@@ -112,7 +112,7 @@ function sortTriggerContent(root: OrderedTriggerContainer): void {
 }
 
 const TriggerComposer = {
-  composeTriggerJson: async function(input: DirectoryTree): Promise<TriggerContainer> {
+  composeTriggerJson: async function (input: DirectoryTree): Promise<TriggerContainer> {
     const tasks: Promise<unknown>[] = []
     const result = {
       name       : EnhancementManager.mapHeaderFilename,
@@ -135,11 +135,11 @@ const TriggerComposer = {
       return result
     }
 
-    for (const [parents, file] of TreeIterator<DirectoryTree>(input,      (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
+    for (const [parents, file] of TreeIterator<DirectoryTree>(input, (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
       if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       let parent = parents.pop()
-      parent ??= input;
+      parent ??= input
 
       const containerParent = parentMap.get(parent)
       if (containerParent == null) {
@@ -249,7 +249,7 @@ const TriggerComposer = {
           let script: CustomScript | undefined
           let trigger: GUITrigger | ScriptedTrigger | undefined
           for (const content of contents) {
-            injectedRef ??= content as ScriptedTrigger;
+            injectedRef ??= content as ScriptedTrigger
             switch (content.contentType) {
               case ContentType.TRIGGER:
               case ContentType.TRIGGER_SCRIPTED:
@@ -274,7 +274,7 @@ const TriggerComposer = {
     return result
   },
 
-  explodeTriggersJsonIntoSource: async function(output: string, triggersJson: TriggerContainer): Promise<void> {
+  explodeTriggersJsonIntoSource: async function (output: string, triggersJson: TriggerContainer): Promise<void> {
     const sourceOutput = path.join(output, EnhancementManager.sourceFolder)
     log.info('Exploding triggers.json into a source code tree at', sourceOutput)
 

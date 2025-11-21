@@ -11,11 +11,11 @@ import { mergeBoolRecords } from '../Util'
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
 export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversion: integer, editorVersion: integer): Buffer {
-  if (formatVersion < 9) {
+  if (formatVersion >= 9) {
     throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
   }
 
-  if (formatSubversion < 12) {
+  if (formatSubversion >= 12) {
     throw new Error(`Unknown preplaced units format subversion=${formatSubversion}, expected below 12`)
   }
   const output = new HexBuffer()
@@ -53,29 +53,29 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
     if (formatSubversion >= 11) {
       output.addInt(unit.randomItemSetPtr ?? UnitDefaults.randomItemSetPtr)
     }
-    if (formatVersion !== 0) {
+    if (formatSubversion !== 0) {
       const droppedItemSets = unit.droppedItemSets ?? UnitDefaults.droppedItemSets
       output.addInt(droppedItemSets.length)
-      droppedItemSets?.forEach(itemSet => {
+      droppedItemSets?.forEach((itemSet) => {
         output.addInt(itemSet.items?.length ?? 0)
-        itemSet.items?.forEach(item => {
+        itemSet.items?.forEach((item) => {
           output.addChars(item.itemId)
           output.addInt(item.chance)
         })
       })
     }
 
-    if (formatVersion >= 2) {
+    if (formatSubversion >= 2) {
       output.addInt(unit.gold ?? UnitDefaults.gold)
     }
 
-    if (formatVersion >= 3) {
+    if (formatSubversion >= 3) {
       output.addFloat(unit.targetAcquisition ?? UnitDefaults.targetAcquisition)
     }
 
-    if (formatVersion >= 5) {
+    if (formatSubversion >= 5) {
       output.addInt(unit.hero?.level ?? UnitDefaults.hero.level)
-      if (formatVersion >= 10) {
+      if (formatSubversion >= 10) {
         output.addInt(unit.hero?.str ?? UnitDefaults.hero.str)
         output.addInt(unit.hero?.agi ?? UnitDefaults.hero.agi)
         output.addInt(unit.hero?.int ?? UnitDefaults.hero.int)
@@ -83,7 +83,7 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
 
       const inventory = unit.inventory ?? UnitDefaults.inventory
       output.addInt(inventory.length)
-      inventory.forEach(item => {
+      inventory.forEach((item) => {
         output.addInt(item.slot - 1) // zero-index item slot
         output.addChars(item.type)
       })
@@ -97,11 +97,11 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
       })
     }
 
-    if (formatVersion > 6) {
+    if (formatSubversion > 6) {
       const randomUnitSet = unit.random?.unitSet ?? UnitDefaults.random.unitSet
-      if (formatVersion < 8) {
+      if (formatSubversion < 8) {
         output.addInt(randomUnitSet.length)
-        randomUnitSet.forEach(spawnableUnit => {
+        randomUnitSet.forEach((spawnableUnit) => {
           output.addChars(spawnableUnit.unitId)
           output.addInt(spawnableUnit.chance)
         })
@@ -109,8 +109,8 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
         output.addInt(unit.random?.type ?? -1)
         switch (unit.random?.type) {
           case 0:
-            output.addInt(((unit.random.level!) & 0x00FFFFFFFF) |
-        (((unit.random.itemClass!) ?? 0) << 24) & 0xFF00000000)
+            output.addInt(((unit.random.level!) & 0x00FFFFFFFF)
+              | (((unit.random.itemClass!) ?? 0) << 24) & 0xFF00000000)
             break
           case 1:
             output.addInt(unit.random.groupIndex!)
@@ -118,7 +118,7 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
             break
           case 2:
             output.addInt(randomUnitSet.length)
-            randomUnitSet.forEach(spawnableUnit => {
+            randomUnitSet.forEach((spawnableUnit) => {
               output.addChars(spawnableUnit.unitId)
               output.addInt(spawnableUnit.chance)
             })
@@ -126,13 +126,13 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
         }
       }
 
-      if (formatVersion >= 9) {
+      if (formatSubversion >= 9) {
         output.addInt(unit.playerColor ?? unit.player)
         output.addInt(unit.waygate ?? UnitDefaults.waygate)
       }
     }
 
-    if (formatVersion > 3) {
+    if (formatSubversion > 3) {
       output.addInt(unit.id ?? 0) // TODO: auto-assign, check how this works
     }
   })
@@ -147,16 +147,16 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3do', will attempt parsing...`)
   }
   const formatVersion = input.readInt()
-  if (formatVersion < 9) {
+  if (formatVersion >= 9) {
     log.warn(`Unknown preplaced units format version '${formatVersion}', expected less than 9, will attempt parsing...`)
   } else {
     log.info(`Preplaced units format version is ${formatVersion}.`)
   }
   const formatSubversion = input.readInt()
-  if (formatSubversion < 12) {
-    log.warn(`Unknown preplaced units format subversion '${formatVersion}', expected less than 12, will attempt parsing...`)
+  if (formatSubversion >= 12) {
+    log.warn(`Unknown preplaced units format subversion '${formatSubversion}', expected less than 12, will attempt parsing...`)
   } else {
-    log.info(`Preplaced units format subversion is ${formatVersion}.`)
+    log.info(`Preplaced units format subversion is ${formatSubversion}.`)
   }
 
   const result: Unit[] = []
@@ -193,7 +193,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     }
 
     const droppedItemSets: ItemSet[] = []
-    if (formatVersion !== 0) {
+    if (formatSubversion !== 0) {
       const numDroppedItemSets = input.readInt()
       for (let j = 0; j < numDroppedItemSets; j++) {
         const items: DroppableItem[] = []
@@ -209,14 +209,14 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     }
 
     let gold: integer
-    if (formatVersion >= 2) {
+    if (formatSubversion >= 2) {
       gold = input.readInt()
     } else {
       gold = 0
     }
 
     let targetAcquisition: number
-    if (formatVersion >= 3) {
+    if (formatSubversion >= 3) {
       targetAcquisition = input.readFloat() // (-1 = normal, -2 = camp)
     } else {
       targetAcquisition = -1
@@ -228,14 +228,16 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     let int: integer
     const inventory: Inventory[] = []
     const abilities: Abilities[] = []
-    if (formatVersion >= 5) {
+    if (formatSubversion >= 5) {
       level = input.readInt()
-      if (formatVersion >= 10) {
+      if (formatSubversion >= 10) {
         str = input.readInt()
         agi = input.readInt()
         int = input.readInt()
       } else {
-        str = 1; agi = 1; int = 1
+        str = 1
+        agi = 1
+        int = 1
       }
 
       const numItemsInventory = input.readInt()
@@ -255,21 +257,24 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
         }
       }
     } else {
-      level = 1; str = 1; agi = 1; int = 1
+      level = 1
+      str = 1
+      agi = 1
+      int = 1
     }
     const hero = { level, str, agi, int } satisfies Hero
 
     let random: RandomSpawn | undefined
     let playerColor: integer
     let waygate: integer
-    if (formatVersion > 6) {
+    if (formatSubversion > 6) {
       let randomType: integer
       let randomUnitSet: UnitSet | undefined
       let randomLevel: integer | undefined
       let itemClass: integer | undefined
       let groupIndex: integer | undefined
       let columnIndex: integer | undefined
-      if (formatVersion < 8) {
+      if (formatSubversion < 8) {
         const randomUnitCount = input.readInt()
         randomUnitSet = []
         for (let j = 0; j < randomUnitCount; j++) {
@@ -327,7 +332,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
         } satisfies RandomSpawn
       }
 
-      if (formatVersion >= 9) {
+      if (formatSubversion >= 9) {
         playerColor = input.readInt()
         waygate = input.readInt() // waygate (-1 = deactivated, else its the creation number of the target rect as in war3map.w3r)
       } else {
@@ -340,7 +345,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     }
 
     let id: integer
-    if (formatVersion > 3) {
+    if (formatSubversion > 3) {
       id = input.readInt()
     } else {
       id = 0

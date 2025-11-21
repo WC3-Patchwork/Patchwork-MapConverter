@@ -3,6 +3,9 @@ import { type ObjectEncodingOptions, type Mode, type OpenMode } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import { type Stream } from 'stream'
+import { LoggerFactory } from '../logging/LoggerFactory'
+
+const log = LoggerFactory.createLogger('WriteAndCreatePath');
 
 async function WriteAndCreatePath(
   output: string,
@@ -15,8 +18,12 @@ async function WriteAndCreatePath(
   | BufferEncoding
   | null
 ): Promise<void> {
-  await mkdir(path.dirname(output), { recursive: true })
-  await writeFile(output, data as NodeJS.ArrayBufferView, options)
+  try {
+    await mkdir(path.dirname(output), { recursive: true })
+    await writeFile(output, data as NodeJS.ArrayBufferView, options)
+  } catch(e){
+    log.error(`Failed writing file ${output}`, e)
+  }
 }
 
 export { WriteAndCreatePath }
