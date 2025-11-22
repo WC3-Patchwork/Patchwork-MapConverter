@@ -126,6 +126,7 @@ program
         profile = await Converters.ProfileLoader.LoadTargetProfile(target)
       }
       await Converters.War2JsonService.convert(input, output, profile)
+      log.info('Finished converting map folder to textual representations!')
     } catch (exception) {
       log.fatal(exception)
     }
@@ -140,6 +141,7 @@ program
   .action(async (input: string, output: string, target: string) => {
     try {
       await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
+      log.info('Finished converting textual representations to map folder!')
     } catch (exception) {
       log.fatal(exception)
     }

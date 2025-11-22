@@ -19,6 +19,7 @@ import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/Doodads
 import PromiseSupplier from '../util/PromiseSupplier'
 import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { TriggerComposer } from '../enhancements'
+import { JSONConverter } from './formats/JSONConverter'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -295,7 +296,7 @@ export const War2JsonService = {
         }
       } else {
         if (customScripts.status === 'fulfilled') {
-          await WriteAndCreatePath(path.join(`customScripts${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(customScripts.value), { encoding: 'utf8' })
+          await WriteAndCreatePath(path.join(outputPath, `customScripts${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(customScripts.value), { encoding: 'utf8' })
             .then(triggerResolve, triggerReject)
         } else {
           triggerResolve()
@@ -355,6 +356,10 @@ export const War2JsonService = {
       customScriptFileReject('Custom scripts file not found.')
     }
 
-    return await Promise.all(promises)
+    await Promise.all(promises)
+    if (EnhancementManager.generateTargetProfile) {
+      log.info('Writing profile.json...')
+      await WriteAndCreatePath(path.join(outputPath, 'profile.json'), JSONConverter.stringify(recordedProfile))
+    }
   }
 }
