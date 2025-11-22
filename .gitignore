@@ -2,7 +2,6 @@
 /build
 /bin
 /.vscode
-/dist
 
 # generated
 /src/metadata.ts
