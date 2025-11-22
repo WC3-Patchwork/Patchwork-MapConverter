@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@eslint/js':
-        specifier: ^9.39.1
-        version: 9.39.1
       commander:
         specifier: 14.0.2
         version: 14.0.2
@@ -51,6 +48,9 @@ importers:
       '@eslint/create-config':
         specifier: ^1.11.0
         version: 1.11.0
+      '@eslint/js':
+        specifier: ^9.39.1
+        version: 9.39.1
       '@types/ini':
         specifier: ^4.1.1
         version: 4.1.1
