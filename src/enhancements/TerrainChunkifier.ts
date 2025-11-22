@@ -7,10 +7,28 @@ import { TerrainChunk, TerrainChunkObjects, type TerrainData } from './data/Terr
 import EnhancementManager from './EnhancementManager'
 import { ArrayStringifier } from './ArrayStringifier'
 import path from 'path'
+import directoryTree, { DirectoryTree } from 'directory-tree'
+import TreeIterator from '../util/TreeIterator'
+import { FileBlacklist } from './FileBlacklist'
+import PromiseSupplier from '../util/PromiseSupplier'
+import { readFile } from 'fs/promises'
 
 const log = LoggerFactory.createLogger('TerrainChunkifier')
 
 let asyncCounter = 0
+
+type TerrainChunkWMetaData = TerrainChunk & { row: integer, col: integer }
+async function parseData(input: DirectoryTree, row: integer, col: integer): Promise<TerrainChunkWMetaData> {
+  const data = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input.path, 'utf8')) as TerrainChunkWMetaData
+  data.row = row
+  data.col = col
+  return data
+}
+
+async function readTerrainMainData(input: DirectoryTree): Promise<TerrainData> {
+  return FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input.path, 'utf8')) as TerrainData
+}
+
 async function writeData(data: unknown, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${asyncCounter++}` })
   asyncLog.info('Writing to', output)
@@ -74,6 +92,118 @@ function calculateRelativeCoordinate(absoluteCoordinate: number, chunkStart: num
 }
 
 const TerrainChunkifier = {
+  composeTerrain: async function (input: DirectoryTree): Promise<[Terrain, Doodad[], SpecialDoodad[], Unit[], Region[], Camera[]]> {
+    const tasks: Promise<TerrainChunkWMetaData>[] = []
+    const filenameRegex = new RegExp(`terrain-(?<row>\\d+)-(?<col>\\d+)\\${EnhancementManager.mapDataExtension}`)
+
+    let foundTerrain = false
+    const [terrainPromise, terrainResolve, terrainReject] = PromiseSupplier<TerrainData>()
+    let maxRow = 0
+
+    for (const [, file] of TreeIterator<DirectoryTree>(input, (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
+      if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
+      if (file.type === 'directory') continue
+      if (file.name === `terrain${EnhancementManager.mapDataExtension}`) {
+        foundTerrain = true
+        readTerrainMainData(file).then(terrainResolve).catch(terrainReject)
+      } else if (filenameRegex.test(file.name)) {
+        const regexGroups = filenameRegex.exec(file.name)?.groups ?? { row: '', col: '' }
+        const row = Number.parseInt(regexGroups.row)
+        const col = Number.parseInt(regexGroups.col)
+        maxRow = maxRow > row ? maxRow : row
+        tasks.push(parseData(file, row, col))
+      }
+    }
+
+    if (!foundTerrain) {
+      terrainReject('terrain data file not found.')
+    }
+
+    const terrainData = await terrainPromise
+    const chunks = ((unsortedChunks: TerrainChunkWMetaData[]) => {
+      const result: TerrainChunkWMetaData[][] = []
+      for (const chunk of unsortedChunks) {
+        result[chunk.row] ??= []
+        result[chunk.row][chunk.col] = chunk
+      }
+      return result
+    })(await Promise.all(tasks))
+
+    const doodads: Doodad[] = []
+    const specialDoodads: SpecialDoodad[] = []
+    const units: Unit[] = []
+    const regions: Region[] = []
+    const cameras: Camera[] = []
+
+    const terrain = {
+      tileset         : terrainData.tileset,
+      customTileset   : terrainData.customTileset,
+      tilePalette     : terrainData.tilePalette,
+      cliffTilePalette: terrainData.cliffTilePalette,
+      map             : terrainData.map,
+      groundTexture   : [] as integer[][],
+      groundVariation : [] as integer[][],
+      cliffTexture    : [] as integer[][],
+      cliffVariation  : [] as integer[][],
+      cliffLevel      : [] as integer[][],
+      groundHeight    : [] as integer[][],
+      waterHeight     : [] as integer[][],
+      ramp            : [] as boolean[][],
+      blight          : [] as boolean[][],
+      water           : [] as boolean[][],
+      boundary        : [] as integer[][]
+    } satisfies Terrain
+
+    let i = 0, j = 0
+    for (const chunkRow of chunks) {
+      for (const chunk of chunkRow) {
+        for (let x = 0; x < chunk.sizeX; x++) {
+          const groundTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundTexture[x])
+          const groundVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundVariation[x])
+          const cliffTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffTexture[x])
+          const cliffVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffVariation[x])
+          const cliffLevelRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffLevel[x])
+          const groundHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.groundHeight[x], (data: string) => Number.parseFloat(data))
+          const waterHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.waterHeight[x], (data: string) => Number.parseFloat(data))
+          const rampRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.ramp[x])
+          const blightRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.blight[x])
+          const waterRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.water[x])
+          const boundaryRow = ArrayStringifier.ConvertFromSingleDigitString(chunk.boundary[x])
+          for (let y = 0; y < chunk.sizeY; y++) {
+            terrain.groundTexture[i] ??= []
+            terrain.groundTexture[i][j] = groundTextureRow[y]
+            terrain.groundVariation[i] ??= []
+            terrain.groundVariation[i][j] = groundVariationRow[y]
+            terrain.cliffTexture[i] ??= []
+            terrain.cliffTexture[i][j] = cliffTextureRow[y]
+            terrain.cliffVariation[i] ??= []
+            terrain.cliffVariation[i][j] = cliffVariationRow[y]
+            terrain.cliffLevel[i] ??= []
+            terrain.cliffLevel[i][j] = cliffLevelRow[y]
+            terrain.groundHeight[i] ??= []
+            terrain.groundHeight[i][j] = groundHeightRow[y]
+            terrain.waterHeight[i] ??= []
+            terrain.waterHeight[i][j] = waterHeightRow[y]
+            terrain.ramp[i] ??= []
+            terrain.ramp[i][j] = rampRow[y]
+            terrain.blight[i] ??= []
+            terrain.blight[i][j] = blightRow[y]
+            terrain.water[i] ??= []
+            terrain.water[i][j] = waterRow[y]
+            terrain.boundary[i] ??= []
+            terrain.boundary[i][j] = boundaryRow[y]
+            j++
+          }
+          i++
+        }
+
+        // Todo: parse objects into other arrays
+      }
+    }
+
+    return [terrain, doodads, specialDoodads, units, regions, cameras]
+  },
+
   chunkifyTerrain: async function (output: string, terrain: Terrain, doodads: Doodad[], specialDoodads: SpecialDoodad[], units: Unit[], regions: Region[], cameras: Camera[], chunkSize: MapSize): Promise<void> {
     function readTerrainChunk(startX: integer, endX: integer, startY: integer, endY: integer): TerrainChunk {
       let row = 0
