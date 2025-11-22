@@ -40,7 +40,14 @@ program
   .addOption(new Option('-mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
   .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
   .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
-  .addOption(new Option('-cs, --chunk-size <sizeX> <sizeY> <offsetX> <offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').default(EnhancementManager.chunkSize))
+  .addOption(new Option('-cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
+    const [sizeX, sizeY, offsetX, offsetY] = value.split(',')
+    EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
+    EnhancementManager.chunkSize.sizeY = Number.parseInt(sizeY)
+    EnhancementManager.chunkSize.offsetX = Number.parseInt(offsetX)
+    EnhancementManager.chunkSize.offsetY = Number.parseInt(offsetY)
+    return EnhancementManager.chunkSize
+  }).default(EnhancementManager.chunkSize))
   .hook('preAction', (thisCommand, actionCommand) => {
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
@@ -84,7 +91,9 @@ program
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
     if ((options.chunkSize != null)) {
       EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
-    } // TODO: sanitize this
+      if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
+      if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
+    }
 
     if (options.prettify === true) EnhancementManager.prettify = true
 

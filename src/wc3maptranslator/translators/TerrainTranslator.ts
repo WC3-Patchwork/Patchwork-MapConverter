@@ -270,10 +270,10 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
       }
 
       if (flags != null) {
-        arrRampFlag[i][j] = !!(flags | 0x0010)
-        arrBlightFlag[i][j] = !!(flags | 0x0020)
-        arrWaterFlag[i][j] = !!(flags | 0x0040)
-        arrBoundaryFlag[i][j] = boundaryFlag === Boundary.None && !!(flags | 0x0080) ? Boundary.Type2 : boundaryFlag
+        arrRampFlag[i][j] = !!(flags & 0x0010)
+        arrBlightFlag[i][j] = !!(flags & 0x0020)
+        arrWaterFlag[i][j] = !!(flags & 0x0040)
+        arrBoundaryFlag[i][j] = boundaryFlag === Boundary.None && !!(flags & 0x0080) ? Boundary.Type2 : boundaryFlag
       } else {
         arrRampFlag[i][j] = TerrainDefaults.ramp
         arrBlightFlag[i][j] = TerrainDefaults.blight
