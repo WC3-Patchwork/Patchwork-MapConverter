@@ -14,6 +14,7 @@ import PromiseSupplier from '../util/PromiseSupplier'
 import { readFile } from 'fs/promises'
 
 const log = LoggerFactory.createLogger('TerrainChunkifier')
+const TILE_SIZE = 128
 
 let asyncCounter = 0
 
@@ -25,8 +26,8 @@ async function parseData(input: DirectoryTree, row: integer, col: integer): Prom
   return data
 }
 
-async function readTerrainMainData(input: DirectoryTree): Promise<TerrainData> {
-  return FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input.path, 'utf8')) as TerrainData
+async function readTerrainMainData(input: DirectoryTree): Promise<TerrainData & TerrainChunkObjects> {
+  return FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input.path, 'utf8')) as TerrainData & TerrainChunkObjects
 }
 
 async function writeData(data: unknown, output: string): Promise<void> {
@@ -57,13 +58,21 @@ function calculateChunkSizes(offset: integer, chunkSize: integer, mapSize: integ
 
 function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: integer, midChunkSize: integer, midChunkCount: integer, endChunkSize: integer): number[] {
   const result: number[] = []
-  const tileSize = 128
   let index = 0
-  result[index++] = absOffset + startChunkSize * tileSize
+  result[index++] = absOffset + startChunkSize * TILE_SIZE
   for (let i = 0; i < midChunkCount; i++, index++) {
-    result[index] = result[i] + midChunkSize * tileSize
+    result[index] = result[i] + midChunkSize * TILE_SIZE
   }
-  result[index] = result[index - 1] + endChunkSize * tileSize
+  result[index] = result[index - 1] + endChunkSize * TILE_SIZE
+  return result
+}
+
+function calculateChunkCoordinates(absOffset: number, chunkSizes: integer[]): number[] {
+  const result: number[] = []
+  let index = 0
+  for (const chunkSize of chunkSizes) {
+    result[index++] = absOffset + chunkSize * TILE_SIZE
+  }
   return result
 }
 
@@ -83,11 +92,11 @@ function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number
   return -1
 }
 
-function calculateRelativeCoordinate(absoluteCoordinate: number, chunkStart: number, yCoordinate = false) {
+function calculateCoordinate(coordinate: number, chunkStart: number, yCoordinate = false) {
   if (yCoordinate) {
-    return chunkStart - absoluteCoordinate
+    return chunkStart - coordinate
   } else {
-    return absoluteCoordinate - chunkStart
+    return coordinate - chunkStart
   }
 }
 
@@ -97,7 +106,7 @@ const TerrainChunkifier = {
     const filenameRegex = new RegExp(`terrain-(?<row>\\d+)-(?<col>\\d+)\\${EnhancementManager.mapDataExtension}`)
 
     let foundTerrain = false
-    const [terrainPromise, terrainResolve, terrainReject] = PromiseSupplier<TerrainData>()
+    const [terrainPromise, terrainResolve, terrainReject] = PromiseSupplier<TerrainData & TerrainChunkObjects>()
     let maxRow = 0
 
     for (const [, file] of TreeIterator<DirectoryTree>(input, (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
@@ -129,11 +138,11 @@ const TerrainChunkifier = {
       return result
     })(await Promise.all(tasks))
 
-    const doodads: Doodad[] = []
-    const specialDoodads: SpecialDoodad[] = []
-    const units: Unit[] = []
-    const regions: Region[] = []
-    const cameras: Camera[] = []
+    const doodads = terrainData?.doodads ?? []
+    const specialDoodads = terrainData?.specialDoodads ?? []
+    const units = terrainData?.units ?? []
+    const regions = terrainData?.regions ?? []
+    const cameras = terrainData?.cameras ?? []
 
     const terrain = {
       tileset         : terrainData.tileset,
@@ -154,9 +163,20 @@ const TerrainChunkifier = {
       boundary        : [] as integer[][]
     } satisfies Terrain
 
+    const columnChunkSizes = chunks[0].map(it => it.sizeX)
+    const rowChunkSizes = chunks.map(it => it[0].sizeY)
+    const chunkColCoordinatesX = calculateChunkCoordinates(terrain.map.offsetX, columnChunkSizes)
+    const chunkRowCoordinatesY = calculateChunkCoordinates(terrain.map.offsetY, rowChunkSizes)
+
     let i = 0, j = 0
     for (const chunkRow of chunks) {
       for (const chunk of chunkRow) {
+        if (chunk.sizeX !== columnChunkSizes[chunk.col]) {
+          log.warn(`Mismatched chunk sizeX for chunk ${chunk.row}-${chunk.col}, expected ${columnChunkSizes[chunk.col]}, found ${chunk.sizeX}!`)
+        }
+        if (chunk.sizeY !== rowChunkSizes[chunk.row]) {
+          log.warn(`Mismatched chunk sizeX for chunk ${chunk.row}-${chunk.col}, expected ${rowChunkSizes[chunk.row]}, found ${chunk.sizeY}!`)
+        }
         for (let x = 0; x < chunk.sizeX; x++) {
           const groundTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundTexture[x])
           const groundVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundVariation[x])
@@ -197,7 +217,33 @@ const TerrainChunkifier = {
           i++
         }
 
-        // Todo: parse objects into other arrays
+        chunk.doodads.forEach((it) => {
+          doodads.push(it)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col])
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row])
+        })
+        chunk.specialDoodads.forEach((it) => {
+          specialDoodads.push(it)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col])
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row])
+        })
+        chunk.units.forEach((it) => {
+          units.push(it)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col])
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row])
+        })
+        chunk.cameras.forEach((it) => {
+          cameras.push(it)
+          it.targetX = calculateCoordinate(it.targetX, chunkColCoordinatesX[chunk.col])
+          it.targetY = calculateCoordinate(it.targetY, chunkRowCoordinatesY[chunk.row])
+        })
+        chunk.regions.forEach((it) => {
+          regions.push(it)
+          it.position.top = calculateCoordinate(it.position.top, chunkRowCoordinatesY[chunk.row])
+          it.position.bottom = calculateCoordinate(it.position.bottom, chunkRowCoordinatesY[chunk.row])
+          it.position.left = calculateCoordinate(it.position.left, chunkColCoordinatesX[chunk.col])
+          it.position.right = calculateCoordinate(it.position.right, chunkColCoordinatesX[chunk.col])
+        })
       }
     }
 
@@ -349,7 +395,7 @@ const TerrainChunkifier = {
         if (xIndex === -1 || yIndex === -1) {
           chunkSaver(terrainData, object)
         } else {
-          objectPositionSetter(object, calculateRelativeCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex]), calculateRelativeCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex], true))
+          objectPositionSetter(object, calculateCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex]), calculateCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex], true))
           chunkSaver(chunks[yIndex][xIndex], object)
         }
       }
@@ -382,10 +428,10 @@ const TerrainChunkifier = {
       if (xIndex === -1 || yIndex === -1) {
         terrainData.regions.push(region)
       } else {
-        regionPosition.left = calculateRelativeCoordinate(regionPosition.left, chunkAbsCoordinateThresholdsX[xIndex])
-        regionPosition.right = calculateRelativeCoordinate(regionPosition.right, chunkAbsCoordinateThresholdsX[xIndex])
-        regionPosition.top = calculateRelativeCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex], true)
-        regionPosition.bottom = calculateRelativeCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex], true)
+        regionPosition.left = calculateCoordinate(regionPosition.left, chunkAbsCoordinateThresholdsX[xIndex])
+        regionPosition.right = calculateCoordinate(regionPosition.right, chunkAbsCoordinateThresholdsX[xIndex])
+        regionPosition.top = calculateCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex], true)
+        regionPosition.bottom = calculateCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex], true)
         chunks[yIndex][xIndex].regions.push(region)
       }
     }
