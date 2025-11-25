@@ -28,6 +28,7 @@ export default defineConfig({
 		'no-empty-function': 'off',
 		'@typescript-eslint/no-empty-function': ['error', { allow: ['private-constructors'] }],
 		'@typescript-eslint/no-unused-vars': 'off',
+		'@typescript-eslint/no-explicit-any': 'off',
 		'no-useless-escape': 'off',
 		'no-self-assign': 'error',
 	},

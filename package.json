@@ -5,6 +5,10 @@
   "description": "Executable wrapper for https://github.com/ChiefOfGxBxL/WC3MapTranslator",
   "main": "./build/index.js",
   "bin": "./build/index.js",
+  "files": [
+    "./external",
+    "/dist"
+  ],
   "scripts": {
     "prebuild": "node generateProgramMetadata.js > src/metadata.ts",
     "clean": "tsc --build --clean",
@@ -42,6 +46,7 @@
     "ieee754": "1.2.1",
     "ini": "6.0.0",
     "intn": "1.0.0",
+    "koffi": "^2.14.1",
     "round-to": "7.0.0",
     "smol-toml": "1.5.2",
     "source-map-support": "0.5.21",

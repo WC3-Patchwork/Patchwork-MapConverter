@@ -19,12 +19,14 @@
 		"incremental": true,
 		"paths": {
 			"@/*": ["./src/*"],
+			"@root/*": ["./*"],
 			"@util/*": ["./src/util/*"],
 			"@conv/*": ["./src/converter/*"],
 			"@logs/*": ["./src/logging/*"],
 			"@enhance/*": ["./src/enhancements/*"],
 			"@translator/*": ["./src/translator/*"],
-			"@wc3trans/*": ["./src/wc3maptranslator/*"]
+			"@wc3trans/*": ["./src/wc3maptranslator/*"],
+			"@mpq/*": ["./src/mpq/*"]
 		},
 		"target": "ESNext",
 		"lib": ["ESNext"],

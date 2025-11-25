@@ -26,6 +26,9 @@ importers:
       intn:
         specifier: 1.0.0
         version: 1.0.0
+      koffi:
+        specifier: ^2.14.1
+        version: 2.14.1
       round-to:
         specifier: 7.0.0
         version: 7.0.0
@@ -915,6 +918,9 @@ packages:
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
+
+  koffi@2.14.1:
+    resolution: {integrity: sha512-IMFL3IbRDXacSIjs7pPbPxgNlJ2hUtawQXU2QPdr6iw38jmv5AesAUG8HPX00xl0PPA2BbEa3noTw1YdHY+gHg==}
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -2306,6 +2312,8 @@ snapshots:
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
+
+  koffi@2.14.1: {}
 
   levn@0.4.1:
     dependencies:
