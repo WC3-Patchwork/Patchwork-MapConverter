@@ -66,7 +66,7 @@ function objectHandlerFactory(objectType: ObjectType) {
 }
 
 export const War2JsonService = {
-  convert: async function (inputPath: string, outputPath: string, profile?: TargetProfile) {
+  convert: async function (inputPath: string, outputPath: string, profile?: TargetProfile): Promise<void> {
     log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
 
     let foundInfo = false

@@ -19,6 +19,7 @@ import { TranslatorManager } from './TranslatorManager'
 import { translators } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
 import { type TargetProfile } from './Profile'
+import TreeIterator from '../util/TreeIterator'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
@@ -107,54 +108,43 @@ export const Json2WarService = {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
     const promises: Promise<void>[] = []
-    const fileStack: DirectoryTree<Record<string, unknown>>[] = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
     let importDirectoryTree: DirectoryTree<Record<string, unknown>> | null = null
 
-    while (fileStack.length > 0) {
-      const file = fileStack.pop()
-      if (file == null) break
+    for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(inputPath, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
+      if (FileBlacklist.isDirectoryTreeBlacklisted(parent)) return
+      if (EnhancementManager.smartImport && file.path.endsWith(EnhancementManager.importFolder)) {
+        importDirectoryTree = file
+        return // skip imports
+      }
+
+      if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
+        log.debug('ComposeTriggers requested')
+        promises.push((async (): Promise<void> => {
+          const triggerJson = await TriggerComposer.composeTriggerJson(file)
+          await exportTriggers(triggerJson, outputPath, profile)
+        })())
+        return // skip triggers
+      }
+      return parent.children
+    })) {
       if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
+      if (file.type === 'directory') continue
 
-      if (file.type === 'directory') {
-        if (EnhancementManager.smartImport && file.path.endsWith(EnhancementManager.importFolder)) {
-          importDirectoryTree = file
-          continue // skip imports
-        }
+      if (!EnhancementManager.composeTriggers && file.name.endsWith(`triggers${EnhancementManager.mapDataExtension}`)) {
+        promises.push(processTriggers(file.path, outputPath, profile))
+        continue
+      }
 
-        if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
-          log.debug('ComposeTriggers requested')
-          promises.push((async (): Promise<void> => {
-            const triggerJson = await TriggerComposer.composeTriggerJson(file)
-            await exportTriggers(triggerJson, outputPath, profile)
-          })())
+      const translator = TranslatorManager.FindAppropriateTranslationMethodText2Binary(file.name, profile)
+      let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
+      if (translator != null) {
+        outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove final extension
 
-          continue // skip triggers
-        }
-
-        const children = file.children
-
-        if (children != null) {
-          for (const child of children) {
-            fileStack.push(child)
-          }
+        if (!EnhancementManager.smartImport || !(file.name.endsWith('.imp'))) {
+          promises.push(processFile(file.path, translator, outputFile))
         }
       } else {
-        if (!EnhancementManager.composeTriggers && file.name.endsWith(`triggers${EnhancementManager.mapDataExtension}`)) {
-          promises.push(processTriggers(file.path, outputPath, profile))
-          continue
-        }
-
-        const translator = TranslatorManager.FindAppropriateTranslationMethodText2Binary(file.name, profile)
-        let outputFile = path.join(outputPath, path.relative(inputPath, file.path))
-        if (translator != null) {
-          outputFile = outputFile.substring(0, outputFile.lastIndexOf('.')) // remove final extension
-
-          if (!EnhancementManager.smartImport || !(file.name.endsWith('.imp'))) {
-            promises.push(processFile(file.path, translator, outputFile))
-          }
-        } else {
-          promises.push(copyFileWithDirCreation(file.path, outputFile))
-        }
+        promises.push(copyFileWithDirCreation(file.path, outputFile))
       }
     }
 
@@ -165,24 +155,14 @@ export const Json2WarService = {
         const importedFiles = ImportComposer.composeImportRegistry(importDirectoryTree)
         promises.push(exportImportsFile(importedFiles, importFileOutputPath, profile))
 
-        fileStack.push(importDirectoryTree)
-
-        while (fileStack.length > 0) {
-          const file = fileStack.pop()
-          if (file == null) break
-
-          if (file.type === 'directory') {
-            const children = file.children
-
-            if (children != null) {
-              for (const child of children) {
-                fileStack.push(child)
-              }
-            }
-          } else {
-            const outputFile = path.join(outputPath, path.relative(importDirectoryTree.path, file.path))
-            promises.push(copyFileWithDirCreation(file.path, outputFile))
-          }
+        for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(importDirectoryTree, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
+          if (FileBlacklist.isDirectoryTreeBlacklisted(parent)) return
+          return parent.children
+        })) {
+          if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
+          if (file.type === 'directory') continue
+          const outputFile = path.join(outputPath, path.relative((importDirectoryTree as DirectoryTree<Record<string, string>>).path, file.path))
+          promises.push(copyFileWithDirCreation(file.path, outputFile))
         }
       } else {
         promises.push(exportImportsFile([], importFileOutputPath, profile))
