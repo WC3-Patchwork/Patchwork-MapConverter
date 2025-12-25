@@ -96,9 +96,9 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
   }
 
   const loadCustomScript = function (): string {
-    const unknownScriptLength = input.readInt()
-    if (unknownScriptLength > 0) {
-      return input.readString()
+    const scriptLengthWithNulChar = input.readInt()
+    if (scriptLengthWithNulChar > 0) {
+      return input.readChars(scriptLengthWithNulChar).slice(0, -1) // remove \0 character
     } else {
       return ''
     }

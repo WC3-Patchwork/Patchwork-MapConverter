@@ -5,7 +5,7 @@ import path from 'path'
 import { type Stream } from 'stream'
 import { LoggerFactory } from '../logging/LoggerFactory'
 
-const log = LoggerFactory.createLogger('WriteAndCreatePath');
+const log = LoggerFactory.createLogger('WriteAndCreatePath')
 
 async function WriteAndCreatePath(
   output: string,
@@ -21,7 +21,7 @@ async function WriteAndCreatePath(
   try {
     await mkdir(path.dirname(output), { recursive: true })
     await writeFile(output, data as NodeJS.ArrayBufferView, options)
-  } catch(e){
+  } catch (e) {
     log.error(`Failed writing file ${output}`, e)
   }
 }
