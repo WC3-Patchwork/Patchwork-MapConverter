@@ -1,9 +1,7 @@
 /node_modules
-/build
-/bin
+/.pnpm-store
 /.vscode
 /dist
-/.pnpm-store
 /tsconfig.tsbuildinfo
 
 # generated
