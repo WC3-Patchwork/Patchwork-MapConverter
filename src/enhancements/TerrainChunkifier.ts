@@ -438,11 +438,11 @@ const TerrainChunkifier = {
 
     for (let i = 0; i < chunks.length; i++) {
       for (let j = 0; j < chunks[i].length; j++) {
-        tasks.push(writeData(chunks[i][j], path.join(output, `/terrain/terrain-${i}-${j}${EnhancementManager.chunkFileExtension}`)))
+        tasks.push(writeData(chunks[i][j], path.join(output, EnhancementManager.chunkifiedTerrainFolder, `terrain-${i}-${j}${EnhancementManager.chunkFileExtension}`)))
       }
     }
 
-    tasks.push(writeData(terrainData, path.join(output, '/terrain/terrain.json')))
+    tasks.push(writeData(terrainData, path.join(output, EnhancementManager.chunkifiedTerrainFolder, `terrain${EnhancementManager.chunkFileExtension}`)))
     await Promise.all(tasks)
   }
 }

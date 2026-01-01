@@ -3,8 +3,7 @@
 'use strict'
 import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
-import { type ILogObj, type Logger } from 'tslog'
-import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
+import { LoggerFactory, LOG_DEBUG, AppLogger } from './logging/LoggerFactory'
 import path from 'path'
 import fs from 'fs'
 
@@ -16,7 +15,7 @@ import * as Enhancements from './enhancements'
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 require('source-map-support').install()
 
-let log: Logger<ILogObj>
+let log: AppLogger
 const EnhancementManager = Enhancements.EnhancementManager
 
 program
@@ -30,6 +29,7 @@ program
   .addOption(new Option('--ignore <blacklist>', 'Specify a blacklist location for which files to ignore').default(path.join('./', EnhancementManager.ignoreFilelist)))
   .addOption(new Option('-mde, --map-data-extension <extension>', 'File extension given/read (depending on operation) for map data files (w3u, w3d, etc..)').default(EnhancementManager.mapDataExtension))
   .option('-p, --prettify', 'Output textual format should be prettified if format converter supports it.')
+  .addOption(new Option('-tf, --triggers-filename', 'Filename for triggers file which contains both GUI triggers and custom scripts, Does not work with compose-triggers.').default(EnhancementManager.triggersFilename))
   .option('-ct, --compose-triggers', 'unpack/compile triggers into/from binary/fs+json representation, following options apply only if this is enabled:')
   .addOption(new Option('-sf, --sourceFolder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
   .addOption(new Option('-cse, --custom-script-extension <extension>', 'What file extension will be given to all custom scripts').default(EnhancementManager.scriptExtension))
@@ -38,6 +38,7 @@ program
   .addOption(new Option('-cie, --container-info-extension <extension', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
   .addOption(new Option('-ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('-mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
+  .addOption(new Option('-ctf, --chunkified-terrain-folder', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
   .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
   .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
   .addOption(new Option('-cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
@@ -87,7 +88,22 @@ program
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
     if ((options.mapDataExtension as string).startsWith('.')) EnhancementManager.mapDataExtension = options.mapDataExtension as string
 
+    if (/\\|\//.test(options.triggersFilename as string)) {
+      throw new Error(`Invalid triggersFilename '${options.triggersFilename}' must not be a path!`)
+    } else {
+      if (options.composeTriggers) {
+        log.warn(`Will ignore triggersFilename options since composeTriggers is enabled.`)
+      } else {
+        EnhancementManager.triggersFilename = options.triggersFilename as string
+      }
+    }
+
     if (options.chunkify === true) EnhancementManager.chunkifyMapData = true
+    if (/\\|\//.test(options.chunkifiedTerrainFolder as string)) {
+      throw new Error(`Invalid chunkifiedTerrainFolder '${options.chunkifiedTerrainFolder}' must not be a path!`)
+    } else {
+      EnhancementManager.chunkifiedTerrainFolder = options.chunkifiedTerrainFolder as string
+    }
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
     if ((options.chunkSize != null)) {
       EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize

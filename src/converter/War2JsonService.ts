@@ -20,6 +20,7 @@ import PromiseSupplier from '../util/PromiseSupplier'
 import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { TriggerComposer } from '../enhancements'
 import { JSONConverter } from './formats/JSONConverter'
+import { AsyncTaskContextWrapper } from '../logging/AsyncTaskContextWrapper'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -42,7 +43,7 @@ const recordedProfile: TargetProfile = {
   w3iFormatVersion        : 0
 }
 
-async function parseFile<T>(input: string, translator: ((buffer: Buffer) => Promise<T>)): Promise<T> {
+async function parseFileNoAsyncContext<T>(input: string, translator: ((buffer: Buffer) => Promise<T>)): Promise<T> {
   log.info('Parsing', input)
   const buffer = await readFile(input)
   const result = await translator(buffer)
@@ -50,10 +51,18 @@ async function parseFile<T>(input: string, translator: ((buffer: Buffer) => Prom
   return result
 }
 
+async function parseFile<T>(input: string, translator: ((buffer: Buffer) => Promise<T>)): Promise<T> {
+  return AsyncTaskContextWrapper(async () => {
+    return parseFileNoAsyncContext(input, translator)
+  })
+}
+
 async function processFile<T>(input: string, output: string, translator: ((buffer: Buffer) => Promise<T>)): Promise<void> {
-  const json = await parseFile(input, translator)
-  await WriteAndCreatePath(output, FormatConverters[EnhancementManager.mapDataExtension].stringify(json), { encoding: 'utf8' })
-  log.info('Finished exporting', output)
+  await AsyncTaskContextWrapper(async () => {
+    const json = await parseFileNoAsyncContext(input, translator)
+    await WriteAndCreatePath(output, FormatConverters[EnhancementManager.mapDataExtension].stringify(json), { encoding: 'utf8' })
+    log.info('Finished exporting', output)
+  })
 }
 
 function objectHandlerFactory(objectType: ObjectType) {
@@ -67,7 +76,7 @@ function objectHandlerFactory(objectType: ObjectType) {
 
 export const War2JsonService = {
   convert: async function (inputPath: string, outputPath: string, profile?: TargetProfile): Promise<void> {
-    log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
+    log.info(`Converting Warcraft III binaries in '${inputPath}' and outputting to, '${outputPath}'`)
 
     let foundInfo = false
     let editorVersionSupplier: Promise<integer>
@@ -189,9 +198,9 @@ export const War2JsonService = {
         }
       } else if (filename.endsWith('.w3s')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
-          const [terrain, formatVersion] = SoundsTranslator.warToJson(buffer)
+          const [sounds, formatVersion] = SoundsTranslator.warToJson(buffer)
           recordedProfile.w3sFormatVersion = formatVersion
-          return terrain
+          return sounds
         }))
       } else if (filename.endsWith('.w3u')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, objectHandlerFactory(ObjectType.Units)))
@@ -291,7 +300,7 @@ export const War2JsonService = {
           await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, (await triggerFilePromise).root)
             .then(triggerResolve, triggerReject)
         } else {
-          await WriteAndCreatePath(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(triggerJson), { encoding: 'utf8' })
+          await WriteAndCreatePath(path.join(outputPath, `${EnhancementManager.triggersFilename}${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(triggerJson.root), { encoding: 'utf8' })
             .then(triggerResolve, triggerReject)
         }
       } else {
