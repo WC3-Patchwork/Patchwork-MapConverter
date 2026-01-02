@@ -15,12 +15,12 @@ export interface DoodadsTranslatorOutput {
 }
 
 export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, formatVersion: integer, formatSubversion: integer | undefined, specialDoodadFormatVersion: integer | undefined, editorVersion: integer): Buffer {
-  if (formatVersion < 9) {
+  if (formatVersion >= 9) {
     throw new Error(`Unknown doodad format version=${formatVersion}, expected below 9`)
   }
 
   formatSubversion = formatSubversion ?? 0
-  if (formatSubversion < 12) {
+  if (formatSubversion >= 12) {
     throw new Error(`Unknown doodad format subversion=${formatSubversion}, expected below 12`)
   }
   const output = new HexBuffer()

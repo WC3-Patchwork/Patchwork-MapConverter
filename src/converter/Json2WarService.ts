@@ -102,7 +102,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
       scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
     }
 
-    const triggerBuffer = translators.TriggersTranslator.jsonToWar(triggerAndScript, profile.wtgFormatVersion, profile.wtgFormatSubversion)
+    const triggerBuffer = translators.TriggersTranslator.jsonToWar(triggerAndScript, profile.wtgFormatVersion, profile.wtgVariableFormatVersion, profile.wtgFormatSubversion)
     tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wtg'), triggerBuffer)
       .then(() => log.info('Finished exporting triggers.')))
 
@@ -118,7 +118,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
       }
     }
 
-    const scriptBuffer = translators.CustomScriptsTranslator.jsonToWar(scriptArg, profile.wctFormatVersion)
+    const scriptBuffer = translators.CustomScriptsTranslator.jsonToWar(scriptArg, profile.wctFormatVersion, profile.wctFormatSubversion)
     tasks.push(WriteAndCreatePath(path.join(output, 'war3map.wct'), scriptBuffer)
       .then(() => log.info('Finished exporting custom scripts.')))
 
@@ -135,24 +135,24 @@ export const Json2WarService = {
 
     for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(inputPath, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
       if (FileBlacklist.isDirectoryTreeBlacklisted(parent)) return
-      if (EnhancementManager.smartImport && file.path.endsWith(EnhancementManager.importFolder)) {
-        importDirectoryTree = file
+      if (EnhancementManager.smartImport && parent.path.endsWith(EnhancementManager.importFolder)) {
+        importDirectoryTree = parent
         return // skip imports
       }
 
-      if (EnhancementManager.composeTriggers && file.path.endsWith(EnhancementManager.sourceFolder)) {
+      if (EnhancementManager.composeTriggers && parent.path.endsWith(EnhancementManager.sourceFolder)) {
         log.debug('ComposeTriggers requested')
         promises.push((async (): Promise<void> => {
-          const triggerJson = await TriggerComposer.composeTriggerJson(file) as MapHeader
+          const triggerJson = await TriggerComposer.composeTriggerJson(parent) as MapHeader
           await exportTriggers(triggerJson, outputPath, profile)
         })())
         return // skip triggers
       }
 
-      if (EnhancementManager.chunkifyMapData && file.path.endsWith(EnhancementManager.chunkifiedTerrainFolder)) {
+      if (EnhancementManager.chunkifyMapData && parent.path.endsWith(EnhancementManager.chunkifiedTerrainFolder)) {
         log.debug('ChunkifyMapData requested')
         promises.push((async (): Promise<void> => {
-          const [terrain, doodads, specialDoodads, units, regions, cameras] = await TerrainChunkifier.composeTerrain(file)
+          const [terrain, doodads, specialDoodads, units, regions, cameras] = await TerrainChunkifier.composeTerrain(parent)
           const mapDataPromises: Promise<unknown>[] = []
           mapDataPromises.push(processData(terrain, path.join(outputPath, 'war3map.w3e'),
             terrain => TerrainTranslator.jsonToWar(terrain, profile.w3eFormatVersion)))

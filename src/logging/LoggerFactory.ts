@@ -28,7 +28,7 @@ const LoggerFactory = {
       minLevel                       : minLogLevel,
       hideLogPositionForProduction   : true,
       type                           : 'pretty',
-      prettyLogTemplate              : '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{asyncId}}]\t{{filePathWithLine}}{{nameWithDelimiterPrefix}}\t',
+      prettyLogTemplate              : '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{asyncId}}]{{filePathWithLine}}{{nameWithDelimiterPrefix}}\t',
       prettyErrorTemplate            : '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
       prettyErrorStackTemplate       : '  • {{fileName}}\t{{method}}\n\t{{filePathWithLine}}',
       prettyErrorParentNamesSeparator: ':',

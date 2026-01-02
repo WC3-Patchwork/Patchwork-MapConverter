@@ -74,7 +74,7 @@ export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: in
   return output.getBuffer()
 }
 
-export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer] {
+export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readUint()
   let formatSubversion: integer
@@ -148,5 +148,5 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
     }
   }
 
-  return [{ headerComment, scripts }, formatVersion]
+  return [{ headerComment, scripts }, formatVersion, formatSubversion]
 }

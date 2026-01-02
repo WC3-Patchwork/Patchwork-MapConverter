@@ -39,7 +39,9 @@ const recordedProfile: TargetProfile = {
   impFormatVersion        : 0,
   wtgFormatVersion        : 0,
   wtgFormatSubversion     : 0,
+  wtgVariableFormatVersion: 0,
   wctFormatVersion        : 0,
+  wctFormatSubversion     : 0,
   w3iFormatVersion        : 0
 }
 
@@ -221,8 +223,9 @@ export const War2JsonService = {
       } else if (filename.endsWith('.wtg')) {
         foundTriggers = true
         promises.push(parseFile(file.path, async (buffer: Buffer) => {
-          const [triggers, formatVersion, formatSubversion] = translators.TriggersTranslator.warToJson(buffer)
+          const [triggers, formatVersion, variableFormatVersion, formatSubversion] = translators.TriggersTranslator.warToJson(buffer)
           recordedProfile.wtgFormatVersion = formatVersion
+          recordedProfile.wtgVariableFormatVersion = variableFormatVersion
           recordedProfile.wtgFormatSubversion = formatSubversion
           triggerFileResolve(triggers)
           return triggers
@@ -230,8 +233,9 @@ export const War2JsonService = {
       } else if (filename.endsWith('.wct')) {
         foundCustomScripts = true
         promises.push(parseFile(file.path, async (buffer: Buffer) => {
-          const [output, formatVersion] = translators.CustomScriptsTranslator.warToJson(buffer)
+          const [output, formatVersion, formatSubversion] = translators.CustomScriptsTranslator.warToJson(buffer)
           recordedProfile.wctFormatVersion = formatVersion
+          recordedProfile.wctFormatSubversion = formatSubversion
           customScriptFileResolve(output)
           return output
         }))

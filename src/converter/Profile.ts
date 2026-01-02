@@ -5,7 +5,9 @@ interface TargetProfile {
   impFormatVersion: integer
   wtgFormatVersion: integer
   wtgFormatSubversion: integer
+  wtgVariableFormatVersion: integer
   wctFormatVersion: integer
+  wctFormatSubversion: integer
   w3iFormatVersion: integer
   objectFormatVersion: integer
   w3eFormatVersion: integer

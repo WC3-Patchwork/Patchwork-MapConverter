@@ -313,46 +313,46 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
   }
 
   if (finalFormatSubversion < 0x80000000) {
-    output.addInt((triggersByContentType.get(ContentType.CATEGORY) as []).length)
-    for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
+    output.addInt((triggersByContentType.get(ContentType.CATEGORY) as [])?.length ?? 0)
+    for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
       saveContainer(elementReference.get(category)!, category, parentReference.get(category)!)
     }
-    saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
+    saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? [], parentReference)
 
     const triggerContentCount
-      = (triggersByContentType.get(ContentType.COMMENT) as []).length
-        + (triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as []).length
-        + (triggersByContentType.get(ContentType.TRIGGER) as []).length
+      = ((triggersByContentType.get(ContentType.COMMENT) as [])?.length ?? 0)
+        + ((triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as [])?.length ?? 0)
+        + ((triggersByContentType.get(ContentType.TRIGGER) as [])?.length ?? 0)
 
     output.addInt(triggerContentCount)
-    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
+    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[] ?? []) {
       saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
     }
-    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[]) {
+    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[] ?? []) {
       saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
     }
-    for (const script of triggersByContentType.get(ContentType.CUSTOM_SCRIPT)!) {
+    for (const script of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) ?? []) {
       saveTrigger(elementReference.get(script)!, script, parentReference.get(script)!)
     }
   } else {
-    output.addInt((triggersByContentType.get(ContentType.HEADER) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.HEADER) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.LIBRARY) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.LIBRARY) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.CATEGORY) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.CATEGORY) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.TRIGGER) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.TRIGGER) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.COMMENT) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.COMMENT) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as [])?.length ?? 0)
     output.addInt(0) // deleted count
-    output.addInt((triggersByContentType.get(ContentType.VARIABLE) as []).length)
+    output.addInt((triggersByContentType.get(ContentType.VARIABLE) as [])?.length ?? 0)
     output.addInt(0) // deleted count
     output.addInt(0) // Unknown content type, they just take up space, dunno what they were
     output.addInt(0) // deleted count
 
-    saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[], parentReference)
+    saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? [], parentReference)
     output.addInt(totalElements)
     for (const header of triggersByContentType.get(ContentType.HEADER) ?? [{
       isExpanded : TriggerDefaults.isExpanded,
@@ -364,23 +364,23 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     } satisfies MapHeader]) {
       saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, 0)
     }
-    for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[]) {
+    for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[] ?? []) {
       saveContainer(elementReference.get(library)!, library, parentReference.get(library)!)
     }
-    for (const container of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[]) {
+    for (const container of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
       saveContainer(elementReference.get(container)!, container, parentReference.get(container)!)
     }
 
-    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[]) {
+    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[] ?? []) {
       saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
     }
-    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[]) {
+    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[] ?? []) {
       saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
     }
-    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT)!) {
+    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) ?? []) {
       saveTrigger(elementReference.get(customScript)!, customScript, parentReference.get(customScript)!)
     }
-    for (const variable of triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[]) {
+    for (const variable of triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? []) {
       saveTriggerVariable(elementReference.get(variable)!, variable, parentReference.get(variable)!)
     }
   }
@@ -388,7 +388,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
   return output.getBuffer()
 }
 
-export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, integer] {
+export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, integer, integer] {
   const input = new W3Buffer(buffer)
 
   const elementRelations = new Map<number, number>()
@@ -420,8 +420,15 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
     }
     log.info(`Trigger file format subversion is ${formatSubversion}`)
 
-    const loadGlobals = function (): void {
+    let variableFormatVersion: integer
+    const loadGlobals = function (): integer {
       const variableFormatVersion = input.readInt() // [0, 2]
+      if (variableFormatVersion < 0 || variableFormatVersion > 2) {
+        log.warn(`Unknown trigger variable format version '${variableFormatVersion}', expected value [0, 2], will attempt parsing...`)
+      } else {
+        log.info(`Trigger variable format version is ${variableFormatVersion}`)
+      }
+
       const existingVariablesCount = input.readInt()
       for (let i = 0; i < existingVariablesCount; i++) {
         const name = input.readString()
@@ -466,6 +473,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
           content[i] = globalVariable // TODO: required something?
         }
       }
+      return variableFormatVersion
     }
 
     const loadContainer = function (type: ContentType): TriggerContainer {
@@ -699,7 +707,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       for (let i = 0; i < triggerCategoryCount; i++) {
         loadContainer(ContentType.CATEGORY)
       }
-      loadGlobals()
+      variableFormatVersion = loadGlobals()
       const triggerCount = input.readInt()
       for (let i = 0; i < triggerCount; i++) {
         loadTrigger(i, ContentType.TRIGGER)
@@ -714,7 +722,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
           input.readInt() // deleted element id
         }
       }
-      loadGlobals()
+      variableFormatVersion = loadGlobals()
 
       const elementCount = input.readInt()
       if (expectedElementCount !== elementCount) {
@@ -788,7 +796,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
         contentType: ContentType.HEADER
       } satisfies TriggerContainer,
       scriptReferences: customScripts
-    }, formatVersion, formatSubversion]
+    }, formatVersion, variableFormatVersion, formatSubversion]
   } catch (e) {
     log.error(`Error at offset: ${(input as unknown as { _offset: number })._offset}`)
     throw e

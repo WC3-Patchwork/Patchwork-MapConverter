@@ -1,17 +1,16 @@
 import { readFile } from 'fs/promises'
 import { type TargetProfile } from './Profile'
-import { existsSync } from 'fs'
+import Profiles from './profiles'
 
 export const ProfileLoader = {
   async LoadTargetProfile(profileKey: string): Promise<TargetProfile> {
-    const internalProfileName = `targets/profile.${profileKey}.json`
-    let profileContent: string
-    if (existsSync(internalProfileName)) {
-      profileContent = await readFile(internalProfileName, { flag: 'r', encoding: 'utf-8' })
+    let profile: TargetProfile
+    if (Profiles[profileKey] != null) {
+      profile = Profiles[profileKey] as TargetProfile
     } else {
-      profileContent = await readFile(profileKey, { flag: 'r', encoding: 'utf-8' })
+      profile = JSON.parse(await readFile(profileKey, { flag: 'r', encoding: 'utf-8' })) as TargetProfile
     }
 
-    return JSON.parse(profileContent) as TargetProfile
+    return profile
   }
 }
