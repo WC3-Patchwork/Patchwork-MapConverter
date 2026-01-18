@@ -1,9 +1,4 @@
+import { MPQHANDLE, FILEHANDLE, HANDLE, ArchiveAddFileFlags, ArchiveCompactWorkType, ArchiveCreateOption, ArchiveOpenFlag } from './types';
+import { MpqArchive } from './archive';
 
-
-import * as StormTypes from "./types";
-
-
-
-export {
-    StormTypes,
-}
+export { MPQHANDLE, FILEHANDLE, HANDLE, ArchiveAddFileFlags, ArchiveCompactWorkType, ArchiveCreateOption, ArchiveOpenFlag, MpqArchive };

@@ -1,16 +1,83 @@
-
 import { KoffiFunction } from 'koffi';
 
 export interface ArchiveCreateOption {
+	/**
+	 * Size of this option object
+	 */
+	cbSize: number;
+	/**
+	 * Always 0
+	 */
 	mpqVersion: number;
 	StreamFlags: number;
+	/**
+	 * (listfile) file flags, must either be 0xFFFFFFF or 0
+	 */
 	FileFlags1: number;
+	/**
+	 * (attributes) file flags, must either be 0xFFFFFFF or 0
+	 */
 	FileFlags2: number;
+	/**
+	 * (signature) file flags, must either be 0xFFFFFFF or 0
+	 */
 	FileFlags3: number;
+	/**
+	 * Flags for file attribute
+	 */
 	AttrFlags: number;
+	/**
+	 * Always 0x100
+	 */
 	SectorSize: number;
+	/**
+	 * Always 0
+	 */
 	RawChunkSize: number;
 	MaxFileCount: number;
+}
+
+export enum ArchiveCreateFlag {
+	/**
+	 * Also add the (listfile) file
+	 */
+	MPQ_CREATE_LISTFILE = 0x00100000,
+	/**
+	 * Also add the (attributes) file
+	 */
+	MPQ_CREATE_ATTRIBUTES = 0x00200000,
+	/**
+	 * Also add the (signature) file
+	 */
+	MPQ_CREATE_SIGNATURE = 0x00400000,
+	/**
+	 * Creates archive of version 1 (size up to 4GB)
+	 */
+	MPQ_CREATE_ARCHIVE_V1 = 0x00000000,
+	/**
+	 * Mask for archive version
+	 */
+	MPQ_CREATE_ARCHIVE_VMASK = 0x0f000000,
+	/**
+	 * The "(attributes)" contains CRC32 for each file
+	 */
+	MPQ_ATTRIBUTE_CRC32 = 0x00000001,
+	/**
+	 * The "(attributes)" contains file time for each file
+	 */
+	MPQ_ATTRIBUTE_FILETIME = 0x00000002,
+	/**
+	 * The "(attributes)" contains MD5 for each file
+	 */
+	MPQ_ATTRIBUTE_MD5 = 0x00000004,
+	/**
+	 * The "(attributes)" contains a patch bit for each file
+	 */
+	MPQ_ATTRIBUTE_PATCH_BIT = 0x00000008,
+	/**
+	 * Summary mask
+	 */
+	MPQ_ATTRIBUTE_ALL = 0x0000000f,
 }
 
 export enum ArchiveAddFileFlags {
@@ -59,7 +126,7 @@ export enum ArchiveAddFileFlags {
 	/**
 	 * If this flag is specified and the file is already in the MPQ, it will be replaced.
 	 */
-	MPQ_FILE_REPLACEEXISTING = 0x80000000
+	MPQ_FILE_REPLACEEXISTING = 0x80000000,
 }
 
 export enum ArchiveOpenFlag {
@@ -76,7 +143,7 @@ export enum ArchiveOpenFlag {
 	 *
 	 * Partial files were used by trial version of World of Warcraft (build 10958 - 11685).
 	 */
-	STREAM_PROVIDER_PARTIAL =0x10,
+	STREAM_PROVIDER_PARTIAL = 0x10,
 	/**
 	 * The MPQ is encrypted (.MPQE). Encrypted MPQs are used by Starcraft II and Diablo III installers.
 	 *
@@ -133,7 +200,7 @@ export enum ArchiveOpenFlag {
 	/**
 	 * Don't read the "(listfile)" file.
 	 */
-	MPQ_OPEN_NO_LISTFILE  = 0x10000,
+	MPQ_OPEN_NO_LISTFILE = 0x10000,
 	/**
 	 * Don't open the "(attributes)" file.
 	 */
@@ -149,7 +216,69 @@ export enum ArchiveOpenFlag {
 	/**
 	 * ReadFile will check CRC of each file sector on any file in the archive until the archive is closed.
 	 */
-	MPQ_OPEN_CHECK_SECTOR_CRC = 0x100000
+	MPQ_OPEN_CHECK_SECTOR_CRC = 0x100000,
+}
+
+export enum ErrorCode {
+	ERROR_SUCCESS = 0,
+	ERROR_FILE_NOT_FOUND = 2,
+	ERROR_ACCESS_DENIED = 5,
+	ERROR_INVALID_HANDLE = 6,
+	ERROR_NOT_ENOUGH_MEMORY = 8,
+	ERROR_BAD_FORMAT = 11,
+	ERROR_OUTOFMEMORY = 14,
+	ERROR_HANDLE_EOF = 38,
+	ERROR_INVALID_PARAMETER = 87,
+	ERROR_DISK_FULL = 112,
+	ERROR_ALREADY_EXISTS = 183,
+	ERROR_CAN_NOT_COMPLETE = 1003,
+	ERROR_FILE_CORRUPT = 1386,
+	ERROR_AVI_FILE = 10000,
+	ERROR_UNKNOWN_FILE_KEY = 10001,
+	ERROR_CHECKSUM_ERROR = 10002,
+	ERROR_INTERNAL_FILE = 10003,
+	ERROR_BASE_FILE_MISSING = 10004,
+	ERROR_MARKED_FOR_DELETE = 10005,
+	ERROR_FILE_INCOMPLETE = 10006,
+	ERROR_UNKNOWN_FILE_NAMES = 10007,
+	ERROR_CANT_FIND_PATCH_PREFIX = 10008,
+	ERROR_FAKE_MPQ_HEADER = 10009,
+	ERROR_FILE_DELETED = 100,
+}
+
+export enum MPQCompressFlag {
+	/**
+	 * Use Huffman compression. This bit can only be combined with MPQ_COMPRESSION_ADPCM_MONO or MPQ_COMPRESSION_ADPCM_STEREO.
+	 */
+	MPQ_COMPRESSION_HUFFMANN = 0x01,
+	/**
+	 * Use ZLIB compression library. This bit cannot be combined with MPQ_COMPRESSION_BZIP2 or MPQ_COMPRESSION_LZMA.
+	 */
+	MPQ_COMPRESSION_ZLIB = 0x02,
+	/**
+	 * Use Pkware Data Compression Library. This bit cannot be combined with MPQ_COMPRESSION_LZMA.
+	 */
+	MPQ_COMPRESSION_PKWARE = 0x08,
+	/**
+	 * Use BZIP2 compression library. This bit cannot be combined with MPQ_COMPRESSION_ZLIB or MPQ_COMPRESSION_LZMA.
+	 */
+	MPQ_COMPRESSION_BZIP2 = 0x10,
+	/**
+	 * Use SPARSE compression. This bit cannot be combined with MPQ_COMPRESSION_LZMA.
+	 */
+	MPQ_COMPRESSION_SPARSE = 0x20,
+	/**
+	 * Use IMA ADPCM compression for 1-channel (mono) WAVE files. This bit can only be combined with MPQ_COMPRESSION_HUFFMANN. This is lossy compression and should only be used for compressing WAVE files.
+	 */
+	MPQ_COMPRESSION_ADPCM_MONO = 0x40,
+	/**
+	 * Use IMA ADPCM compression for 2-channel (stereo) WAVE files. This bit can only be combined with MPQ_COMPRESSION_HUFFMANN. This is lossy compression and should only be used for compressing WAVE files.
+	 */
+	MPQ_COMPRESSION_ADPCM_STEREO = 0x80,
+	/**
+	 * Use LZMA compression. This value can not be combined with any other compression method.
+	 */
+	MPQ_COMPRESSION_LZMA = 0x12,
 }
 
 export enum ArchiveCompactWorkType {
@@ -172,7 +301,7 @@ export enum ArchiveCompactWorkType {
 	/**
 	 * Closing the MPQ.
 	 */
-	CCB_CLOSING_ARCHIVE
+	CCB_CLOSING_ARCHIVE,
 }
 
 export type CBCCallback = (workType: ArchiveCompactWorkType, bytesProcessed: bigint, totalBytes: bigint) => void;
@@ -262,7 +391,7 @@ export interface StormNative {
 // using interface will allow user to add shit to the types which is NOT EXPECTED
 /* eslint-disable @typescript-eslint/consistent-type-definitions */
 declare const __handle_marker: unique symbol;
-export type HANDLE = { readonly __brand: 'HANDLE'; readonly [__handle_marker]?: never };
-export type FILEHANDLE = { readonly __brandE: 'FILEHANDLE'; readonly [__handle_marker]?: never } & HANDLE;
-export type MPQHANDLE  = { readonly __brandE: 'MPQHANDLE';  readonly [__handle_marker]?: never } & HANDLE;
+export type HANDLE = { readonly __brandH: 'HANDLE'; readonly [__handle_marker]?: never };
+export type FILEHANDLE = { readonly __brandFH: 'FILEHANDLE'; readonly [__handle_marker]?: never } & HANDLE;
+export type MPQHANDLE = { readonly __brandMH: 'MPQHANDLE'; readonly [__handle_marker]?: never } & HANDLE;
 /* eslint-enable @typescript-eslint/consistent-type-definitions */

@@ -1,4 +1,4 @@
-import ffi from 'koffi';
+import ffi, { IKoffiCType } from 'koffi';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -21,8 +21,6 @@ let lib: StormLib | undefined;
 let natives: StormNative | undefined;
 
 const uint32_max = BigInt('4294967294');
-
-
 
 function mapStormLib() {
 	// map stormlib function
@@ -226,7 +224,7 @@ function mapStormLib() {
 			}
 
 			const byteRead = [0];
-			const readResult = fileRead(file, buf, byteRead, null);
+			const readResult = fileRead(file, buf, size, byteRead, null);
 
 			if (readResult === true) {
 				return buf;
@@ -235,7 +233,7 @@ function mapStormLib() {
 			// we actually read less then size?
 			const err = errGet();
 			if (err != 38) {
-				throw makeError(errGet()); // god bless
+				throw makeError(err); // god bless
 			}
 
 			// we did some how magically read less then file size
