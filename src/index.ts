@@ -18,8 +18,9 @@ import * as Wc3MapTranslator from './wc3maptranslator'
 import * as PatchworkTranslator from './translator'
 import * as Converters from './converter'
 import * as Enhancements from './enhancements'
+import * as MPQ from './mpq'
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires
+// eslint-disable-next-line
 require('source-map-support').install()
 
 let log: Logger<ILogObj>
@@ -123,4 +124,4 @@ program
 
 program.parse()
 
-export { Wc3MapTranslator, PatchworkTranslator, Converters, Enhancements }
+export { Wc3MapTranslator, PatchworkTranslator, Converters, Enhancements, MPQ }
