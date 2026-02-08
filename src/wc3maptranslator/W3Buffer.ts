@@ -1,4 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+import { WithImplicitCoercion } from "buffer"
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const roundTo = require('round-to')
 
 export class W3Buffer {
@@ -24,7 +26,6 @@ export class W3Buffer {
   public readFloat (): number {
     const float: number = this._buffer.readFloatLE(this._offset)
     this._offset += 4
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
     return roundTo(float, 3)
   }
 
@@ -32,7 +33,7 @@ export class W3Buffer {
     const string: number[] = []
 
     while (this._buffer[this._offset] !== 0x00) {
-      string.push(this._buffer[this._offset])
+      string.push(this._buffer[this._offset] as number)
       this._offset += 1
     }
     this._offset += 1 // consume the \0 end-of-string delimiter
@@ -45,7 +46,7 @@ export class W3Buffer {
     const numCharsToRead = len
 
     for (let i = 0; i < numCharsToRead; i++) {
-      string.push(this._buffer[this._offset])
+      string.push(this._buffer[this._offset] as number)
       this._offset += 1
     }
 
@@ -59,7 +60,7 @@ export class W3Buffer {
     // TODO what kind of binary? Do we use a BigInt or a node provided type from Buffer?
     const byte = this._buffer[this._offset]
     this._offset += 1
-    return byte
+    return byte as number
   }
 
   public isExhausted (): boolean {

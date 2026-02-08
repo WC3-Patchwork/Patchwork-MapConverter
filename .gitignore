@@ -3,6 +3,8 @@
 /bin
 /.vscode
 /dist
+/.pnpm-store
+/tsconfig.tsbuildinfo
 
 # generated
 /src/metadata.ts

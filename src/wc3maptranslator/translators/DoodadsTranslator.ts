@@ -4,6 +4,7 @@ import { rad2Deg, deg2Rad } from '../AngleConverter'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
 import { SpecialDoodad, type Doodad } from '../data/Doodad'
+import { ItemSet } from '../data/ItemSet'
 
 export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]> {
   private static instance: DoodadsTranslator
@@ -43,9 +44,9 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     doodadsJson?.forEach((tree) => {
       outBufferToWar.addChars(tree.type)
       outBufferToWar.addInt(tree.variation != null ? tree.variation : 0) // optional - default value 0
-      outBufferToWar.addFloat(tree.position[0])
-      outBufferToWar.addFloat(tree.position[1])
-      outBufferToWar.addFloat(tree.position[2])
+      outBufferToWar.addFloat(tree.position[0] as number)
+      outBufferToWar.addFloat(tree.position[1] as number)
+      outBufferToWar.addFloat(tree.position[2] as number)
 
       // Angle
       // Doodads format is unique because it uses radians for angles, as opposed
@@ -91,9 +92,9 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
     outBufferToWar.addInt(specialDoodadsJson?.length || 0) // number of special doodads
     specialDoodadsJson?.forEach(specialDoodad => {
       outBufferToWar.addChars(specialDoodad.type)
-      outBufferToWar.addInt(specialDoodad.position[0]) //x
-      outBufferToWar.addInt(specialDoodad.position[1]) //y
-      outBufferToWar.addInt(specialDoodad.position[2]) //z
+      outBufferToWar.addInt(specialDoodad.position[0] as number) //x
+      outBufferToWar.addInt(specialDoodad.position[1] as number) //y
+      outBufferToWar.addInt(specialDoodad.position[2] as number) //z
     })
 
     return {
@@ -157,7 +158,7 @@ export class DoodadsTranslator implements Translator<[Doodad[], SpecialDoodad[]]
         const numberOfItems = outBufferToJSON.readInt()
         doodad.droppedItemSets.push({ items: [] })
         for (let k = 0; k < numberOfItems; k++) {
-          doodad.droppedItemSets[j].items.push({
+          (doodad.droppedItemSets[j] as ItemSet).items.push({
             itemId: outBufferToJSON.readChars(4), // Item ID
             chance: outBufferToJSON.readInt() // % chance to drop
           });

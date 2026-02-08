@@ -22,7 +22,7 @@ import { type ScriptedTrigger } from './data/content/ScriptedTrigger'
 
 interface TriggerTranslatorOutput {
   roots: TriggerContainer[]
-  scriptReferences: Array<ScriptContent | null>
+  scriptReferences: (ScriptContent | null)[]
 }
 
 function countContentTypes (roots: TriggerContainer[]): Map<ContentType, number> {
@@ -435,7 +435,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
       const elementRelations = new Map<number, number>()
       const containers: Record<number, TriggerContainer> = {}
       const content: Record<number, TriggerContent> = {}
-      const customScripts: Array<ScriptContent | null> = []
+      const customScripts: (ScriptContent | null)[] = []
       const allGlobalVariables: Record<number, GlobalVariable> = {}
       const existingVariablesCount = outBufferToJSON.readInt()
       for (let i = 0; i < existingVariablesCount; i++) {
@@ -649,7 +649,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
                         (content as NestingStatement).statements = []
                       }
                       if ((content as NestingStatement).statements[group] != null) {
-                        (content as NestingStatement).statements[group].push(statement)
+                      ((content as NestingStatement).statements[group] as Statement[]).push(statement)
                       } else {
                         ((content as NestingStatement).statements[group]) = [statement]
                       }
@@ -690,7 +690,7 @@ export class TriggersTranslator implements Translator<TriggerTranslatorOutput> {
       }
 
       const roots: TriggerContainer[] = []
-      const missingElements: Array<{ data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }> = []
+      const missingElements: { data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }[] = []
       // Generate data tree structure
       for (const [elementId, parentId] of elementRelations.entries()) {
         if (parentId === -1) {

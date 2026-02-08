@@ -54,12 +54,12 @@ const TriggerDataRegistry = {
       if (line.startsWith('_')) continue // ignore irrelevant properties
       if (line.includes('=')) {
         const [key, value] = line.split('=')
-        const def = convertToSectionRowData(currentSection as TriggerDataSections, key, value)
+        const def = convertToSectionRowData(currentSection as TriggerDataSections, key as string, value as string)
         const sectionRegistry = registry.get(currentSection as TriggerDataSections)
         if (sectionRegistry == null) {
-          registry.set(currentSection as TriggerDataSections, { [key]: def?.getParameterCount() })
+          registry.set(currentSection as TriggerDataSections, { [key as string]: def?.getParameterCount() })
         } else {
-          sectionRegistry[key] = def?.getParameterCount()
+          sectionRegistry[key as string] = def?.getParameterCount()
         }
       }
     }

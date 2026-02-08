@@ -174,7 +174,7 @@ interface RandomUnitTable {
   id: number
   name: string
   positions: number[]
-  chances: Array<{ chance: number, unitIds: string[] }>
+  chances: { chance: number, unitIds: string[] }[]
 }
 
 enum ScriptLanguage {
@@ -198,5 +198,6 @@ export {
   type Map, type GameVersion, type PlayableCamera, type MapFlags,
   type LoadingScreen, FogType, type PlayableMapArea, type Prologue,
   type Info, type PlayerStartingPosition, type Player, type ForceFlags,
-  type Force, ScriptLanguage, SupportedModes
+  type Force, ScriptLanguage, SupportedModes, RandomTable, RandomObject, 
+  RandomUnitTable, ObjectPool
 }

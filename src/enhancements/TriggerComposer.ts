@@ -18,6 +18,7 @@ import { type CustomScript } from '../translator/data/content/CustomScript'
 import { type ScriptedTrigger } from '../translator/data/content/ScriptedTrigger'
 import { FileBlacklist } from './FileBlacklist'
 import { FormatConverters } from '../converter/formats/FormatConverters'
+import { FormatConverter } from '@/converter'
 
 const log = LoggerFactory.createLogger('TriggerComposer')
 
@@ -27,11 +28,11 @@ async function populateComment(element: TriggerComment, child: DirectoryTree): P
 
 // handles both GUI trigger and Variable
 async function populateGUIContent(element: TriggerContent, child: DirectoryTree): Promise<void> {
-  const trigger: unknown = FormatConverters[EnhancementManager.guiExtension].parse(await readFile(child.path, 'utf8'))
+  const trigger: unknown = (FormatConverters[EnhancementManager.guiExtension] as FormatConverter).parse(await readFile(child.path, 'utf8'))
   for (const [key, value] of Object.entries(trigger as JSON)) {
     if (key === 'children') continue
     if (value == null || value === '') continue
-    element[key] = value as unknown
+    element[key as 'name'] = value
   }
 }
 
@@ -43,7 +44,7 @@ async function populateParentDetails(parent: TriggerContainer, file: DirectoryTr
   const record = ini.parse(await readFile(file.path, 'utf8'))
   for (const [key, value] of Object.entries(record)) {
     if (key === 'children') continue // ignore children entry, that one is handled internally (shouldn't exist anyways)
-    parent[key] = value as unknown
+    parent[key as 'name'] = value
   }
 }
 
@@ -67,7 +68,7 @@ function generateTriggerOrder(parent: TriggerContainer): string[] {
     it.name = safeReplaceTriggerName(it.name)
     if (it.contentType === ContentType.COMMENT) {
       if (commentCounts[it.name] != null) {
-        const count = commentCounts[it.name] + 1
+        const count = (commentCounts[it.name] as number) + 1
         commentCounts[it.name] = count
         it.name = `${it.name}_${count}`
       } else {
@@ -82,16 +83,16 @@ type OrderedTriggerContainer = TriggerContainer & { order: string[] }
 function sortTriggerContent(root: OrderedTriggerContainer): void {
   let newChildrenOrder = new Array(root.order != null ? root.order.length : 0) as TriggerContent[]
   const unspecifiedChildren: TriggerContent[] = []
-  const containerChildrenRecord = Object.values(root.children).reduce((ret, value) => {
-    ret[value.name] = value
+  const containerChildrenRecord = Object.values(root.children).reduce((ret: Record<string, TriggerContent>, value) => {
+    ret[value.name] = value as TriggerContent
     return ret
-  }, {}) as Record<string, TriggerContent>
+  }, {})
   if (root.order == null) root.order = []
-  const orderedContentRecord = Object.entries(root.order).reduce((ret, entry) => {
-    const [key, value] = entry
+  const orderedContentRecord = Object.entries(root.order).reduce((ret: Record<string, number>, entry) => {
+    const [key, value] = entry as unknown as [number, string]
     ret[value] = key
     return ret
-  }, {}) as Record<string, number>
+  }, {})
   for (const [name, content] of Object.entries(containerChildrenRecord)) {
     const desiredIndex = orderedContentRecord[name]
     if (desiredIndex == null) {
@@ -114,7 +115,7 @@ function sortTriggerContent(root: OrderedTriggerContainer): void {
 
 const TriggerComposer = {
   composeTriggerJson: async function (input: DirectoryTree): Promise<TriggerContainer> {
-    const tasks: Array<Promise<unknown>> = []
+    const tasks: Promise<unknown>[] = []
     const result = {
       name: EnhancementManager.mapHeaderFilename,
       contentType: ContentType.HEADER,
@@ -224,8 +225,8 @@ const TriggerComposer = {
           } else {
             const commentCounts = commentCounters.get(containerParent) as Record<string, number>
             if (commentCounts[element.name] != null) {
-              const count = commentCounts[element.name] + 1
-              commentCounters[element.name] = count
+              const count = commentCounts[element.name] as number + 1
+              commentCounts[element.name] = count
               element.name = `${element.name}_${count}`
             } else {
               commentCounts[element.name] = 1
@@ -286,7 +287,7 @@ const TriggerComposer = {
 
     triggersJson.name = '' // Delete header name
 
-    const tasks: Array<Promise<unknown>> = []
+    const tasks: Promise<unknown>[] = []
     for (const [parents, content] of TreeIterator<TriggerContent>(triggersJson, GetTriggerContainerChildren)) {
       const outPath = path.join(sourceOutput, ...parents.map(it => it.name))
       const exportObj: Record<string, unknown> = {
@@ -315,12 +316,12 @@ const TriggerComposer = {
           exportObj.events = (content as GUITrigger).events
           exportObj.conditions = (content as GUITrigger).conditions
           exportObj.actions = (content as GUITrigger).actions
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), (FormatConverters[EnhancementManager.guiExtension] as FormatConverter).stringify(content), 'utf8'))
           break
         case ContentType.TRIGGER_SCRIPTED:
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'));
           (content as ScriptedTrigger).script = ''
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), (FormatConverters[EnhancementManager.guiExtension] as FormatConverter).stringify(content), 'utf8'))
           break
         case ContentType.COMMENT:
           tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.commentExtension}`), (content as TriggerComment).comment, 'utf8'))
@@ -334,7 +335,7 @@ const TriggerComposer = {
           exportObj.initialValue = (content as GlobalVariable).initialValue
           exportObj.isArray = (content as GlobalVariable).isArray
           exportObj.arrayLength = (content as GlobalVariable).arrayLength
-          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), FormatConverters[EnhancementManager.guiExtension].stringify(content), 'utf8'))
+          tasks.push(WriteAndCreatePath(path.join(outPath, `${content.name}${EnhancementManager.guiExtension}`), (FormatConverters[EnhancementManager.guiExtension] as FormatConverter).stringify(content), 'utf8'))
           break
       }
     }

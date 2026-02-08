@@ -72,7 +72,7 @@ export class ImportsTranslator implements Translator<Import[]> {
 
     for (let i = 0; i < numImports; i++) {
       const typeValue = outBufferToJSON.readByte()
-      const type = typeEnum[typeValue] as unknown as ImportType
+      const type = typeEnum[typeValue as 0,5,8,10,13]
 
       const importedFile = {
         type, // 5 or 8= standard path, 10 or 13: custom path

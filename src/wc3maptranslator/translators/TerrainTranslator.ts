@@ -104,17 +104,17 @@ export class TerrainTranslator implements Translator<Terrain> {
         rows.layerHeight.reverse();
 
         for (let i = 0; i < rows.groundHeight.length; i++) {
-            for (let j = 0; j < rows.groundHeight[i].length; j++) {
+            for (let j = 0; j < (rows.groundHeight[i] as number[]).length; j++) {
                 // these bit operations are based off documentation from https://github.com/stijnherfst/HiveWE/wiki/war3map.w3e-Terrain
-                const groundHeight = rows.groundHeight[i][j];
-                const waterHeight = rows.waterHeight[i][j];
-                const boundaryFlag = rows.boundaryFlag[i][j];
-                const flags = rows.flags[i][j];
-                const groundTexture = rows.groundTexture[i][j];
-                const groundVariation = rows.groundVariation[i][j];
-                const cliffVariation = rows.cliffVariation[i][j];
-                const cliffTexture = rows.cliffTexture[i][j];
-                const layerHeight = rows.layerHeight[i][j];
+                const groundHeight = (rows.groundHeight[i] as number[])[j] as number;
+                const waterHeight = (rows.waterHeight[i] as number[])[j] as number;
+                const boundaryFlag = (rows.boundaryFlag[i] as boolean[])[j] as boolean;
+                const flags = (rows.flags[i] as number[])[j] as number;
+                const groundTexture = (rows.groundTexture[i] as number[])[j] as number;
+                const groundVariation = (rows.groundVariation[i] as number[])[j] as number;
+                const cliffVariation = (rows.cliffVariation[i] as number[])[j] as number;
+                const cliffTexture = (rows.cliffTexture[i] as number[])[j] as number;
+                const layerHeight = (rows.layerHeight[i] as number[])[j] as number;
 
                 const hasBoundaryFlag = boundaryFlag ? 0x4000 : 0;
 

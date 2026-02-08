@@ -34,20 +34,18 @@ export class CustomScriptsTranslator implements Translator<{ headerComments: str
     outBufferToWar.addByte(0x80)
 
     outBufferToWar.addInt(json.headerComments.length)
-    for (let i = 0; i < json.headerComments.length; i++) {
-      outBufferToWar.addString(json.headerComments[i])
+    for (const comment of json.headerComments){
+      outBufferToWar.addString(comment)
     }
 
-    for (let i = 0; i < json.scripts.length; i++) {
-      const script = json.scripts[i]
-
+    for (const script of json.scripts) {
       if (script == null || script.length === 0) {
         outBufferToWar.addInt(0) // size
       } else {
         const buf = Buffer.from(script, 'utf-8')
         outBufferToWar.addInt(buf.length + 1) // + nul char
-        for (let i = 0; i < buf.length; i++) {
-          outBufferToWar.addByte(buf[i])
+        for (const byte of buf) {
+          outBufferToWar.addByte(byte)
         }
         outBufferToWar.addByte(0) // nul char
       }
@@ -79,6 +77,7 @@ export class CustomScriptsTranslator implements Translator<{ headerComments: str
           continue // skip
         }
         scripts.push(outBufferToJSON.readString())
+      // eslint-disable-next-line no-constant-condition
       } while (true)
     } catch (e) {
       // catch EOF

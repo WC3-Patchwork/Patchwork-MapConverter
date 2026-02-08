@@ -15,6 +15,7 @@ import { TriggerComposer } from '../enhancements/TriggerComposer'
 import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
 import { type Import } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
+import { FormatConverter } from './formats/FormatConverter'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -29,7 +30,7 @@ async function processFile<T> (input: string, translator: Translator<T>, output:
       asyncLog.error(error)
     }
   } else {
-    await WriteAndCreatePath(output, FormatConverters[EnhancementManager.mapDataExtension].stringify(result.json as object), { encoding: 'utf8' })
+    await WriteAndCreatePath(output, (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).stringify(result.json as object), { encoding: 'utf8' })
     asyncLog.info('Finished processing', output)
   }
 }
@@ -84,12 +85,12 @@ async function processTriggers (triggersFile: string, customScriptsFile?: string
     for (let i = 0; i < triggerJson.scriptReferences.length; i++) {
       const scriptRef = triggerJson.scriptReferences[i]
       if (scriptRef != null) {
-        scriptRef.script = csResults.json.scripts[i]
+        scriptRef.script = csResults.json.scripts[i] as string
       }
     }
 
     for (let i = 0; i < csResults.json.headerComments.length; i++) {
-      (triggerJson.roots[i] as MapHeader).description = csResults.json.headerComments[i]
+      (triggerJson.roots[i] as MapHeader).description = csResults.json.headerComments[i] as string
     }
   }
 
@@ -100,8 +101,8 @@ const War2JsonService = {
   convert: async function (inputPath: string, outputPath: string) {
     log.info('Converting Warcraft III binaries in', inputPath, 'and outputting to', outputPath)
 
-    const promises: Array<Promise<unknown>> = []
-    const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
+    const promises: Promise<unknown>[] = []
+    const fileStack: DirectoryTree<Record<string, unknown>>[] = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
 
     const copyFiles: Record<string, string> = {}
     let importFile: string | null = null
@@ -158,7 +159,7 @@ const War2JsonService = {
         if (EnhancementManager.composeTriggers) {
           await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, triggerJSON[0] as unknown as TriggerContainer)
         } else {
-          await writeFile(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), FormatConverters[EnhancementManager.mapDataExtension].stringify(triggerJSON), { encoding: 'utf8' })
+          await writeFile(path.join(outputPath, `triggers${EnhancementManager.mapDataExtension}`), (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).stringify(triggerJSON), { encoding: 'utf8' })
         }
       }())
     } else if (customScriptFile != null) {

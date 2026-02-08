@@ -4,6 +4,7 @@ import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { RandomSpawn, type Unit } from '../data/Unit'
 import { type Translator } from './Translator'
 import { type UnitSet } from '../data/UnitSet'
+import { ItemSet } from '../data/ItemSet'
 
 export class UnitsTranslator implements Translator<Unit[]> {
   private static instance: UnitsTranslator
@@ -42,9 +43,9 @@ export class UnitsTranslator implements Translator<Unit[]> {
     unitsJson?.forEach((unit) => {
       outBufferToWar.addChars(unit.type) // type
       outBufferToWar.addInt(unit.variation != null ? unit.variation : 0) // variation
-      outBufferToWar.addFloat(unit.position[0]) // position x
-      outBufferToWar.addFloat(unit.position[1]) // position y
-      outBufferToWar.addFloat(unit.position[2]) // position z
+      outBufferToWar.addFloat(unit.position[0] as number) // position x
+      outBufferToWar.addFloat(unit.position[1] as number) // position y
+      outBufferToWar.addFloat(unit.position[2] as number) // position z
       outBufferToWar.addFloat(unit.rotation != null ? unit.rotation : 0) // rotation angle
 
       if (unit.scale == null) unit.scale = [1, 1, 1]
@@ -204,7 +205,7 @@ export class UnitsTranslator implements Translator<Unit[]> {
         unit.droppedItemSets.push({ items: [] })
         const numDroppableItems = outBufferToJSON.readInt()
         for (let k = 0; k < numDroppableItems; k++) {
-          unit.droppedItemSets[j].items.push({
+          (unit.droppedItemSets[j] as ItemSet).items.push({
             itemId: outBufferToJSON.readChars(4), // Item ID
             chance: outBufferToJSON.readInt() // % chance to drop
           })

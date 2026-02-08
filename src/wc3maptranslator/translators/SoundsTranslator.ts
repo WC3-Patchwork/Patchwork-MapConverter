@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'

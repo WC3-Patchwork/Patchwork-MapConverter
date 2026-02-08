@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/strict-boolean-expressions */
-import { HexBuffer } from '../HexBuffer'
+ import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type WarResult, type JsonResult } from '../CommonInterfaces'
 import { type Translator } from './Translator'
-import { FogType, type Force, type Info, type Player, ScriptLanguage, SupportedModes } from '../data/Info'
+import { FogType, type Force, type Info, ObjectPool, type Player, RandomTable, RandomUnitTable, ScriptLanguage, SupportedModes } from '../data/Info'
+import { RandomSpawn } from '../data'
 
 export class InfoTranslator implements Translator<Info> {
   private static instance: InfoTranslator
@@ -45,12 +45,12 @@ export class InfoTranslator implements Translator<Info> {
 
     // Camera bounds (8 floats total)
     for (let cbIndex = 0; cbIndex < 8; cbIndex++) {
-      outBufferToWar.addFloat(infoJson.camera.bounds[cbIndex])
+      outBufferToWar.addFloat(infoJson.camera.bounds[cbIndex] as number)
     }
 
     // Camera complements (4 ints total)
     for (let ccIndex = 0; ccIndex < 4; ccIndex++) {
-      outBufferToWar.addInt(infoJson.camera.complements[ccIndex])
+      outBufferToWar.addInt(infoJson.camera.complements[ccIndex] as number)
     }
 
     // Playable area
@@ -115,10 +115,10 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addFloat(infoJson.fog.startHeight)
     outBufferToWar.addFloat(infoJson.fog.endHeight)
     outBufferToWar.addFloat(infoJson.fog.density)
-    outBufferToWar.addByte(infoJson.fog.color[0])
-    outBufferToWar.addByte(infoJson.fog.color[1])
-    outBufferToWar.addByte(infoJson.fog.color[2])
-    outBufferToWar.addByte(infoJson.fog.color[3])
+    outBufferToWar.addByte(infoJson.fog.color[0] as number)
+    outBufferToWar.addByte(infoJson.fog.color[1] as number)
+    outBufferToWar.addByte(infoJson.fog.color[2] as number)
+    outBufferToWar.addByte(infoJson.fog.color[3] as number)
 
     // Misc.
     // // If globalWeather is not defined or is set to 'none', use 0 sentinel value, else add char[4] -- why this distinct crap? it just breaks the w3i for me.
@@ -131,10 +131,10 @@ export class InfoTranslator implements Translator<Info> {
     outBufferToWar.addByte(infoJson.customLightEnv)
 
     // Custom water tinting
-    outBufferToWar.addByte(infoJson.water[0])
-    outBufferToWar.addByte(infoJson.water[1])
-    outBufferToWar.addByte(infoJson.water[2])
-    outBufferToWar.addByte(infoJson.water[3])
+    outBufferToWar.addByte(infoJson.water[0] as number)
+    outBufferToWar.addByte(infoJson.water[1] as number)
+    outBufferToWar.addByte(infoJson.water[2] as number)
+    outBufferToWar.addByte(infoJson.water[3] as number)
 
     outBufferToWar.addInt(infoJson.scriptLanguage)
     outBufferToWar.addInt(infoJson.supportedModes)
@@ -510,18 +510,18 @@ export class InfoTranslator implements Translator<Info> {
 
       const numPositions = outBufferToJSON.readInt() // Number "m" of positions
       for (let j = 0; j < numPositions; j++) {
-        result.randomUnitTables[i].positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
+        (result.randomUnitTables[i] as RandomUnitTable).positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
       }
 
       const numChances = outBufferToJSON.readInt()
       for (let j = 0; j < numChances; j++) {
-        result.randomUnitTables[i].chances.push({
+        (result.randomUnitTables[i] as RandomUnitTable).chances.push({
           chance: outBufferToJSON.readInt(), // Chance of the unit/item (percentage)
           unitIds: []
         })
 
         for (let k = 0; k < numPositions; k++) {
-          result.randomUnitTables[i].chances[j].unitIds.push(outBufferToJSON.readChars(4)) // unit/item id's for this line specified
+          ((result.randomUnitTables[i] as RandomUnitTable).chances[j] as { chance: number, unitIds: string[] }).unitIds.push(outBufferToJSON.readChars(4)) // unit/item id's for this line specified
         }
       }
     }
@@ -537,14 +537,14 @@ export class InfoTranslator implements Translator<Info> {
 
       const itemSetsCurrentTable = outBufferToJSON.readInt() // Number "m" of item sets on the current item table
       for (let j = 0; j < itemSetsCurrentTable; j++) {
-        result.randomItemTables[i].rows.push({
+        (result.randomItemTables[i] as RandomTable).rows.push({
           type: 2, // unit table (=0), a building table (=1) or an item table (=2) - not used
           objects: []
         })
 
         const itemsInItemSet = outBufferToJSON.readInt() // Number "i" of items on the current item set
         for (let k = 0; k < itemsInItemSet; k++) {
-          result.randomItemTables[i].rows[j].objects.push({
+          ((result.randomItemTables[i] as RandomTable).rows[j] as  ObjectPool).objects.push({
             chance: outBufferToJSON.readInt(), // Percentual chance
             objectId: outBufferToJSON.readChars(4) // Item id (as in ItemData.slk)
           })

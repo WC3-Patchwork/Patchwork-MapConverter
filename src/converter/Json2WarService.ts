@@ -18,13 +18,14 @@ import { TriggerComposer } from '../enhancements/TriggerComposer'
 import { type Import } from '../wc3maptranslator/data'
 import { type Translator, ImportsTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
+import { FormatConverter } from './formats/FormatConverter'
 const log = LoggerFactory.createLogger('Json2War')
 
 let translatorCount = 0
 async function processFile<T> (input: string, translator: Translator<T>, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${translator.constructor.name}-${translatorCount++}` })
   asyncLog.info('Processing', input)
-  const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as T
+  const buffer = (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).parse(await readFile(input, { encoding: 'utf8' })) as T
   const result = translator.jsonToWar(buffer)
   if (result.errors != null && result.errors.length > 0) {
     for (const error of result.errors) {
@@ -77,7 +78,7 @@ function getAllContentForScriptFile (root: TriggerContainer): TriggerContent[] {
 }
 
 async function exportTriggers (triggersJson: TriggerContainer, output: string): Promise<void> {
-  const tasks: Array<Promise<unknown>> = []
+  const tasks: Promise<unknown>[] = []
   const triggerTranslator = TriggersTranslator.getInstance()
   const triggerLog = log.getSubLogger({ name: `${triggerTranslator.constructor.name}-${translatorCount++}` })
   const triggerAndScript: TriggerTranslatorOutput = {
@@ -113,16 +114,16 @@ async function exportTriggers (triggersJson: TriggerContainer, output: string): 
 
 async function processTriggers (input: string, output: string): Promise<void> {
   log.info('Reading triggers file')
-  const buffer = FormatConverters[EnhancementManager.mapDataExtension].parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
-  await exportTriggers(buffer[0], output)
+  const buffer = (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).parse(await readFile(input, { encoding: 'utf8' })) as TriggerContainer[]
+  await exportTriggers(buffer[0] as TriggerContainer, output)
 }
 
 const Json2WarService = {
   convert: async function (inputPath: string, outputPath: string): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
-    const promises: Array<Promise<void>> = []
-    const fileStack: Array<DirectoryTree<Record<string, unknown>>> = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
+    const promises: Promise<void>[] = []
+    const fileStack: DirectoryTree<Record<string, unknown>>[] = [directoryTree(inputPath, { attributes: ['type', 'extension'] })]
     let importDirectoryTree: DirectoryTree<Record<string, unknown>> | null = null
 
     while (fileStack.length > 0) {
