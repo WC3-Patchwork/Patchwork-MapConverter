@@ -1,20 +1,15 @@
 import { WithImplicitCoercion } from 'buffer'
 import ieee754 from 'ieee754'
-import IntN from 'intn'
 
-const intToHex = (intV: number, isShort: boolean): string[] => {
-  // Creates a new 32-bit integer from the given number
-  const intSize = isShort ? 16 : 32
- 
-  const intNSize = new IntN(intSize)
+function int2Hex(num: number, isShort = false) {
+  const bits = isShort ? 16 : 32;
+  const mask = (1n << BigInt(bits)) - 1n;
+  const val = BigInt(num) & mask;
+  const width = bits / 4;
+  const hex = val.toString(16).padStart(width, '0').toUpperCase();
 
-  const byteNum = intNSize.fromInt(intV).bytes
-
-  // Map decimal bytes to hex bytes
-  // Bytes are already in correct little-endian form 
-  return byteNum.map((Byte: number) => {
-    return '0x' + Byte.toString(16)
-  })
+  // split into bytes and reverse
+  return hex.match(/.{2}/g)!.reverse().join('');
 }
 const charToHex = (character: string): string => {
   return '0x' + character.charCodeAt(0).toString(16)
@@ -56,7 +51,7 @@ export class HexBuffer {
   }
 
   public addInt (int: number, isShort = false): void {
-    this._buffer.push(...intToHex(int, isShort))
+    this._buffer.push(... int2Hex(int, isShort))
   }
 
   public addShort (short: number): void {
