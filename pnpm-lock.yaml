@@ -23,15 +23,9 @@ importers:
       ini:
         specifier: 6.0.0
         version: 6.0.0
-      intn:
-        specifier: 1.0.0
-        version: 1.0.0
       koffi:
-        specifier: ^2.14.1
+        specifier: 2.14.1
         version: 2.14.1
-      round-to:
-        specifier: 7.0.0
-        version: 7.0.0
       smol-toml:
         specifier: 1.5.2
         version: 1.5.2
@@ -789,10 +783,6 @@ packages:
     resolution: {integrity: sha512-4gd7VpWNQNB4UKKCFFVcp1AVv+FMOgs9NKzjHKusc8jTMhd5eL1NqQqOpE0KzMds804/yHlglp3uxgluOqAPLw==}
     engines: {node: '>= 0.4'}
 
-  intn@1.0.0:
-    resolution: {integrity: sha512-WgMxnQbXgOPWOiziVOhfw6TWy0EgplCszIzhZoRwGhegkZNTaG9LOJOGZ4+nkrEr+94Rsi+xRB7jFSFv6MBlBg==}
-    engines: {node: '>=0.6'}
-
   is-array-buffer@3.0.5:
     resolution: {integrity: sha512-DDfANUiiG2wC1qawP66qlTugJeL5HyzMpfr8lLK+jMQirGzNod0B12cFB/9q838Ru27sBwfw78/rdoU7RERz6A==}
     engines: {node: '>= 0.4'}
@@ -1072,10 +1062,6 @@ packages:
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
-
-  round-to@7.0.0:
-    resolution: {integrity: sha512-2J9phHeB0lAQYZkTGzAqFZ1MaXGsIOiatkHTkL+s9uer0Bd5iClTUovyeNsRY5NgXzGp74cRvHSUWjjGea+s5A==}
-    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -2181,8 +2167,6 @@ snapshots:
       hasown: 2.0.2
       side-channel: 1.1.0
 
-  intn@1.0.0: {}
-
   is-array-buffer@3.0.5:
     dependencies:
       call-bind: 1.0.8
@@ -2464,8 +2448,6 @@ snapshots:
       supports-preserve-symlinks-flag: 1.0.0
 
   reusify@1.1.0: {}
-
-  round-to@7.0.0: {}
 
   run-parallel@1.2.0:
     dependencies:
