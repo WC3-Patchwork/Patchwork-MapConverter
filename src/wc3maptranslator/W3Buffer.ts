@@ -1,7 +1,4 @@
-import { WithImplicitCoercion } from "buffer"
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const roundTo = require('round-to')
+import { roundTo } from '@/util/round'
 
 export class W3Buffer {
   private _offset = 0
@@ -30,37 +27,52 @@ export class W3Buffer {
   }
 
   public readString (): string {
-    const string: number[] = []
+    const start = this._offset;
+    let len = 0;
+    let ch = this._buffer.at(this._offset);
 
-    while (this._buffer[this._offset] !== 0x00) {
-      string.push(this._buffer[this._offset] as number)
+    while (ch !== undefined && ch > 0x00) {
+      len += 1;
       this._offset += 1
+      ch = this._buffer.at(this._offset);
     }
     this._offset += 1 // consume the \0 end-of-string delimiter
 
-    return Buffer.from(string as unknown as WithImplicitCoercion<ArrayBuffer>).toString()
+    const buf = Buffer.allocUnsafe(len+1);
+    this._buffer.copy(buf, 0, start, this._offset);
+
+    return buf.toString();
   }
 
   public readChars (len = 1): string {
-    const string: number[] = []
-    const numCharsToRead = len
-
-    for (let i = 0; i < numCharsToRead; i++) {
-      string.push(this._buffer[this._offset] as number)
-      this._offset += 1
+    if (len == 1){
+      const ch = this._buffer.at(this._offset);
+      if (ch === undefined) return '';
+      return String.fromCharCode(ch);
     }
 
-    return string.map((ch) => {
-      // if (ch === 0x0) return '0' //Curse spell has a "Crs" field, whose 4th byte is probably a 0x0, and not a "0", causing the editor to just ignore this change when converting back...
-      return String.fromCharCode(ch)
-    }).join('')
+    const buf = Buffer.allocUnsafe(len);
+    const byteRead = this._buffer.copy(buf, 0, this._offset, this._offset + len);
+
+    //TODO check if byte read less then len and do shit
+
+    this._offset += byteRead;
+    const arr: string[] = [];
+
+    buf.forEach(ch=>
+      //ch === 0x00 ? arr.push('0') :
+      // Curse spell has a "Crs" field, whose 4th byte is probably a 0x0, and not a "0",
+      // causing the editor to just ignore this change when converting back...
+      arr.push(String.fromCharCode(ch))
+    );
+
+    return arr.join('');
   }
 
   public readByte (): number {
-    // TODO what kind of binary? Do we use a BigInt or a node provided type from Buffer?
-    const byte = this._buffer[this._offset]
+    const byte = this._buffer.readUInt8(this._offset);
     this._offset += 1
-    return byte as number
+    return byte
   }
 
   public isExhausted (): boolean {
