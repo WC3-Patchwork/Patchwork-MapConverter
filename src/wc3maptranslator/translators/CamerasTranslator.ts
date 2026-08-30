@@ -1,104 +1,93 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Translator } from './Translator'
+import { type integer } from '../CommonInterfaces'
 import { type Camera } from '../data/Camera'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { CameraDefaults } from '../default/Camera'
 
-export class CamerasTranslator implements Translator<Camera[]> {
-  private static instance: CamerasTranslator
+const log = LoggerFactory.createLogger('CamerasTranslator')
 
-  private constructor () {}
-
-  public static getInstance (): CamerasTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
+export function jsonToWar(cameras: Camera[], formatVersion: integer, editorVersion: integer): Buffer {
+  if (formatVersion !== 0) {
+    throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
+  }
+  const output = new HexBuffer()
+  output.addInt(formatVersion)
+  output.addInt(cameras?.length ?? 0)
+  cameras?.forEach((camera) => {
+    output.addFloat(camera.targetX)
+    output.addFloat(camera.targetY)
+    output.addFloat(camera.offsetZ)
+    output.addFloat(camera.rotation)
+    output.addFloat(camera.angleOfAttack)
+    output.addFloat(camera.distance)
+    output.addFloat(camera.roll)
+    output.addFloat(camera.fieldOfView)
+    output.addFloat(camera.farClipping)
+    output.addFloat(camera.nearClipping)
+    if (editorVersion >= 6071) { // if editor version is 1.30+
+      output.addFloat(camera.localPitch ?? CameraDefaults.localPitch)
+      output.addFloat(camera.localYaw ?? CameraDefaults.localYaw)
+      output.addFloat(camera.localRoll ?? CameraDefaults.localRoll)
     }
-    return this.instance
+    output.addString(camera.name)
+  })
+
+  return output.getBuffer()
+}
+
+export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], integer] {
+  const input = new W3Buffer(buffer)
+  const formatVersion = input.readInt()
+  if (formatVersion !== 0) {
+    log.warn(`Unknown camera file format version ${formatVersion} will attempt reading...`)
+  } else {
+    log.info(`Camera format version is ${formatVersion}.`)
   }
 
-  public static jsonToWar (cameras: Camera[]): WarResult {
-    return this.getInstance().jsonToWar(cameras)
-  }
-
-  public static warToJson (buffer: Buffer): JsonResult<Camera[]> {
-    return this.getInstance().warToJson(buffer)
-  }
-
-  public jsonToWar (cameras: Camera[]): WarResult {
-    const outBufferToWar = new HexBuffer()
-
-    /*
-         * Header
-         */
-    outBufferToWar.addInt(0) // file version
-    outBufferToWar.addInt(cameras?.length || 0) // number of cameras
-
-    /*
-         * Body
-         */
-    cameras?.forEach((camera) => {
-      outBufferToWar.addFloat(camera.target.x)
-      outBufferToWar.addFloat(camera.target.y)
-      outBufferToWar.addFloat(camera.offsetZ)
-      outBufferToWar.addFloat(camera.rotation != null ? camera.rotation : 0) // optional
-      outBufferToWar.addFloat(camera.aoa)
-      outBufferToWar.addFloat(camera.distance)
-      outBufferToWar.addFloat(camera.roll != null ? camera.roll : 0)
-      outBufferToWar.addFloat(camera.fov)
-      outBufferToWar.addFloat(camera.farClipping)
-      outBufferToWar.addFloat(100) // (?) unknown - usually set to 100
-
-      // Camera name - must be null-terminated
-      outBufferToWar.addString(camera.name)
-    })
-
-    return {
-      errors: [],
-      buffer: outBufferToWar.getBuffer()
+  const result: Camera[] = []
+  const numCameras = input.readInt()
+  for (let i = 0; i < numCameras; i++) {
+    const targetX = input.readFloat()
+    const targetY = input.readFloat()
+    const offsetZ = input.readFloat()
+    const rotation = input.readFloat()
+    const angleOfAttack = input.readFloat()
+    const distance = input.readFloat()
+    const roll = input.readFloat()
+    const fieldOfView = input.readFloat()
+    const farClipping = input.readFloat()
+    const nearClipping = input.readFloat()
+    let localPitch: integer
+    let localYaw: integer
+    let localRoll: integer
+    if (editorVersion >= 6071) { // if editor version is 1.30+
+      localPitch = input.readFloat()
+      localYaw = input.readFloat()
+      localRoll = input.readFloat()
+    } else {
+      localPitch = CameraDefaults.localPitch
+      localYaw = CameraDefaults.localYaw
+      localRoll = CameraDefaults.localRoll
     }
-  }
-
-  public warToJson (buffer: Buffer): JsonResult<Camera[]> {
-    const result: Camera[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
-
-    const fileVersion = outBufferToJSON.readInt() // File version
-    const numCameras = outBufferToJSON.readInt() // # of cameras
-
-    for (let i = 0; i < numCameras; i++) {
-      const camera: Camera = {
-        target: {
-          x: 0,
-          y: 0
-        },
-        offsetZ: 0,
-        rotation: 0,
-        aoa: 0,
-        distance: 0,
-        roll: 0,
-        fov: 0,
-        farClipping: 0,
-        name: ''
-      }
-
-      camera.target.x = outBufferToJSON.readFloat()
-      camera.target.y = outBufferToJSON.readFloat()
-      camera.offsetZ = outBufferToJSON.readFloat()
-      camera.rotation = outBufferToJSON.readFloat()
-      camera.aoa = outBufferToJSON.readFloat() // angle of attack
-      camera.distance = outBufferToJSON.readFloat()
-      camera.roll = outBufferToJSON.readFloat()
-      camera.fov = outBufferToJSON.readFloat() // field of view
-      camera.farClipping = outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat() // consume this unknown float field
-      camera.name = outBufferToJSON.readString()
-
-      result.push(camera)
-    }
-
-    return {
-      errors: [],
-      json: result
+    const name = input.readString()
+    result[i] = {
+      targetX,
+      targetY,
+      offsetZ,
+      rotation,
+      angleOfAttack,
+      distance,
+      roll,
+      fieldOfView,
+      farClipping,
+      nearClipping,
+      localPitch,
+      localRoll,
+      localYaw,
+      name
     }
   }
+
+  return [result, formatVersion]
 }

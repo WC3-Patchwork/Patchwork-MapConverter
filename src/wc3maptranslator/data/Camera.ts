@@ -1,20 +1,20 @@
 import { type angle } from '../CommonInterfaces'
 
 interface Camera {
-  target: CameraTarget
+  name: string
+  targetX: number
+  targetY: number
   offsetZ: number
   rotation: angle
-  aoa: angle // angle of attack
+  angleOfAttack: angle
   distance: number
   roll: number
-  fov: angle // field of view
+  fieldOfView: angle
   farClipping: number
-  name: string
+  nearClipping: number
+  localPitch: number | undefined
+  localYaw: number | undefined
+  localRoll: number | undefined
 }
 
-interface CameraTarget {
-  x: number
-  y: number
-}
-
-export type { Camera, CameraTarget }
+export type { Camera }

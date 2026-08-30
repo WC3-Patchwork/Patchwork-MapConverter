@@ -1,4 +1,4 @@
 export interface FormatConverter {
-  parse: (str: string) => object
-  stringify: (obj: object) => string
+  parse: (str: string) => unknown
+  stringify: (obj: unknown) => string
 }

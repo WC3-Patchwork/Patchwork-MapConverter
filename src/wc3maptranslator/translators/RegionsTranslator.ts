@@ -1,127 +1,142 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Translator } from './Translator'
+import { type integer, type color } from '../CommonInterfaces'
 import { type Region } from '../data/Region'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { RegionDefaults } from '../default/Region'
 
-export class RegionsTranslator implements Translator<Region[]> {
-  private static instance: RegionsTranslator
+const log = LoggerFactory.createLogger('RegionTranslator')
 
-  private constructor () {}
+function bytesToHexString(...byteArray: integer[]): string {
+  return Array.from(byteArray, function (byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2)
+  }).join('')
+}
 
-  public static getInstance (): RegionsTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
+function hexStringToBytes(hex: string): integer[] {
+  const bytes: integer[] = []
+  for (let c = 0; c < hex.length; c += 2) {
+    bytes.push(parseInt(hex.substring(c, 2), 16))
+  }
+  return bytes
+}
+
+// json wants it in ARGB, but .w3r file stores it as BB GG RR AA
+function colorBytesToHex(blue: integer, green: integer, red: integer, alpha: integer): color {
+  return `#${bytesToHexString(blue, green, red, alpha)}`
+}
+
+// The order in .w3r is BB GG RR AA, whereas the JSON spec order is #AARRGGBB
+function colorHexToBytes(hex: color): [integer, integer, integer, integer] {
+  if (hex.startsWith('#') && hex.length === 9) {
+    return hexStringToBytes(hex.substring(1)).reverse() as [integer, integer, integer, integer]
+  } else {
+    throw new Error(`Unable to parse ${hex} as color, expected '#AARRGGBB' format!`)
+  }
+}
+
+export function jsonToWar(regionsJson: Region[], formatVersion: integer): Buffer {
+  if (formatVersion < 0 || formatVersion > 5) {
+    throw new Error(`Unknown regions format version=${formatVersion}, expected value from range [0, 5]`)
+  }
+  const output = new HexBuffer()
+  output.addInt(formatVersion)
+  output.addInt(regionsJson?.length ?? 0) // number of regions
+  regionsJson?.forEach((region) => {
+    if (formatVersion < 0x02) {
+      output.addInt(region.position.left)
+      output.addInt(region.position.bottom)
+      output.addInt(region.position.right)
+      output.addInt(region.position.top)
+    } else {
+      output.addFloat(region.position.left)
+      output.addFloat(region.position.bottom)
+      output.addFloat(region.position.right)
+      output.addFloat(region.position.top)
     }
-    return this.instance
-  }
 
-  public static jsonToWar (regions: Region[]): WarResult {
-    return this.getInstance().jsonToWar(regions)
-  }
+    output.addString(region.name)
+    output.addInt(region.id)
 
-  public static warToJson (buffer: Buffer): JsonResult<Region[]> {
-    return this.getInstance().warToJson(buffer)
-  }
+    if (formatVersion > 0x02) {
+      output.addChars(region.weatherEffect ?? RegionDefaults.weatherEffect)
+    }
 
-  public jsonToWar (regionsJson: Region[]): WarResult {
-    const outBufferToWar = new HexBuffer()
+    if (formatVersion > 0x03) {
+      output.addString(region.ambientSound ?? RegionDefaults.ambientSound)
+    }
 
-    /*
-         * Header
-         */
-    outBufferToWar.addInt(5) // file version
-    outBufferToWar.addInt(regionsJson?.length || 0) // number of regions
-
-    /*
-         * Body
-         */
-    regionsJson?.forEach(region => {
-      // Position
-      // Note that the .w3x guide has these coords wrong - the guide swaps bottom and right, but this is incorrect; bottom should be written before right
-      outBufferToWar.addFloat(region.position.left)
-      outBufferToWar.addFloat(region.position.bottom)
-      outBufferToWar.addFloat(region.position.right)
-      outBufferToWar.addFloat(region.position.top)
-
-      outBufferToWar.addString(region.name)
-      outBufferToWar.addInt(region.id)
-
-      // Weather effect name - lookup necessary: char[4]
-      if (region.weatherEffect != null) {
-        outBufferToWar.addChars(region.weatherEffect) // Weather effect is optional - defaults to 0000 for "none"
-      } else {
-        // We can't put a string "0000", because ASCII 0's differ from 0x0 bytes
-        outBufferToWar.addByte(0)
-        outBufferToWar.addByte(0)
-        outBufferToWar.addByte(0)
-        outBufferToWar.addByte(0)
-      }
-
-      // Ambient sound - refer to names defined in .w3s file
-      outBufferToWar.addString(region.ambientSound != null ? region.ambientSound : '') // May be empty string
-
-      // Color of region used by editor
-      // Careful! The order in .w3r is BB GG RR, whereas the JSON spec order is [RR, GG, BB]
-      outBufferToWar.addByte(region.color[2] as number) // blue
-      outBufferToWar.addByte(region.color[1] as number) // green
-      outBufferToWar.addByte(region.color[0] as number) // red
-
-      // End of structure - for some reason the .w3r needs this here;
-      // Value is set to 0xff based on observing the .w3r file, but not sure if it could be something else
-      outBufferToWar.addByte(0xff)
+    colorHexToBytes(region.color ?? RegionDefaults.color).forEach((it) => {
+      output.addByte(it)
     })
+  })
 
-    return {
-      errors: [],
-      buffer: outBufferToWar.getBuffer()
+  return output.getBuffer()
+}
+
+export function warToJson(buffer: Buffer): [Region[], integer] {
+  const result: Region[] = []
+  const input = new W3Buffer(buffer)
+  const formatVersion = input.readInt()
+  if (formatVersion < 0 || formatVersion > 5) {
+    log.warn(`Unknown regions format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Regions format version is ${formatVersion}.`)
+  }
+
+  const regionCount = input.readInt()
+  for (let i = 0; i < regionCount; i++) {
+    let left: number, bottom: number, right: number, top: number
+    if (formatVersion < 0x02) {
+      left = input.readInt()
+      bottom = input.readInt()
+      right = input.readInt()
+      top = input.readInt()
+    } else {
+      left = input.readFloat()
+      bottom = input.readFloat()
+      right = input.readFloat()
+      top = input.readFloat()
+    }
+    const name = input.readString()
+
+    let id: integer
+    if (formatVersion > 0x00) {
+      id = input.readInt()
+    } else {
+      id = i
+    }
+
+    let weatherEffect: string
+    if (formatVersion > 0x02) {
+      weatherEffect = input.readChars(4)
+    } else {
+      weatherEffect = RegionDefaults.weatherEffect
+    }
+
+    let ambientSound: string
+    if (formatVersion > 0x03) {
+      ambientSound = input.readString()
+    } else {
+      ambientSound = RegionDefaults.ambientSound
+    }
+
+    let color: color
+    if (formatVersion > 0x04) {
+      color = colorBytesToHex(input.readByte(), input.readByte(), input.readByte(), input.readByte())
+    } else {
+      color = RegionDefaults.color
+    }
+
+    result[i] = {
+      position: { left, bottom, right, top },
+      name,
+      id,
+      weatherEffect,
+      ambientSound,
+      color
     }
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Region[]> {
-    const result: Region[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
-
-    const fileVersion = outBufferToJSON.readInt() // File version
-    const numRegions = outBufferToJSON.readInt() // # of regions
-
-    for (let i = 0; i < numRegions; i++) {
-      const region: Region = {
-        name: '',
-        id: 0,
-        weatherEffect: '',
-        ambientSound: '',
-        color: [0, 0, 0],
-        position: {
-          left: 0,
-          bottom: 0,
-          right: 0,
-          top: 0
-        }
-      }
-
-      region.position.left = outBufferToJSON.readFloat()
-      region.position.bottom = outBufferToJSON.readFloat()
-      region.position.right = outBufferToJSON.readFloat()
-      region.position.top = outBufferToJSON.readFloat()
-      region.name = outBufferToJSON.readString()
-      region.id = outBufferToJSON.readInt()
-      region.weatherEffect = outBufferToJSON.readChars(4)
-      region.ambientSound = outBufferToJSON.readString()
-      region.color = [
-        outBufferToJSON.readByte(), // red
-        outBufferToJSON.readByte(), // green
-        outBufferToJSON.readByte() // blue
-      ]
-      region.color.reverse() // json wants it in RGB, but .w3r file stores it as BB GG RR
-      outBufferToJSON.readByte() // end of region structure
-
-      result.push(region)
-    }
-
-    return {
-      errors: [],
-      json: result
-    }
-  }
+  return [result, formatVersion]
 }

@@ -3,21 +3,19 @@
 'use strict'
 import { Argument, Option, program } from 'commander'
 import { NAME, DESCRIPTION, VERSION } from './metadata'
-import { type ILogObj, type Logger } from 'tslog'
-import { LoggerFactory, LOG_DEBUG } from './logging/LoggerFactory'
-import War2JsonService from './converter/War2JsonService'
-import Json2WarService from './converter/Json2WarService'
-import EnhancementManager from './enhancements/EnhancementManager'
-import { TriggerDataRegistry } from './enhancements/TriggerDataRegistry'
-import { FileBlacklist } from './enhancements/FileBlacklist'
+import { LoggerFactory, LOG_DEBUG, AppLogger } from './logging/LoggerFactory'
 import path from 'path'
-import fs, { lstatSync } from 'fs'
-import { SupplementTranslatorRecord } from './converter/TranslatorRecord'
+import fs from 'fs'
 
-// eslint-disable-next-line
+import * as Wc3MapTranslator from './wc3maptranslator'
+import * as Converters from './converter'
+import * as Enhancements from './enhancements'
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 require('source-map-support').install()
 
-let log: Logger<ILogObj>
+let log: AppLogger
+const EnhancementManager = Enhancements.EnhancementManager
 
 program
   .name(NAME)
@@ -38,6 +36,18 @@ program
   .addOption(new Option('--cie, --container-info-extension <extension', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
   .addOption(new Option('--ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('--mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
+  .addOption(new Option('--tf, --triggers-filename', 'Filename for triggers file which contains both GUI triggers and custom scripts, Does not work with compose-triggers.').default(EnhancementManager.triggersFilename))
+  .addOption(new Option('-ctf, --chunkified-terrain-folder', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
+  .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
+  .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
+  .addOption(new Option('-cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
+    const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
+    EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
+    EnhancementManager.chunkSize.sizeY = Number.parseInt(sizeY)
+    EnhancementManager.chunkSize.offsetX = Number.parseInt(offsetX)
+    EnhancementManager.chunkSize.offsetY = Number.parseInt(offsetY)
+    return EnhancementManager.chunkSize
+  }).default(EnhancementManager.chunkSize))
   .hook('preAction', (thisCommand, actionCommand) => {
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
@@ -62,7 +72,7 @@ program
       EnhancementManager.sourceFolder = options.sourceFolder as string
     }
 
-    FileBlacklist.readBlacklist(options.ignore as string)
+    Enhancements.FileBlacklist.readBlacklist(options.ignore as string)
 
     if (/\\|\//.test(options.sourceFolder as string)) {
       throw new Error(`Invalid importsFolderName '${options.importsFolderName as string}' must not be a path!`)
@@ -77,6 +87,29 @@ program
     if ((options.commentExtension as string).startsWith('.')) EnhancementManager.commentExtension = options.commentExtension as string
     if ((options.mapDataExtension as string).startsWith('.')) EnhancementManager.mapDataExtension = options.mapDataExtension as string
 
+    if (/\\|\//.test(options.triggersFilename as string)) {
+      throw new Error(`Invalid triggersFilename '${options.triggersFilename}' must not be a path!`)
+    } else {
+      if (options.composeTriggers) {
+        log.warn(`Will ignore triggersFilename options since composeTriggers is enabled.`)
+      } else {
+        EnhancementManager.triggersFilename = options.triggersFilename as string
+      }
+    }
+
+    if (options.chunkify === true) EnhancementManager.chunkifyMapData = true
+    if (/\\|\//.test(options.chunkifiedTerrainFolder as string)) {
+      throw new Error(`Invalid chunkifiedTerrainFolder '${options.chunkifiedTerrainFolder}' must not be a path!`)
+    } else {
+      EnhancementManager.chunkifiedTerrainFolder = options.chunkifiedTerrainFolder as string
+    }
+    if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
+    if ((options.chunkSize != null)) {
+      EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
+      if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
+      if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
+    }
+
     if (options.prettify === true) EnhancementManager.prettify = true
 
     if (/\\|\//.test(options.mapHeader as string)) {
@@ -85,23 +118,30 @@ program
       EnhancementManager.mapHeaderFilename = options.mapHeader as string
     }
     if (options.triggerData != null && fs.existsSync(options.triggerData as string)) {
-      TriggerDataRegistry.loadTriggerData(options.triggerData as string)
+      Enhancements.TriggerDataRegistry.loadTriggerData(options.triggerData as string)
     }
   })
 
 program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
+  .option('-gtp, --generate-target-profile', 'Generate target profile json file for json2war')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
-  .action(async (input: string, output: string) => {
+  .addArgument(new Argument('<target>', 'target profile name or path').argOptional())
+  .hook('preAction', (thisCommand, actionCommand) => {
+    const options = actionCommand.opts()
+    if (options.generateTargetProfile) EnhancementManager.generateTargetProfile = true
+    log.info('Will generate target profile JSON file')
+  })
+  .action(async (input: string, output: string, target?: string) => {
     try {
-      if (lstatSync(input).isDirectory()) {
-        await War2JsonService.convert(input, output)
-      } else {
-        //MPQCOnverter here
-        await War2JsonService.convert(input, output)
+      let profile: Converters.TargetProfile | undefined
+      if (target) {
+        profile = await Converters.ProfileLoader.LoadTargetProfile(target)
       }
+      await Converters.War2JsonService.convert(input, output, profile)
+      log.info('Finished converting map folder to textual representations!')
     } catch (exception) {
       log.fatal(exception)
     }
@@ -111,18 +151,12 @@ program
   .command('json2war')
   .description('convert JSON to Warcraft III binaries')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
-  .addArgument(new Argument('<output>', 'output directory or file path').argRequired())
-  .option("--mpq", "Output to MPQFile in addition to folder output", false)
-  .action(async (input: string, output: string, mpq:boolean) => {
+  .addArgument(new Argument('<output>', 'output directory path').argRequired())
+  .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
+  .action(async (input: string, output: string, target: string) => {
     try {
-      if (mpq){
-        SupplementTranslatorRecord(EnhancementManager.mapDataExtension)
-        await Json2WarService.convert(input, output + 'temp')
-        //MPQCOnverter here
-      } else {
-        SupplementTranslatorRecord(EnhancementManager.mapDataExtension)
-        await Json2WarService.convert(input, output)
-      }  
+      await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
+      log.info('Finished converting textual representations to map folder!')
     } catch (exception) {
       log.fatal(exception)
     }

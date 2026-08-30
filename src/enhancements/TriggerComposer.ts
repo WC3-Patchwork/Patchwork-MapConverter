@@ -64,7 +64,7 @@ function safeReplaceTriggerName(name: string): string {
 function generateTriggerOrder(parent: TriggerContainer): string[] {
   const commentCounts: Record<string, number> = {}
 
-  return parent.children.map(it => {
+  return parent.children.map((it) => {
     it.name = safeReplaceTriggerName(it.name)
     if (it.contentType === ContentType.COMMENT) {
       if (commentCounts[it.name] != null) {
@@ -117,12 +117,12 @@ const TriggerComposer = {
   composeTriggerJson: async function (input: DirectoryTree): Promise<TriggerContainer> {
     const tasks: Promise<unknown>[] = []
     const result = {
-      name: EnhancementManager.mapHeaderFilename,
+      name       : EnhancementManager.mapHeaderFilename,
       contentType: ContentType.HEADER,
-      isExpanded: false,
-      children: [],
+      isExpanded : false,
+      children   : [],
       description: '',
-      script: ''
+      script     : ''
     } satisfies MapHeader
 
     const parentMap = new Map<DirectoryTree, TriggerContainer>()
@@ -137,14 +137,11 @@ const TriggerComposer = {
       return result
     }
 
-    for (const [parents, file] of TreeIterator<DirectoryTree>(input,
-      (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
+    for (const [parents, file] of TreeIterator<DirectoryTree>(input, (parent: directoryTree.DirectoryTree<Record<string, string>>) => parent.children)) {
       if (FileBlacklist.isDirectoryTreeBlacklisted(file)) continue
 
       let parent = parents.pop()
-      if (parent == null) {
-        parent = input
-      }
+      parent ??= input
 
       const containerParent = parentMap.get(parent)
       if (containerParent == null) {
@@ -160,10 +157,10 @@ const TriggerComposer = {
 
       if (file.type === 'directory' && file !== input) {
         const container = {
-          name: file.name,
+          name       : file.name,
           contentType: ContentType.CATEGORY,
-          isExpanded: false,
-          children: []
+          isExpanded : false,
+          children   : []
         } satisfies TriggerContainer
         parentMap.set(file, container)
         triggerContentMap.set(container, new Map<string, TriggerContent[]>())
@@ -173,20 +170,20 @@ const TriggerComposer = {
           tasks.push(populateParentDetails(containerParent, file))
         } else if (file.extension === EnhancementManager.guiExtension) {
           const element = {
-            name: file.name.substring(0, file.name.lastIndexOf('.')),
-            contentType: ContentType.TRIGGER,
-            actions: [],
-            arrayLength: 0,
-            conditions: [],
-            description: '',
-            events: [],
-            initiallyOff: false,
-            initialValue: '',
-            isArray: false,
-            isEnabled: false,
+            name         : file.name.substring(0, file.name.lastIndexOf('.')),
+            contentType  : ContentType.TRIGGER,
+            actions      : [],
+            arrayLength  : 0,
+            conditions   : [],
+            description  : '',
+            events       : [],
+            initiallyOff : false,
+            initialValue : '',
+            isArray      : false,
+            isEnabled    : false,
             isInitialized: false,
-            runOnMapInit: false,
-            type: ''
+            runOnMapInit : false,
+            type         : ''
           } satisfies GUITrigger | GlobalVariable | ScriptedTrigger
           if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
             triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
@@ -200,11 +197,11 @@ const TriggerComposer = {
             tasks.push(populateCustomScript(result as unknown as CustomScript, file))
           } else {
             const element = {
-              name: file.name.substring(0, file.name.lastIndexOf('.')),
+              name       : file.name.substring(0, file.name.lastIndexOf('.')),
               contentType: ContentType.CUSTOM_SCRIPT,
-              script: '',
+              script     : '',
               description: '',
-              isEnabled: !scriptDisabled
+              isEnabled  : !scriptDisabled
             } satisfies CustomScript
             if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
               triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
@@ -216,14 +213,14 @@ const TriggerComposer = {
           }
         } else if (file.extension === EnhancementManager.commentExtension) {
           const element = {
-            name: file.name.substring(0, file.name.lastIndexOf('.')),
+            name       : file.name.substring(0, file.name.lastIndexOf('.')),
             contentType: ContentType.COMMENT,
-            comment: ''
+            comment    : ''
           } satisfies TriggerComment
           if (!commentCounters.has(containerParent)) {
             commentCounters.set(containerParent, { [element.name]: 1 })
           } else {
-            const commentCounts = commentCounters.get(containerParent) as Record<string, number>
+            const commentCounts = commentCounters.get(containerParent)!
             if (commentCounts[element.name] != null) {
               const count = commentCounts[element.name] as number + 1
               commentCounts[element.name] = count
@@ -254,9 +251,7 @@ const TriggerComposer = {
           let script: CustomScript | undefined
           let trigger: GUITrigger | ScriptedTrigger | undefined
           for (const content of contents) {
-            if (injectedRef == null) {
-              injectedRef = content as ScriptedTrigger
-            }
+            injectedRef ??= content as ScriptedTrigger
             switch (content.contentType) {
               case ContentType.TRIGGER:
               case ContentType.TRIGGER_SCRIPTED:

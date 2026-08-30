@@ -1,226 +1,224 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Translator } from './Translator'
-import { type Sound } from '../data/Sound'
+import { type integer } from '../CommonInterfaces'
+import { SoundChannel, SoundEnvironment, type Sound } from '../data/Sound'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { SoundDefaults } from '../default/Sound'
 
-export class SoundsTranslator implements Translator<Sound[]> {
-  private static instance: SoundsTranslator
+const log = LoggerFactory.createLogger('SoundsTranslator')
 
-  private constructor () {}
+const soundChannelEnum = {
+  0         : SoundChannel.GENERAL,
+  1         : SoundChannel.UNIT_SELECTION,
+  2         : SoundChannel.UNIT_ACKNOWLEDGEMENT,
+  3         : SoundChannel.UNIT_MOVEMENT,
+  4         : SoundChannel.UNIT_READY,
+  5         : SoundChannel.COMBAT,
+  6         : SoundChannel.ERROR,
+  7         : SoundChannel.MUSIC,
+  8         : SoundChannel.USER_INTERFACE,
+  9         : SoundChannel.LOOPING_MOVEMENT,
+  10        : SoundChannel.LOOPING_AMBIENT,
+  11        : SoundChannel.ANIMATIONS,
+  12        : SoundChannel.CONSTRUCTIONS,
+  13        : SoundChannel.BIRTH,
+  14        : SoundChannel.FIRE,
+  15        : SoundChannel.LEGACY_MIDI,
+  16        : SoundChannel.CINEMATIC_GENERAL,
+  17        : SoundChannel.CINEMATIC_AMBIENT,
+  18        : SoundChannel.CINEMATIC_MUSIC,
+  19        : SoundChannel.CINEMATIC_DIALOGUE,
+  20        : SoundChannel.CINEMATIC_SFX1,
+  21        : SoundChannel.CINEMATIC_SFX2,
+  22        : SoundChannel.CINEMATIC_SFX3,
+  0xFFFFFFFF: SoundChannel.GENERAL // this key takes priority in reverse
+} as Record<integer, SoundChannel>
 
-  public static getInstance (): SoundsTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
-    }
-    return this.instance
+const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc: Record<string, integer>, it) => {
+  acc[it[1]] = it[0] as unknown as integer
+  return acc
+}, {}) as Record<SoundChannel, integer>
+
+export function jsonToWar(soundsJson: Sound[], formatVersion: integer): Buffer {
+  if (formatVersion > 3 || formatVersion < 1) {
+    throw new Error(`Unknown sounds format version ${formatVersion}`)
   }
+  const output = new HexBuffer()
+  output.addInt(formatVersion)
+  output.addInt(soundsJson.length ?? 0)
+  soundsJson?.forEach((sound) => {
+    let flagsValue = 0
+    const flags = sound.flags ?? SoundDefaults.flags
+    if (flags.looping) flagsValue |= 0x01
+    if (flags['3dSound']) flagsValue |= 0x02
+    if (flags.stopOutOfRange) flagsValue |= 0x04
+    if (flags.music) flagsValue |= 0x08
+    if (flags.customImported) flagsValue |= 0x10
 
-  public static jsonToWar (sounds: Sound[]): WarResult {
-    return this.getInstance().jsonToWar(sounds)
-  }
+    output.addString(sound.name) // e.g. gg_snd_HumanGlueScreenLoop1
+    output.addString(sound.path) // e.g. Sound\Ambient\HumanGlueScreenLoop1.wav
+    output.addString(sound.eax ?? SoundDefaults.eax)
+    output.addInt(flagsValue)
+    output.addInt(sound.fadeRate?.in ?? SoundDefaults.fadeRate.in)
+    output.addInt(sound.fadeRate?.out ?? SoundDefaults.fadeRate.out)
+    output.addInt(sound.volume ?? SoundDefaults.volume)
+    output.addFloat(sound.pitch ?? SoundDefaults.pitch)
+    output.addFloat(sound.pitchVariance ?? SoundDefaults.pitchVariance)
+    output.addInt(sound.priority ?? SoundDefaults.priority)
+    output.addInt(soundChannelEnumReverse[sound.channel ?? SoundDefaults.channel])
+    output.addFloat(sound['3d']?.distance?.min ?? SoundDefaults['3d'].distance.min)
+    output.addFloat(sound['3d']?.distance?.max ?? SoundDefaults['3d'].distance.max)
+    output.addFloat(sound['3d']?.distance?.cutoff ?? SoundDefaults['3d'].distance.cutoff)
+    output.addFloat(sound['3d']?.cone?.insideAngle ?? SoundDefaults['3d'].cone.insideAngle)
+    output.addFloat(sound['3d']?.cone?.outsideAngle ?? SoundDefaults['3d'].cone.outsideAngle)
+    output.addInt(sound['3d']?.cone?.outsideVolume ?? SoundDefaults['3d'].cone.outsideVolume)
+    output.addFloat(sound['3d']?.cone?.orientation?.[0] ?? SoundDefaults['3d'].cone.orientation[0])
+    output.addFloat(sound['3d']?.cone?.orientation?.[1] ?? SoundDefaults['3d'].cone.orientation[1])
+    output.addFloat(sound['3d']?.cone?.orientation?.[2] ?? SoundDefaults['3d'].cone.orientation[2])
 
-  public static warToJson (buffer: Buffer): JsonResult<Sound[]> {
-    return this.getInstance().warToJson(buffer)
-  }
+    if (formatVersion > 1) {
+      const assetFlags = sound.assetFlags ?? 0
 
-  public jsonToWar (soundsJson: Sound[]): WarResult {
-    const outBufferToWar = new HexBuffer()
+      output.addString(sound.name)
+      output.addString(sound.labelSLK ?? SoundDefaults.labelSLK)
+      output.addString(sound.path)
+      output.addInt(sound.dialogueId ?? SoundDefaults.dialogueId)
+      output.addString(sound.productionComments ?? SoundDefaults.productionComments)
+      output.addInt(sound.speakerNameId ?? SoundDefaults.speakerNameId)
+      output.addString(sound.listenerName ?? SoundDefaults.listenerName)
+      output.addInt(assetFlags)
+      output.addString(sound.speakerUnitId ?? SoundDefaults.speakerUnitId)
+      output.addString(sound.animationLabel ?? SoundDefaults.animationLabel)
+      output.addString(sound.animationGroup ?? SoundDefaults.animationGroup)
+      output.addString(sound.animationSetFilepath ?? SoundDefaults.animationSetFilepath)
 
-    /*
-         * Header
-         */
-    outBufferToWar.addInt(3) // file version
-    outBufferToWar.addInt(soundsJson?.length || 0) // number of sounds
-
-    /*
-         * Body
-         */
-    soundsJson?.forEach((sound) => {
-      outBufferToWar.addString(sound.name) // e.g. gg_snd_HumanGlueScreenLoop1
-      outBufferToWar.addString(sound.path) // e.g. Sound\Ambient\HumanGlueScreenLoop1.wav
-
-      // EAX effects enum (e.g. missiles, speech, etc)
-      /*
-                default = DefaultEAXON
-                combat = CombatSoundsEAX
-                drums = KotoDrumsEAX
-                spells = SpellsEAX
-                missiles = MissilesEAX
-                hero speech = HeroAcksEAX
-                doodads = DoodadsEAX
-            */
-      outBufferToWar.addString(sound.eax != null ? sound.eax : 'DefaultEAXON') // defaults to "DefaultEAXON"
-
-      // Flags, if present (optional)
-      let flags = 0
-      if (sound.flags != null) {
-        if (sound.flags.looping) flags |= 0x1
-        if (sound.flags['3dSound']) flags |= 0x2
-        if (sound.flags.stopOutOfRange) flags |= 0x4
-        if (sound.flags.music) flags |= 0x8
+      if (formatVersion > 2) {
+        output.addInt(+(sound.animationSetFilepathIsMapRelative ?? SoundDefaults.animationSetFilepathIsMapRelative))
       }
-      outBufferToWar.addInt(flags)
-
-      // Fade in and out rate (optional)
-      outBufferToWar.addInt(sound.fadeRate != null ? sound.fadeRate.in != null ? sound.fadeRate.in : 10 : 10) // default to 10
-      outBufferToWar.addInt(sound.fadeRate != null ? sound.fadeRate.out != null ? sound.fadeRate.out : 10 : 10) // default to 10
-
-      // Volume (optional)
-      outBufferToWar.addInt(sound.volume != null ? sound.volume : -1) // default to -1 (for normal volume)
-
-      // Pitch (optional)
-      outBufferToWar.addFloat(sound.pitch != null ? sound.pitch : 1.0) // default to 1.0 for normal pitch
-
-      // Mystery numbers... their use is unknown by the w3x documentation, but they must be present
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addInt(8) // or -1?
-
-      // Which channel to use? Use the lookup table for more details (optional)
-      /*
-                0=General
-                1=Unit Selection
-                2=Unit Acknowledgement
-                3=Unit Movement
-                4=Unit Ready
-                5=Combat
-                6=Error
-                7=Music
-                8=User Interface
-                9=Looping Movement
-                10=Looping Ambient
-                11=Animations
-                12=Constructions
-                13=Birth
-                14=Fire
-            */
-      outBufferToWar.addInt(sound.channel != null ? sound.channel : 0) // default to 0
-
-      // Distance fields
-      outBufferToWar.addFloat(sound.distance.min)
-      outBufferToWar.addFloat(sound.distance.max)
-      outBufferToWar.addFloat(sound.distance.cutoff)
-
-      // More mystery numbers...
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(127) // or -1?
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(0)
-
-      outBufferToWar.addString(sound.variableName)
-      outBufferToWar.addString('')
-      outBufferToWar.addString(sound.path)
-
-      // More unknowns
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addByte(0)
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addFloat(0)
-      outBufferToWar.addByte(0)
-      outBufferToWar.addFloat(0)
-    })
-
-    return {
-      errors: [],
-      buffer: outBufferToWar.getBuffer()
     }
+  })
+
+  return output.getBuffer()
+}
+
+export function warToJson(buffer: Buffer): [Sound[], integer] {
+  const input = new W3Buffer(buffer)
+  const formatVersion = input.readInt()
+  if (formatVersion > 3) {
+    log.warn(`Unsupported sounds format version ${formatVersion}, will attempt at parsing...`)
+  } else {
+    log.info(`Sounds format version is ${formatVersion}.`)
   }
 
-  public warToJson (buffer: Buffer): JsonResult<Sound[]> {
-    const result: Sound[] = []
-    const outBufferToJSON = new W3Buffer(buffer)
+  const result: Sound[] = []
+  const soundCount = input.readInt()
+  for (let i = 0; i < soundCount; i++) {
+    let name = input.readString()
+    let path = input.readString()
+    let eax = input.readString() as SoundEnvironment
+    const flagsValue = input.readInt()
+    const fadeInRate = input.readInt()
+    const fadeOutRate = input.readInt()
+    // WE stores this as integer but casts as float internally, but the sound editor input and game API accepts only integers...
+    const volume = input.readInt()
+    const pitch = input.readFloat()
+    const pitchVariance = input.readFloat()
+    const priority = input.readInt()
+    const channelValue = input.readInt()
+    const distanceMin = input.readFloat()
+    const distanceMax = input.readFloat()
+    const distanceCutoff = input.readFloat()
+    const coneInsideAngle = input.readFloat()
+    const coneOutsideAngle = input.readFloat()
+    const coneOutsideVolume = input.readInt()
+    const coneOrientationX = input.readFloat()
+    const coneOrientationY = input.readFloat()
+    const coneOrientationZ = input.readFloat()
+    let channel = soundChannelEnum[channelValue] as SoundChannel | undefined
 
-    const fileVersion = outBufferToJSON.readInt() // File version
-    const numSounds = outBufferToJSON.readInt() // # of sounds
+    let labelSLK = ''
+    let dialogueId = 0xFFFFFFFF
+    let productionComments = ''
+    let speakerNameId = 0xFFFFFFFF
+    let listenerName = ''
+    let assetFlags = 0
+    let speakerUnitId = ''
+    let animationLabel = ''
+    let animationGroup = ''
+    let animationSetFilepath = ''
+    let animationSetFilepathIsMapRelative = true
 
-    for (let i = 0; i < numSounds; i++) {
-      const sound: Sound = {
-        name: '',
-        variableName: '',
-        path: '',
-        eax: '',
-        volume: 0,
-        pitch: 0,
-        channel: 0,
-        flags: {
-          looping: true, // 0x00000001=looping
-          '3dSound': true, // 0x00000002=3D sound
-          stopOutOfRange: true, // 0x00000004=stop when out of range
-          music: true // 0x00000008=music},
-        },
-        fadeRate: {
-          in: 0,
-          out: 0
-        },
-        distance: {
-          min: 0,
-          max: 0,
-          cutoff: 0
+    if (formatVersion > 1) {
+      name = input.readString()
+      labelSLK = input.readString()
+      path = input.readString()
+      dialogueId = input.readInt()
+      productionComments = input.readString()
+      speakerNameId = input.readInt()
+      listenerName = input.readString()
+      assetFlags = input.readInt()
+      speakerUnitId = input.readString()
+      animationLabel = input.readString()
+      animationGroup = input.readString()
+      animationSetFilepath = input.readString()
+
+      if (formatVersion > 2) {
+        // Note: This field is true for older file formats, but editor generates sounds with this field as false by default
+        animationSetFilepathIsMapRelative = !!input.readInt()
+      }
+    }
+
+    if (Object.values(SoundEnvironment).findIndex(it => it === eax) === -1) {
+      log.warn(`EAX value='${eax}' is not valid for sound '${name}', defaulting to DEFAULT`)
+      eax = SoundEnvironment.DEFAULT
+    }
+
+    const flags = {
+      'looping'       : !!(flagsValue & 0x01),
+      '3dSound'       : !!(flagsValue & 0x02),
+      'stopOutOfRange': !!(flagsValue & 0x04),
+      'music'         : !!(flagsValue & 0x08),
+      'customImported': !!(flagsValue & 0x10)
+    }
+
+    if (channel == null) {
+      log.warn(`Channel id=${channelValue} is not valid for sound '${name}'. Defaulting to GENERAL.`)
+      channel = SoundChannel.GENERAL
+    }
+
+    result[i] = {
+      name,
+      path,
+      eax,
+      flags,
+      'fadeRate': { in: fadeInRate, out: fadeOutRate },
+      volume,
+      pitch,
+      pitchVariance,
+      priority,
+      channel,
+      '3d'      : {
+        distance: { min: distanceMin, max: distanceMax, cutoff: distanceCutoff },
+        cone    : {
+          insideAngle  : coneInsideAngle,
+          outsideAngle : coneOutsideAngle,
+          outsideVolume: coneOutsideVolume,
+          orientation  : [coneOrientationX, coneOrientationY, coneOrientationZ]
         }
-      }
-
-      sound.name = outBufferToJSON.readString()
-      sound.path = outBufferToJSON.readString()
-      sound.eax = outBufferToJSON.readString()
-
-      const flags = outBufferToJSON.readInt()
-      sound.flags = {
-        looping: !!(flags & 0b1), // 0x00000001=looping
-        '3dSound': !!(flags & 0b10), // 0x00000002=3D sound
-        stopOutOfRange: !!(flags & 0b100), // 0x00000004=stop when out of range
-        music: !!(flags & 0b1000) // 0x00000008=music
-      }
-
-      sound.fadeRate = {
-        in: outBufferToJSON.readInt(),
-        out: outBufferToJSON.readInt()
-      }
-
-      sound.volume = outBufferToJSON.readInt()
-      sound.pitch = outBufferToJSON.readFloat()
-
-      // Unknown values
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readInt()
-
-      sound.channel = outBufferToJSON.readInt()
-
-      sound.distance = {
-        min: outBufferToJSON.readFloat(),
-        max: outBufferToJSON.readFloat(),
-        cutoff: outBufferToJSON.readFloat()
-      }
-
-      // Unknown values
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat()
-      outBufferToJSON.readFloat()
-
-      sound.variableName = outBufferToJSON.readString()
-
-      // Unknown values
-      outBufferToJSON.readString()
-      outBufferToJSON.readString()
-      outBufferToJSON.readChars(4)
-      outBufferToJSON.readChars(1)
-      outBufferToJSON.readChars(4)
-      outBufferToJSON.readChars(4)
-      outBufferToJSON.readChars(4)
-      outBufferToJSON.readChars(1)
-      outBufferToJSON.readChars(4)
-
-      result.push(sound)
-    }
-
-    return {
-      errors: [],
-      json: result
+      },
+      labelSLK,
+      dialogueId,
+      productionComments,
+      speakerNameId,
+      listenerName,
+      assetFlags,
+      speakerUnitId,
+      animationLabel,
+      animationGroup,
+      animationSetFilepath,
+      animationSetFilepathIsMapRelative
     }
   }
+
+  return [result, formatVersion]
 }

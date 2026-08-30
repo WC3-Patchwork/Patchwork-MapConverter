@@ -1,168 +1,256 @@
- import { HexBuffer } from '../HexBuffer'
+import { LoggerFactory } from '../../logging/LoggerFactory'
+import { type integer } from '../CommonInterfaces'
+import { HexBuffer } from '../HexBuffer'
+import { mergeBoolRecords } from '../Util'
 import { W3Buffer } from '../W3Buffer'
-import { type WarResult, type JsonResult } from '../CommonInterfaces'
-import { type Translator } from './Translator'
-import { FogType, type Force, type Info, ObjectPool, type Player, RandomTable, RandomUnitTable, ScriptLanguage, SupportedModes } from '../data/Info'
-import { RandomSpawn } from '../data'
+import { type ObjectChance, type Force, type Info, type Player, type RandomGroup, type RandomGroupSet, type TechUnavailable, type UpgradeAvailable, type PlayerList, ScriptLanguage, ResearchState, PlayerType, Race, RandomGroupSetType, FogType, type ItemTable } from '../data/Info'
+import { ForceDefaults, InfoDefaults, PlayerDefaults, RandomGroupDefaults, UpgradeAvailableDefaults } from '../default/Info'
 
-export class InfoTranslator implements Translator<Info> {
-  private static instance: InfoTranslator
+const log = LoggerFactory.createLogger('InfoTranslator')
 
-  private constructor() { }
+function playerBitmapToPlayerList(playerBitmap: integer): PlayerList {
+  const playerList: integer[] = []
+  for (let i = 0; i < 24; i++) {
+    playerList.push(playerBitmap & (1 << i))
+  }
+  return playerList
+}
 
-  public static getInstance(): InfoTranslator {
-    if (this.instance == null) {
-      this.instance = new this()
-    }
-    return this.instance
+function playerListToPlayerBitmap(playerList: PlayerList): integer {
+  return playerList.map(it => 1 << it).reduce((acc, it) => acc | it)
+}
+
+export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
+  if (formatVersion < 0 || formatVersion > 33) {
+    throw new Error(`Unknown map info format version=${formatVersion}, expected value from range [0, 33]`)
   }
 
-  public static jsonToWar(info: Info): WarResult {
-    return this.getInstance().jsonToWar(info)
+  const output = new HexBuffer()
+  output.addInt(formatVersion)
+  if (formatVersion > 0x0F) {
+    output.addInt(infoJson.mapVersion ?? InfoDefaults.mapVersion)
+    output.addInt(infoJson.editorVersion ?? InfoDefaults.editorVersion)
   }
 
-  public static warToJson(buffer: Buffer): JsonResult<Info> {
-    return this.getInstance().warToJson(buffer)
+  if (formatVersion > 0x1A) {
+    output.addInt(infoJson.gameVersion?.major ?? InfoDefaults.gameVersion.major)
+    output.addInt(infoJson.gameVersion?.minor ?? InfoDefaults.gameVersion.minor)
+    output.addInt(infoJson.gameVersion?.patch ?? InfoDefaults.gameVersion.patch)
+    output.addInt(infoJson.gameVersion?.build ?? InfoDefaults.gameVersion.build)
   }
 
-  public jsonToWar(infoJson: Info): WarResult {
-    const outBufferToWar = new HexBuffer()
+  output.addString(infoJson.map?.name ?? InfoDefaults.map.name)
+  output.addString(infoJson.map?.author ?? InfoDefaults.map.author)
+  output.addString(infoJson.map?.description ?? InfoDefaults.map.description)
 
-    outBufferToWar.addInt(33) // format version
-    outBufferToWar.addInt(infoJson.saves != null ? infoJson.saves : 0)
-    outBufferToWar.addInt(infoJson.editorVersion != null ? infoJson.editorVersion : 0)
+  if (formatVersion > 0x07) {
+    output.addString(infoJson.map?.recommendedPlayers ?? InfoDefaults.map.recommendedPlayers)
+  }
 
-    outBufferToWar.addInt(infoJson.gameVersion.major)
-    outBufferToWar.addInt(infoJson.gameVersion.minor)
-    outBufferToWar.addInt(infoJson.gameVersion.patch)
-    outBufferToWar.addInt(infoJson.gameVersion.build)
+  // Pad with some mystery bytes
+  if (formatVersion < 0x04) {
+    output.addByte(0)
+    output.addFloat(0)
+  } else if (formatVersion < 0x09) {
+    output.addFloat(0)
+    output.addByte(0)
+    output.addFloat(0)
+    output.addFloat(0)
+    output.addFloat(0)
+    output.addInt(0)
+  }
 
-    // Map information
-    outBufferToWar.addString(infoJson.map.name)
-    outBufferToWar.addString(infoJson.map.author)
-    outBufferToWar.addString(infoJson.map.description)
-    outBufferToWar.addString(infoJson.map.recommendedPlayers)
+  const cameraBounds = infoJson?.camera?.bounds ?? InfoDefaults.camera.bounds
+  for (let i = 0; i < 8; i++) {
+    output.addFloat(cameraBounds[i] as number)
+  }
 
-    // Camera bounds (8 floats total)
-    for (let cbIndex = 0; cbIndex < 8; cbIndex++) {
-      outBufferToWar.addFloat(infoJson.camera.bounds[cbIndex] as number)
+  const cameraMargin = infoJson?.camera?.margins ?? InfoDefaults.camera.margins
+  for (let i = 0; i < 4; i++) {
+    output.addInt(cameraMargin[i] as number)
+  }
+
+  if (formatVersion !== 0) {
+    output.addInt(infoJson.map?.playableArea?.width)
+    output.addInt(infoJson.map?.playableArea?.height)
+  }
+
+  if (formatVersion > 1) {
+    if (formatVersion < 9) {
+      output.addInt(0)
     }
 
-    // Camera complements (4 ints total)
-    for (let ccIndex = 0; ccIndex < 4; ccIndex++) {
-      outBufferToWar.addInt(infoJson.camera.complements[ccIndex] as number)
-    }
-
-    // Playable area
-    outBufferToWar.addInt(infoJson.map.playableArea.width)
-    outBufferToWar.addInt(infoJson.map.playableArea.height)
-
-    /*
-         * Flags
-         */
+    const mapFlags = mergeBoolRecords(infoJson.map?.flags, InfoDefaults.map.flags)
     let flags = 0
-    if (infoJson.map.flags != null) { // can leave out the entire flags object, all flags will default to false
-      if (infoJson.map.flags.hideMinimapInPreview) flags |= 0x0001 // hide minimap in preview screens
-      if (infoJson.map.flags.modifyAllyPriorities) flags |= 0x0002 // modify ally priorities
-      if (infoJson.map.flags.isMeleeMap) flags |= 0x0004 // melee map
-      if (infoJson.map.flags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium) flags |= 0x0008 // playable map size was large and never reduced to medium (?)
-      if (infoJson.map.flags.maskedPartiallyVisible) flags |= 0x0010 // masked area are partially visible
-      if (infoJson.map.flags.fixedPlayerSetting) flags |= 0x0020 // fixed player setting for custom forces
-      if (infoJson.map.flags.useCustomForces) flags |= 0x0040 // use custom forces
-      if (infoJson.map.flags.useCustomTechtree) flags |= 0x0080 // use custom techtree
-      if (infoJson.map.flags.useCustomAbilities) flags |= 0x0100 // use custom abilities
-      if (infoJson.map.flags.useCustomUpgrades) flags |= 0x0200 // use custom upgrades
-      if (infoJson.map.flags.mapPropertiesMenuOpenedAtLeastOnce) flags |= 0x0400 // map properties menu opened at least once since map creation (?)
-      if (infoJson.map.flags.waterWavesOnCliffShores) flags |= 0x0800 // show water waves on cliff shores
-      if (infoJson.map.flags.waterWavesOnRollingShores) flags |= 0x1000 // show water waves on rolling shores
-      if (infoJson.map.flags.useTerrainFog) flags |= 0x2000
-      if (infoJson.map.flags.tftRequired) flags |= 0x4000
-      if (infoJson.map.flags.useItemClassificationSystem) flags |= 0x8000
-      if (infoJson.map.flags.enableWaterTinting) flags |= 0x10000
-      if (infoJson.map.flags.useAccurateProbabilityForCalculations) flags |= 0x20000
-      if (infoJson.map.flags.useCustomAbilitySkins) flags |= 0x40000
-      if (infoJson.map.flags.disableDenyIcon) flags |= 0x80000
-      if (infoJson.map.flags.forceDefaultCameraZoom) flags |= 0x100000
-      if (infoJson.map.flags.forceMaxCameraZoom) flags |= 0x200000
-      if (infoJson.map.flags.forceMinCameraZoom) flags |= 0x400000
-      // 0x800000
-      // 8 -unknown bits?
+    if (mapFlags.hideMinimapInPreview) flags |= 0x01
+    if (mapFlags.modifyAllyPriorities) flags |= 0x02
+    if (mapFlags.isMeleeMap) flags |= 0x04
+    if (mapFlags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium) flags |= 0x08
+    if (mapFlags.maskedPartiallyVisible) flags |= 0x10
+    if (mapFlags.fixedPlayerSetting) flags |= 0x20
+    if (mapFlags.useCustomForces) flags |= 0x40
+    if (mapFlags.useCustomTechtree) flags |= 0x80
+    if (mapFlags.useCustomAbilities) flags |= 0x0100
+    if (mapFlags.useCustomUpgrades) flags |= 0x0200
+    if (mapFlags.mapPropertiesMenuOpenedAtLeastOnce) flags |= 0x0400
+    if (mapFlags.waterWavesOnCliffShores) flags |= 0x0800
+    if (mapFlags.waterWavesOnRollingShores) flags |= 0x1000
+    if (mapFlags.useTerrainFog) flags |= 0x2000
+    if (mapFlags.tftRequired) flags |= 0x4000
+    if (mapFlags.useItemClassificationSystem) flags |= 0x8000
+    if (mapFlags.enableWaterTinting) flags |= 0x010000
+    if (mapFlags.useAccurateProbabilityForCalculations) flags |= 0x020000
+    if (mapFlags.useCustomAbilitySkins) flags |= 0x040000
+    if (mapFlags.disableDenyIcon) flags |= 0x080000
+    if (mapFlags.forceDefaultCameraZoom) flags |= 0x100000
+    if (mapFlags.forceMaxCameraZoom) flags |= 0x200000
+    if (mapFlags.forceMinCameraZoom) flags |= 0x400000
+    output.addInt(flags)
+  }
+
+  if (formatVersion > 0x07) {
+    output.addChar(infoJson.map?.mainTileType ?? InfoDefaults.map.mainTileType)
+  }
+
+  if (formatVersion > 0x09) {
+    if (formatVersion > 0x10) {
+      output.addInt(infoJson.loadingScreen?.imageId ?? InfoDefaults.loadingScreen.imageId)
+    }
+    if (formatVersion < 0x12) {
+      output.addString('')
+    } else if (formatVersion > 0x13) {
+      output.addString(infoJson.loadingScreen?.path ?? InfoDefaults.loadingScreen.path)
+    }
+    output.addString(infoJson.loadingScreen?.text ?? InfoDefaults.loadingScreen.text)
+    if (formatVersion > 0x0A) {
+      output.addString(infoJson.loadingScreen?.title ?? InfoDefaults.loadingScreen.title)
+      output.addString(infoJson.loadingScreen?.subtitle ?? InfoDefaults.loadingScreen.subtitle)
+    }
+  }
+
+  if (formatVersion > 0x0C) {
+    if (formatVersion > 0x10) {
+      output.addInt(infoJson.gameDataSet ?? InfoDefaults.gameDataSet)
+    }
+    if (formatVersion < 0x12) {
+      output.addString('')
+    } else if (formatVersion > 0x13) {
+      output.addString(infoJson.prologue?.path ?? InfoDefaults.prologueScreen.path)
+    }
+    output.addString(infoJson.prologue?.text ?? InfoDefaults.prologueScreen.text)
+    output.addString(infoJson.prologue?.title ?? InfoDefaults.prologueScreen.title)
+    output.addString(infoJson.prologue?.subtitle ?? InfoDefaults.prologueScreen.subtitle)
+  }
+
+  if (formatVersion > 0x12) {
+    output.addInt(((type) => {
+      switch (type) {
+        case FogType.LINEAR: return 0
+        case FogType.EXPONENTIAL1: return 1
+        case FogType.EXPONENTIAL2: return 2
+      }
+    })(infoJson.map?.fog?.type ?? InfoDefaults.map.fog.type))
+    output.addFloat(infoJson.map?.fog?.startHeight ?? InfoDefaults.map.fog.startHeight)
+    output.addFloat(infoJson.map?.fog?.endHeight ?? InfoDefaults.map.fog.endHeight)
+    output.addFloat(infoJson.map?.fog?.density ?? InfoDefaults.map.fog.density)
+    output.addByte(infoJson.map?.fog?.color[0] ?? InfoDefaults.map.fog.color[0])
+    output.addByte(infoJson.map?.fog?.color[1] ?? InfoDefaults.map.fog.color[1])
+    output.addByte(infoJson.map?.fog?.color[2] ?? InfoDefaults.map.fog.color[2])
+    output.addByte(infoJson.map?.fog?.color[3] ?? InfoDefaults.map.fog.color[3])
+  }
+
+  if (formatVersion > 0x14) {
+    output.addInt(infoJson.map?.globalWeatherEffect ?? InfoDefaults.map.globalWeatherEffect)
+  }
+
+  if (formatVersion > 0x15) {
+    output.addString(infoJson.map?.customSoundEnvironment ?? InfoDefaults.map.customSoundEnvironment)
+  }
+
+  if (formatVersion > 0x16) {
+    output.addByte(infoJson.map?.customLightEnvironment ?? InfoDefaults.map.customLightEnvironment)
+  }
+
+  if (formatVersion > 0x18) {
+    output.addByte(infoJson.map?.waterColor[0] ?? InfoDefaults.map.waterColor[0])
+    output.addByte(infoJson.map?.waterColor[1] ?? InfoDefaults.map.waterColor[1])
+    output.addByte(infoJson.map?.waterColor[2] ?? InfoDefaults.map.waterColor[2])
+    output.addByte(infoJson.map?.waterColor[3] ?? InfoDefaults.map.waterColor[3])
+  }
+
+  const scriptLanguageValue = ((val) => {
+    switch (val) {
+      case ScriptLanguage.JASS: return 0
+      case ScriptLanguage.LUA: return 1
+    }
+  })(infoJson.scriptLanguage ?? InfoDefaults.scriptLanguage)
+  if (formatVersion > 0x1B) {
+    output.addInt(scriptLanguageValue)
+  }
+
+  const assetMode = { ...infoJson?.assetMode, ...InfoDefaults.assetMode }
+  if (formatVersion > 0x1C) {
+    let supportedModes = 0
+    if (assetMode?.SD) supportedModes |= 0x01
+    if (assetMode?.HD) supportedModes |= 0x02
+    output.addInt(supportedModes)
+  }
+
+  if (formatVersion > 0x1D) {
+    output.addInt(infoJson.mapDataVersion ?? InfoDefaults.mapDataVersion)
+  }
+
+  if (formatVersion > 0x1F) {
+    output.addInt(infoJson.camera?.forcedDefaultCamDistance ?? InfoDefaults.camera.forcedDefaultCamDistance)
+    output.addInt(infoJson.camera?.forcedMaxCamDistance ?? InfoDefaults.camera.forcedMaxCamDistance)
+  }
+
+  if (formatVersion > 0x20) {
+    output.addInt(infoJson.camera?.forcedMinCamDistance ?? InfoDefaults.camera.forcedMinCamDistance)
+  }
+
+  output.addInt(infoJson.players?.length ?? 0)
+  infoJson.players?.forEach((player) => {
+    output.addInt(player.slotId)
+    output.addInt(((type) => {
+      switch (type) {
+        case PlayerType.HUMAN: return 1
+        case PlayerType.COMPUTER: return 2
+        case PlayerType.NEUTRAL: return 3
+        case PlayerType.RESCUABLE: return 4
+      }
+    })(player.type ?? PlayerDefaults.type))
+    output.addInt(((race) => {
+      switch (race) {
+        case Race.RANDOM: return 0 // Check
+        case Race.HUMAN: return 1
+        case Race.ORC: return 2
+        case Race.UNDEAD: return 3
+        case Race.NIGHT_ELF: return 4
+      }
+    })(player.race ?? PlayerDefaults.race))
+    output.addInt(player.startLocation.fixed ? 1 : 0)
+    output.addString(player.name)
+    output.addFloat(player.startLocation.x)
+    output.addFloat(player.startLocation.y)
+
+    if (formatVersion > 0x04) {
+      output.addInt(playerListToPlayerBitmap(player.allyLowPriorities ?? PlayerDefaults.allyLowPriorities))
+      output.addInt(playerListToPlayerBitmap(player.allyHighPriorities ?? PlayerDefaults.allyHighPriorities))
     }
 
-    outBufferToWar.addInt(flags) // Add flags
+    if (formatVersion > 0x1E) {
+      output.addInt(playerListToPlayerBitmap(player.enemyLowPriorities ?? PlayerDefaults.enemyLowPriorities))
+      output.addInt(playerListToPlayerBitmap(player.enemyHighPriorities ?? PlayerDefaults.enemyHighPriorities))
+    }
+  })
 
-    // Map main ground type
-    outBufferToWar.addChar(infoJson.map.mainTileType)
+  const undefinedPlayersBitMask = ~(infoJson.players?.map(it => 1 << it.slotId).reduce((acc, it) => acc | it) ?? 0)
 
-    // Loading screen
-    outBufferToWar.addInt(infoJson.loadingScreen.background)
-    outBufferToWar.addString(infoJson.loadingScreen.path)
-    outBufferToWar.addString(infoJson.loadingScreen.text)
-    outBufferToWar.addString(infoJson.loadingScreen.title)
-    outBufferToWar.addString(infoJson.loadingScreen.subtitle)
-
-    // Use game data set
-    outBufferToWar.addInt(infoJson.gameDataSet)
-
-    // Prologue
-    outBufferToWar.addString(infoJson.prologue.path)
-    outBufferToWar.addString(infoJson.prologue.text)
-    outBufferToWar.addString(infoJson.prologue.title)
-    outBufferToWar.addString(infoJson.prologue.subtitle)
-
-    // Fog
-    outBufferToWar.addInt(infoJson.fog.type)
-    outBufferToWar.addFloat(infoJson.fog.startHeight)
-    outBufferToWar.addFloat(infoJson.fog.endHeight)
-    outBufferToWar.addFloat(infoJson.fog.density)
-    outBufferToWar.addByte(infoJson.fog.color[0] as number)
-    outBufferToWar.addByte(infoJson.fog.color[1] as number)
-    outBufferToWar.addByte(infoJson.fog.color[2] as number)
-    outBufferToWar.addByte(infoJson.fog.color[3] as number)
-
-    // Misc.
-    // // If globalWeather is not defined or is set to 'none', use 0 sentinel value, else add char[4] -- why this distinct crap? it just breaks the w3i for me.
-    // if (infoJson.globalWeather == null || infoJson.globalWeather.toLowerCase() === 'none') {
-    //   outBufferToWar.addInt(0)
-    // } else {
-    outBufferToWar.addInt(infoJson.globalWeather)
-    // }
-    outBufferToWar.addString(infoJson.customSoundEnvironment != null ? infoJson.customSoundEnvironment : '')
-    outBufferToWar.addByte(infoJson.customLightEnv)
-
-    // Custom water tinting
-    outBufferToWar.addByte(infoJson.water[0] as number)
-    outBufferToWar.addByte(infoJson.water[1] as number)
-    outBufferToWar.addByte(infoJson.water[2] as number)
-    outBufferToWar.addByte(infoJson.water[3] as number)
-
-    outBufferToWar.addInt(infoJson.scriptLanguage)
-    outBufferToWar.addInt(infoJson.supportedModes)
-    outBufferToWar.addInt(infoJson.gameDataVersion)
-    outBufferToWar.addInt(infoJson.forcedDefaultCamDistance)
-    outBufferToWar.addInt(infoJson.forcedMaxCamDistance)
-    outBufferToWar.addInt(infoJson.forcedMinCamDistance)
-
-    // Players
-    outBufferToWar.addInt(infoJson.players?.length || 0)
-    infoJson.players?.forEach((player) => {
-      outBufferToWar.addInt(player.playerNum)
-      outBufferToWar.addInt(player.type)
-      outBufferToWar.addInt(player.race)
-      outBufferToWar.addInt(player.startingPos.fixed ? 1 : 0)
-      outBufferToWar.addString(player.name)
-      outBufferToWar.addFloat(player.startingPos.x)
-      outBufferToWar.addFloat(player.startingPos.y)
-      outBufferToWar.addInt(player.allyLowPriorities) // ally low prio flags
-      outBufferToWar.addInt(player.allyHighPriorities) // ally high prio flags
-      outBufferToWar.addInt(player.enemyLowPriorities) // enemy low prio flags
-      outBufferToWar.addInt(player.enermyHighPriorities) // enemy high prio flags
-    })
-
-    // Forces
-    outBufferToWar.addInt(infoJson.forces?.length || 0)
+  if (formatVersion >= 0x03) {
+    output.addInt(infoJson.forces?.length ?? 0)
+    let firstForce = true
     infoJson.forces?.forEach((force) => {
-      // Calculate flags
       let forceFlags = 0
       if (force.flags.allied) forceFlags |= 0x0001
       if (force.flags.alliedVictory) forceFlags |= 0x0002
@@ -170,391 +258,731 @@ export class InfoTranslator implements Translator<Info> {
       if (force.flags.shareVision) forceFlags |= 0x0008
       if (force.flags.shareUnitControl) forceFlags |= 0x0010
       if (force.flags.shareAdvUnitControl) forceFlags |= 0x0020
+      output.addInt(forceFlags)
 
-      outBufferToWar.addInt(forceFlags)
-      outBufferToWar.addInt(force.players)
-      outBufferToWar.addString(force.name)
+      const forcePlayerbitmap = playerListToPlayerBitmap(force.players)
+      // First force must contain undefined players so they get automatically added in case they do get defined.
+      if (firstForce) {
+        output.addInt(forcePlayerbitmap | undefinedPlayersBitMask)
+      } else {
+        output.addInt(forcePlayerbitmap)
+      }
+
+      output.addString(force.name)
+      firstForce = false
     })
+  }
 
-    // Struct: upgrade avail.
-    outBufferToWar.addInt(infoJson.upgrades?.length || 0)
-    infoJson.upgrades?.forEach(upgrade => {
-      outBufferToWar.addInt(upgrade.playerFlags)
-      outBufferToWar.addChars(upgrade.upgradeId)
-      outBufferToWar.addInt(upgrade.level)
-      outBufferToWar.addInt(upgrade.availability)
+  if (formatVersion >= 0x06) {
+    output.addInt(infoJson.upgrades?.length ?? 0)
+    infoJson.upgrades?.forEach((upgrade) => {
+      output.addInt(playerListToPlayerBitmap(upgrade.players))
+      output.addChars(upgrade.upgradeId)
+      output.addInt(upgrade.level)
+      output.addInt(((val) => {
+        switch (val) {
+          case ResearchState.UNAVAILABLE: return 0
+          case ResearchState.AVAILABLE: return 1
+          case ResearchState.RESEARCHED: return 2
+        }
+      })(upgrade.state ?? UpgradeAvailableDefaults.state))
     })
+  }
 
-    // Struct: tech avail.
-    outBufferToWar.addInt(infoJson.techBlacklist?.length || 0)
-    infoJson.techBlacklist?.forEach(tech => {
-      outBufferToWar.addInt(tech.playerFlags)
-      outBufferToWar.addChars(tech.techId)
+  if (formatVersion > 0x07) {
+    output.addInt(infoJson.techtree?.length ?? 0)
+    infoJson.techtree?.forEach((tech) => {
+      output.addInt(playerListToPlayerBitmap(tech.players))
+      output.addChars(tech.techId)
     })
+  }
 
-    // Struct: random unit table
-    outBufferToWar.addInt(infoJson.randomUnitTables?.length || 0)
-    infoJson.randomUnitTables?.forEach(randomUnitTable => {
-      outBufferToWar.addInt(randomUnitTable.id)
-      outBufferToWar.addString(randomUnitTable.name)
+  if (formatVersion > 0x0C) {
+    output.addInt(infoJson.randomGroups?.length ?? 0)
+    infoJson.randomGroups?.forEach((randomUnitTable) => {
+      output.addInt(randomUnitTable.id)
+      output.addString(randomUnitTable.name)
 
-      outBufferToWar.addInt(randomUnitTable.positions?.length || 0)
-      randomUnitTable.positions?.forEach(position => outBufferToWar.addInt(position))
-
-      outBufferToWar.addInt(randomUnitTable.chances?.length || 0)
-      randomUnitTable.chances?.forEach(chance => {
-        outBufferToWar.addInt(chance.chance)
-        chance.unitIds.forEach(unitId => outBufferToWar.addChars(unitId)) //Amount of units must match amount of positions
+      output.addInt(randomUnitTable.sets?.length ?? 0)
+      randomUnitTable.sets?.forEach((set) => {
+        output.addInt(((type) => {
+          switch (type) {
+            case RandomGroupSetType.ANY_UNIT: return 0
+            case RandomGroupSetType.ANY_BUILDING: return 1
+            case RandomGroupSetType.ANY_ITEM: return 2
+          }
+        })(set.type ?? RandomGroupDefaults.set.type))
       })
-    })
-
-    // Struct: random item table
-    outBufferToWar.addInt(infoJson.randomItemTables?.length || 0)
-    infoJson.randomItemTables?.forEach(randomItemTable => {
-      outBufferToWar.addInt(randomItemTable.id)
-      outBufferToWar.addString(randomItemTable.name)
-
-      outBufferToWar.addInt(randomItemTable.rows?.length || 0)
-      randomItemTable.rows?.forEach(randomItemPool => {
-        outBufferToWar.addInt(randomItemPool.objects?.length || 0)
-        randomItemPool.objects?.forEach(randomItem => {
-          outBufferToWar.addInt(randomItem.chance)
-          outBufferToWar.addChars(randomItem.objectId)
+      output.addInt(randomUnitTable.sets?.length ?? 0)
+      randomUnitTable.sets?.forEach((chance) => {
+        output.addInt(chance.chance)
+        chance.objects.forEach((objectId) => {
+          output.addChars(objectId)
         })
       })
     })
-    return {
-      errors: [],
-      buffer: outBufferToWar.getBuffer()
+  }
+
+  if (formatVersion >= 0x18) {
+    output.addInt(infoJson.randomItemTables?.length ?? 0)
+    infoJson.randomItemTables?.forEach((randomItemTable) => {
+      output.addInt(randomItemTable.id)
+      output.addString(randomItemTable.name)
+
+      output.addInt(randomItemTable.table?.length ?? 0)
+      randomItemTable.table?.forEach((randomItemPool) => {
+        output.addInt(randomItemPool.length ?? 0)
+        randomItemPool.forEach((randomItem) => {
+          output.addInt(randomItem.chance)
+          output.addChars(randomItem.objectId)
+        })
+      })
+    })
+  }
+
+  if (formatVersion > 0x19 && formatVersion < 0x1C) {
+    output.addInt(scriptLanguageValue)
+  }
+
+  return output.getBuffer()
+}
+
+export function warToJson(buffer: Buffer): [Info, integer, integer] {
+  const input = new W3Buffer(buffer)
+  const formatVersion = input.readInt()
+  if (formatVersion < 0 || formatVersion > 33) {
+    log.warn(`Unknown map info format version ${formatVersion} will attempt at reading...`)
+  } else {
+    log.info(`Info format version is ${formatVersion}.`)
+  }
+
+  let mapVersion: integer
+  let editorVersion: integer
+  if (formatVersion > 0x0F) {
+    mapVersion = input.readInt()
+    editorVersion = input.readInt()
+    log.info(`Editor version is ${editorVersion}.`)
+  } else {
+    mapVersion = InfoDefaults.mapVersion
+    editorVersion = InfoDefaults.editorVersion
+  }
+
+  let gameVersionMajor: integer
+  let gameVersionMinor: integer
+  let gameVersionPatch: integer
+  let gameVersionBuild: integer
+  if (formatVersion > 0x1A) {
+    gameVersionMajor = input.readInt()
+    gameVersionMinor = input.readInt()
+    gameVersionPatch = input.readInt()
+    gameVersionBuild = input.readInt()
+  } else {
+    gameVersionMajor = InfoDefaults.gameVersion.major
+    gameVersionMinor = InfoDefaults.gameVersion.minor
+    gameVersionPatch = InfoDefaults.gameVersion.patch
+    gameVersionBuild = InfoDefaults.gameVersion.build
+  }
+
+  const name = input.readString()
+  const author = input.readString()
+  const description = input.readString()
+  let recommendedPlayers: string
+  if (formatVersion > 0x07) {
+    recommendedPlayers = input.readString()
+  } else {
+    recommendedPlayers = InfoDefaults.map.recommendedPlayers
+  }
+
+  // Consume some old mystery bits
+  if (formatVersion < 0x04) {
+    input.readByte()
+    input.readFloat()
+  } else if (formatVersion < 0x09) {
+    input.readFloat()
+    input.readByte()
+    input.readFloat()
+    input.readFloat()
+    input.readFloat()
+    input.readInt()
+  }
+
+  const cameraBounds: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number
+  ] = [
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat(),
+    input.readFloat()
+  ]
+
+  let cameraMargins: [integer, integer, integer, integer]
+  if (formatVersion > 0x0D) {
+    cameraMargins = [input.readInt(), input.readInt(), input.readInt(), input.readInt()]
+  } else {
+    cameraMargins = [...InfoDefaults.camera.margins]
+  }
+
+  let width: number
+  let height: number
+  if (formatVersion > 0x00) {
+    width = input.readInt()
+    height = input.readInt()
+  } else {
+    width = InfoDefaults.map.playableArea.width
+    height = InfoDefaults.map.playableArea.height
+  }
+
+  let hideMinimapInPreview: boolean
+  let modifyAllyPriorities: boolean
+  let isMeleeMap: boolean
+  let nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: boolean
+  let maskedPartiallyVisible: boolean
+  let fixedPlayerSetting: boolean
+  let useCustomForces: boolean
+  let useCustomTechtree: boolean
+  let useCustomAbilities: boolean
+  let useCustomUpgrades: boolean
+  let mapPropertiesMenuOpenedAtLeastOnce: boolean
+  let waterWavesOnCliffShores: boolean
+  let waterWavesOnRollingShores: boolean
+  let useTerrainFog: boolean
+  let tftRequired: boolean
+  let useItemClassificationSystem: boolean
+  let enableWaterTinting: boolean
+  let useAccurateProbabilityForCalculations: boolean
+  let useCustomAbilitySkins: boolean
+  let disableDenyIcon: boolean
+  let forceDefaultCameraZoom: boolean
+  let forceMaxCameraZoom: boolean
+  let forceMinCameraZoom: boolean
+  if (formatVersion > 0x01) {
+    if (formatVersion < 0x09) {
+      input.readInt() // some mystery field
+    }
+
+    let flagsValue = input.readInt()
+    if (formatVersion < 0x0F) {
+      flagsValue |= 0x0800
+    }
+    hideMinimapInPreview = !!(flagsValue & 0x01)
+    modifyAllyPriorities = !!(flagsValue & 0x02)
+    isMeleeMap = !!(flagsValue & 0x04)
+    nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium = !!(flagsValue & 0x08)
+    maskedPartiallyVisible = !!(flagsValue & 0x10)
+    fixedPlayerSetting = !!(flagsValue & 0x20)
+    useCustomForces = !!(flagsValue & 0x40)
+    useCustomTechtree = !!(flagsValue & 0x80)
+    useCustomAbilities = !!(flagsValue & 0x0100)
+    useCustomUpgrades = !!(flagsValue & 0x0200)
+    mapPropertiesMenuOpenedAtLeastOnce = !!(flagsValue & 0x0400)
+    waterWavesOnCliffShores = !!(flagsValue & 0x0800)
+    waterWavesOnRollingShores = !!(flagsValue & 0x1000)
+    useTerrainFog = !!(flagsValue & 0x2000)
+    tftRequired = !!(flagsValue & 0x4000)
+    useItemClassificationSystem = !!(flagsValue & 0x8000)
+    enableWaterTinting = !!(flagsValue & 0x010000)
+    useAccurateProbabilityForCalculations = !!(flagsValue & 0x020000)
+    useCustomAbilitySkins = !!(flagsValue & 0x040000)
+    disableDenyIcon = !!(flagsValue & 0x080000)
+    forceDefaultCameraZoom = !!(flagsValue & 0x100000)
+    forceMaxCameraZoom = !!(flagsValue & 0x200000)
+    forceMinCameraZoom = !!(flagsValue & 0x400000)
+  } else {
+    hideMinimapInPreview = InfoDefaults.map.flags.hideMinimapInPreview
+    modifyAllyPriorities = InfoDefaults.map.flags.modifyAllyPriorities
+    isMeleeMap = InfoDefaults.map.flags.isMeleeMap
+    nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium = InfoDefaults.map.flags.nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium
+    maskedPartiallyVisible = InfoDefaults.map.flags.maskedPartiallyVisible
+    fixedPlayerSetting = InfoDefaults.map.flags.fixedPlayerSetting
+    useCustomForces = InfoDefaults.map.flags.useCustomForces
+    useCustomTechtree = InfoDefaults.map.flags.useCustomTechtree
+    useCustomAbilities = InfoDefaults.map.flags.useCustomAbilities
+    useCustomUpgrades = InfoDefaults.map.flags.useCustomUpgrades
+    mapPropertiesMenuOpenedAtLeastOnce = InfoDefaults.map.flags.mapPropertiesMenuOpenedAtLeastOnce
+    waterWavesOnCliffShores = InfoDefaults.map.flags.waterWavesOnCliffShores
+    waterWavesOnRollingShores = InfoDefaults.map.flags.waterWavesOnRollingShores
+    useTerrainFog = InfoDefaults.map.flags.useTerrainFog
+    tftRequired = InfoDefaults.map.flags.tftRequired
+    useItemClassificationSystem = InfoDefaults.map.flags.useItemClassificationSystem
+    enableWaterTinting = InfoDefaults.map.flags.enableWaterTinting
+    useAccurateProbabilityForCalculations = InfoDefaults.map.flags.useAccurateProbabilityForCalculations
+    useCustomAbilitySkins = InfoDefaults.map.flags.useCustomAbilitySkins
+    disableDenyIcon = InfoDefaults.map.flags.disableDenyIcon
+    forceDefaultCameraZoom = InfoDefaults.map.flags.forceDefaultCameraZoom
+    forceMaxCameraZoom = InfoDefaults.map.flags.forceMaxCameraZoom
+    forceMinCameraZoom = InfoDefaults.map.flags.forceMinCameraZoom
+  }
+
+  let tileset: string
+  if (formatVersion > 0x07) {
+    tileset = input.readChars()
+  } else {
+    tileset = InfoDefaults.map.mainTileType
+  }
+
+  let loadingScreenImageId: integer
+  let loadingScreenImageFile: string
+  let loadingScreenText: string
+  let loadingScreenTitle: string
+  let loadingScreenSubtitle: string
+  if (formatVersion > 0x09) {
+    if (formatVersion > 0x10) {
+      loadingScreenImageId = input.readInt()
+    } else {
+      loadingScreenImageId = InfoDefaults.loadingScreen.imageId
+    }
+    if (formatVersion < 0x12) {
+      input.readString() // unknown string
+      loadingScreenImageFile = InfoDefaults.loadingScreen.path
+    } else if (formatVersion > 0x13) {
+      loadingScreenImageFile = input.readString()
+    } else {
+      loadingScreenImageFile = InfoDefaults.loadingScreen.path
+    }
+    loadingScreenText = input.readString()
+    if (formatVersion > 0x0A) {
+      loadingScreenTitle = input.readString()
+      loadingScreenSubtitle = input.readString()
+    } else {
+      loadingScreenTitle = InfoDefaults.loadingScreen.title
+      loadingScreenSubtitle = InfoDefaults.loadingScreen.subtitle
+    }
+  } else {
+    loadingScreenImageId = InfoDefaults.loadingScreen.imageId
+    loadingScreenImageFile = InfoDefaults.loadingScreen.path
+    loadingScreenText = InfoDefaults.loadingScreen.text
+    loadingScreenTitle = InfoDefaults.loadingScreen.title
+    loadingScreenSubtitle = InfoDefaults.loadingScreen.subtitle
+  }
+
+  let prologueScreenImageId: integer
+  let prologueScreenImageFile: string
+  let prologueScreenText: string
+  let prologueScreenTitle: string
+  let prologueScreenSubtitle: string
+  if (formatVersion > 0x0C) {
+    if (formatVersion > 0x10) {
+      prologueScreenImageId = input.readInt()
+    } else {
+      prologueScreenImageId = InfoDefaults.gameDataSet
+    }
+    if (formatVersion < 0x12) {
+      input.readString() // unknown string
+      prologueScreenImageFile = InfoDefaults.prologueScreen.path
+    } else if (formatVersion > 0x13) {
+      prologueScreenImageFile = input.readString()
+    } else {
+      prologueScreenImageFile = InfoDefaults.prologueScreen.path
+    }
+    prologueScreenText = input.readString()
+    prologueScreenTitle = input.readString()
+    prologueScreenSubtitle = input.readString()
+  } else {
+    prologueScreenImageId = InfoDefaults.gameDataSet // Yes, this is correct, despite it looking wrong
+    prologueScreenImageFile = InfoDefaults.prologueScreen.path
+    prologueScreenText = InfoDefaults.prologueScreen.text
+    prologueScreenTitle = InfoDefaults.prologueScreen.title
+    prologueScreenSubtitle = InfoDefaults.prologueScreen.subtitle
+  }
+
+  let fogStyle: FogType
+  let fogZStart: number
+  let fogZEnd: number
+  let fogDensity: number
+  let fogColor: [integer, integer, integer, integer]
+  if (formatVersion > 0x12) {
+    fogStyle = ((type) => {
+      switch (type) {
+        case 0: return FogType.LINEAR
+        case 1: return FogType.EXPONENTIAL1
+        case 2: return FogType.EXPONENTIAL2
+        default: return FogType.LINEAR
+      }
+    })(input.readInt())
+    fogZStart = input.readFloat()
+    fogZEnd = input.readFloat()
+    fogDensity = input.readFloat()
+    fogColor = [input.readByte(), input.readByte(), input.readByte(), input.readByte()] // R G B A
+  } else {
+    fogStyle = InfoDefaults.map.fog.type
+    fogZStart = InfoDefaults.map.fog.startHeight
+    fogZEnd = InfoDefaults.map.fog.endHeight
+    fogDensity = InfoDefaults.map.fog.density
+    fogColor = InfoDefaults.map.fog.color
+  }
+
+  let globalWeatherEffect: integer
+  if (formatVersion > 0x14) {
+    globalWeatherEffect = input.readInt()
+  } else {
+    globalWeatherEffect = InfoDefaults.map.globalWeatherEffect
+  }
+
+  let customSoundEnvironment: string
+  if (formatVersion > 0x15) {
+    customSoundEnvironment = input.readString()
+  } else {
+    customSoundEnvironment = InfoDefaults.map.customSoundEnvironment
+  }
+
+  let customLightEnvironment: integer
+  if (formatVersion > 0x16) {
+    customLightEnvironment = input.readByte()
+  } else {
+    customLightEnvironment = InfoDefaults.map.customLightEnvironment
+  }
+
+  let waterColor: [integer, integer, integer, integer]
+  if (formatVersion > 0x18) {
+    waterColor = [input.readByte(), input.readByte(), input.readByte(), input.readByte()]
+  } else {
+    waterColor = [...InfoDefaults.map.waterColor]
+  }
+
+  let scriptLanguageVal: number | undefined
+  if (formatVersion > 0x1B) {
+    scriptLanguageVal = input.readInt()
+  }
+
+  let assetMode: { SD: boolean, HD: boolean }
+  if (formatVersion > 0x1C) {
+    let assetModeVal = input.readInt()
+    if (assetModeVal === 0) assetModeVal = 3
+    assetMode = {
+      SD: !!(assetModeVal & 0x01),
+      HD: !!(assetModeVal & 0x02)
+    }
+  } else {
+    assetMode = { ...InfoDefaults.assetMode }
+  }
+
+  let mapDataVersion: integer
+  if (formatVersion > 0x1D) {
+    mapDataVersion = input.readInt()
+  } else {
+    mapDataVersion = InfoDefaults.mapDataVersion
+  }
+
+  let forcedDefaultCamDistance: integer
+  let forcedMaxCamDistance: integer
+  if (formatVersion > 0x1F) {
+    forcedDefaultCamDistance = input.readInt()
+    forcedMaxCamDistance = input.readInt()
+  } else {
+    forcedDefaultCamDistance = InfoDefaults.camera.forcedDefaultCamDistance
+    forcedMaxCamDistance = InfoDefaults.camera.forcedMaxCamDistance
+  }
+
+  let forcedMinCamDistance: integer
+  if (formatVersion > 0x20) {
+    forcedMinCamDistance = input.readInt()
+  } else {
+    forcedMinCamDistance = InfoDefaults.camera.forcedMinCamDistance
+  }
+
+  const players: Player[] = []
+  const playerCount = input.readInt()
+  for (let i = 0; i < playerCount; i++) {
+    const playerSlotId = input.readInt()
+    const playerType = input.readInt()
+    const playerRace = input.readInt()
+    const playerFlags = input.readInt()
+    const playerName = input.readString()
+    const playerStartX = input.readFloat()
+    const playerStartY = input.readFloat()
+
+    let allyLowPriorities: PlayerList
+    let allyHighPriorities: PlayerList
+    if (formatVersion > 0x04) {
+      allyLowPriorities = playerBitmapToPlayerList(input.readInt())
+      allyHighPriorities = playerBitmapToPlayerList(input.readInt())
+    } else {
+      allyLowPriorities = PlayerDefaults.allyLowPriorities
+      allyHighPriorities = PlayerDefaults.allyHighPriorities
+    }
+
+    let enemyLowPriorities: PlayerList
+    let enemyHighPriorities: PlayerList
+    if (formatVersion > 0x1E) {
+      enemyLowPriorities = playerBitmapToPlayerList(input.readInt())
+      enemyHighPriorities = playerBitmapToPlayerList(input.readInt())
+    } else {
+      enemyLowPriorities = PlayerDefaults.enemyLowPriorities
+      enemyHighPriorities = PlayerDefaults.enemyHighPriorities
+    }
+
+    players.push({
+      slotId: playerSlotId,
+      type  : ((type) => {
+        switch (type) {
+          case 1: return PlayerType.HUMAN
+          case 2: return PlayerType.COMPUTER
+          case 3: return PlayerType.NEUTRAL
+          case 4: return PlayerType.RESCUABLE
+          default: return PlayerDefaults.type
+        }
+      })(playerType),
+      race: ((race) => {
+        switch (race) {
+          case 0: return Race.RANDOM
+          case 1: return Race.HUMAN
+          case 2: return Race.ORC
+          case 3: return Race.UNDEAD
+          case 4: return Race.NIGHT_ELF
+          default: return PlayerDefaults.race
+        }
+      })(playerRace),
+      name         : playerName,
+      startLocation: {
+        x    : playerStartX,
+        y    : playerStartY,
+        fixed: !!(playerFlags & 0x01)
+      },
+      allyLowPriorities,
+      allyHighPriorities,
+      enemyLowPriorities,
+      enemyHighPriorities
+    })
+  }
+
+  const forces: Force[] = []
+  if (formatVersion < 0x03) {
+    forces.push({ flags: { ...ForceDefaults.flags }, players: players.map(it => it.slotId), name: ForceDefaults.name })
+  } else {
+    const forceCount = input.readInt()
+    for (let i = 0; i < forceCount; i++) {
+      const forceFlag = input.readInt()
+      forces.push({
+        flags: {
+          allied             : !!(forceFlag & 0x01),
+          alliedVictory      : !!(forceFlag & 0x02),
+          // 0x04: share vision (the documentation has this incorrect)
+          shareVision        : !!(forceFlag & 0x08),
+          shareUnitControl   : !!(forceFlag & 0x10),
+          shareAdvUnitControl: !!(forceFlag & 0x20)
+        },
+        players: playerBitmapToPlayerList(input.readInt()),
+        name   : input.readString()
+      })
     }
   }
 
-  public warToJson(buffer: Buffer): JsonResult<Info> {
-    const result: Info = {
-      map: {
-        name: '',
-        author: '',
-        description: '',
-        recommendedPlayers: '',
-        playableArea: {
-          width: 64,
-          height: 64
-        },
-        mainTileType: '',
-        flags: {
-          hideMinimapInPreview: false, // 0x0001: 1=hide minimap in preview screens
-          modifyAllyPriorities: true, // 0x0002: 1=modify ally priorities
-          isMeleeMap: false, // 0x0004: 1=melee map
-          nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: false, // 0x0008: 1=playable map size was large and has never been reduced to medium (?)
-          maskedPartiallyVisible: false, // 0x0010: 1=masked area are partially visible
-          fixedPlayerSetting: false, // 0x0020: 1=fixed player setting for custom forces
-          useCustomForces: false, // 0x0040: 1=use custom forces
-          useCustomTechtree: false, // 0x0080: 1=use custom techtree
-          useCustomAbilities: false, // 0x0100: 1=use custom abilities
-          useCustomUpgrades: false, // 0x0200: 1=use custom upgrades
-          mapPropertiesMenuOpenedAtLeastOnce: false, // 0x0400: 1=map properties menu opened at least once since map creation (?)
-          waterWavesOnCliffShores: false, // 0x0800: 1=show water waves on cliff shores
-          waterWavesOnRollingShores: false, // 0x1000: 1=show water waves on rolling shores
-          useTerrainFog: false, // 0x2000
-          tftRequired: false, // 0x4000
-          useItemClassificationSystem: false, // 0x8000: 1=use item classification system
-          enableWaterTinting: false, // 0x10000
-          useAccurateProbabilityForCalculations: false, // 0x20000
-          useCustomAbilitySkins: false, // 0x40000
-          disableDenyIcon: false, //0x80000
-          forceDefaultCameraZoom: false, // 0x100000
-          forceMaxCameraZoom: false, // 0x200000
-          forceMinCameraZoom: false // 0x400000
-        }
-      },
-      loadingScreen: {
-        background: 0,
-        path: '',
-        text: '',
-        title: '',
-        subtitle: ''
-      },
-      prologue: {
-        path: '',
-        text: '',
-        title: '',
-        subtitle: ''
-      },
-      fog: {
-        type: FogType.Linear,
-        startHeight: 0,
-        endHeight: 0,
-        density: 0,
-        color: [0, 0, 0, 1]
-      },
-      camera: {
-        bounds: [],
-        complements: []
-      },
-      players: [],
-      forces: [],
-      saves: 0,
-      editorVersion: 0,
-      scriptLanguage: ScriptLanguage.JASS,
-      supportedModes: SupportedModes.Both,
-      forcedDefaultCamDistance: 1250,
-      forcedMaxCamDistance: 1250,
-      forcedMinCamDistance: 1250,
-      gameVersion: {
-        major: 0,
-        minor: 0,
-        patch: 0,
-        build: 0
-      },
-      globalWeather: 0,
-      customSoundEnvironment: '',
-      customLightEnv: 0,
-      water: [],
-      gameDataVersion: 0,
-      gameDataSet: 0,
-      upgrades: [],
-      techBlacklist: [],
-      randomUnitTables: [],
-      randomItemTables: []
-    }
-    const outBufferToJSON = new W3Buffer(buffer)
-
-    const fileVersion = outBufferToJSON.readInt()
-
-    result.saves = outBufferToJSON.readInt()
-    result.editorVersion = outBufferToJSON.readInt()
-
-    result.gameVersion = {
-      major: outBufferToJSON.readInt(),
-      minor: outBufferToJSON.readInt(),
-      patch: outBufferToJSON.readInt(),
-      build: outBufferToJSON.readInt()
-    }
-
-    result.map.name = outBufferToJSON.readString()
-    result.map.author = outBufferToJSON.readString()
-    result.map.description = outBufferToJSON.readString()
-    result.map.recommendedPlayers = outBufferToJSON.readString()
-
-    result.camera.bounds = [
-      outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat(),
-      outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat(), outBufferToJSON.readFloat()
-    ]
-
-    result.camera.complements = [
-      outBufferToJSON.readInt(), outBufferToJSON.readInt(), outBufferToJSON.readInt(), outBufferToJSON.readInt()
-    ]
-
-    result.map.playableArea = {
-      width: outBufferToJSON.readInt(),
-      height: outBufferToJSON.readInt()
-    }
-
-    const flags = outBufferToJSON.readInt()
-    result.map.flags = {
-      hideMinimapInPreview: !!(flags & 0x0001),
-      modifyAllyPriorities: !!(flags & 0x0002),
-      isMeleeMap: !!(flags & 0x0004),
-      nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium: !!(flags & 0x0008),
-      maskedPartiallyVisible: !!(flags & 0x0010),
-      fixedPlayerSetting: !!(flags & 0x0020),
-      useCustomForces: !!(flags & 0x0040),
-      useCustomTechtree: !!(flags & 0x0080),
-      useCustomAbilities: !!(flags & 0x0100),
-      useCustomUpgrades: !!(flags & 0x0200),
-      mapPropertiesMenuOpenedAtLeastOnce: !!(flags & 0x0400),
-      waterWavesOnCliffShores: !!(flags & 0x0800),
-      waterWavesOnRollingShores: !!(flags & 0x1000),
-      useTerrainFog: !!(flags & 0x2000),
-      tftRequired: !!(flags & 0x4000),
-      useItemClassificationSystem: !!(flags & 0x8000),
-      enableWaterTinting: !!(flags & 0x10000),
-      useAccurateProbabilityForCalculations: !!(flags & 0x20000),
-      useCustomAbilitySkins: !!(flags & 0x40000),
-      disableDenyIcon: !!(flags & 0x80000),
-      forceDefaultCameraZoom: !!(flags & 0x100000),
-      forceMaxCameraZoom: !!(flags & 0x200000),
-      forceMinCameraZoom: !!(flags & 0x400000)
-    }
-
-    result.map.mainTileType = outBufferToJSON.readChars()
-
-    result.loadingScreen.background = outBufferToJSON.readInt()
-    result.loadingScreen.path = outBufferToJSON.readString()
-    result.loadingScreen.text = outBufferToJSON.readString()
-    result.loadingScreen.title = outBufferToJSON.readString()
-    result.loadingScreen.subtitle = outBufferToJSON.readString()
-
-    result.gameDataSet = outBufferToJSON.readInt() // 0 = standard
-
-    result.prologue = {
-      path: outBufferToJSON.readString(),
-      text: outBufferToJSON.readString(),
-      title: outBufferToJSON.readString(),
-      subtitle: outBufferToJSON.readString()
-    }
-
-    result.fog = {
-      type: outBufferToJSON.readInt(),
-      startHeight: outBufferToJSON.readFloat(),
-      endHeight: outBufferToJSON.readFloat(),
-      density: outBufferToJSON.readFloat(),
-      color: [outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte()] // R G B A
-    }
-
-    result.globalWeather = outBufferToJSON.readInt()
-    result.customSoundEnvironment = outBufferToJSON.readString()
-    result.customLightEnv = outBufferToJSON.readByte()
-    result.water = [outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte(), outBufferToJSON.readByte()] // R G B A
-
-    result.scriptLanguage = outBufferToJSON.readInt()
-    result.supportedModes = outBufferToJSON.readInt()
-    result.gameDataVersion = outBufferToJSON.readInt()
-    if (fileVersion >= 32){
-      result.forcedDefaultCamDistance = outBufferToJSON.readInt()
-      result.forcedMaxCamDistance = outBufferToJSON.readInt()
-    }
-    if (fileVersion >= 33){
-      result.forcedMinCamDistance = outBufferToJSON.readInt()
-    }
-
-    // Struct: players
-    const numPlayers = outBufferToJSON.readInt()
-    for (let i = 0; i < numPlayers; i++) {
-      const player: Player = {
-        name: '',
-        startingPos: { x: 0, y: 0, fixed: false },
-        playerNum: 0,
-        type: 0,
-        race: 0,
-        allyLowPriorities: 0,
-        allyHighPriorities: 0,
-        enemyLowPriorities: 0,
-        enermyHighPriorities: 0
-      }
-
-      player.playerNum = outBufferToJSON.readInt()
-      player.type = outBufferToJSON.readInt() // 1=Human, 2=Computer, 3=Neutral, 4=Rescuable
-      player.race = outBufferToJSON.readInt() // 1=Human, 2=Orc, 3=Undead, 4=Night Elf
-
-      const isPlayerStartPositionFixed: boolean = outBufferToJSON.readInt() === 1 // 00000001 = fixed start position
-
-      player.name = outBufferToJSON.readString()
-      player.startingPos = {
-        x: outBufferToJSON.readFloat(),
-        y: outBufferToJSON.readFloat(),
-        fixed: isPlayerStartPositionFixed
-      }
-
-      player.allyLowPriorities = outBufferToJSON.readInt() // ally low priorities flags (bit "x"=1 --> set for player "x")
-      player.allyHighPriorities = outBufferToJSON.readInt() // ally high priorities flags (bit "x"=1 --> set for player "x")
-      player.enemyLowPriorities = outBufferToJSON.readInt() // enemy low priorities flags
-      player.enermyHighPriorities = outBufferToJSON.readInt() // enemy high priorities flags
-
-      result.players.push(player)
-    }
-
-    // Struct: forces
-    const numForces = outBufferToJSON.readInt()
-    for (let i = 0; i < numForces; i++) {
-      const force: Force = {
-        flags: { allied: false, alliedVictory: true, shareVision: true, shareUnitControl: false, shareAdvUnitControl: false },
-        players: 0,
-        name: ''
-      }
-
-      const forceFlag = outBufferToJSON.readInt()
-      force.flags = {
-        allied: !!(forceFlag & 0b1), // 0x00000001: allied (force 1)
-        alliedVictory: !!(forceFlag & 0b10), // 0x00000002: allied victory
-        // 0x00000004: share vision (the documentation has this incorrect)
-        shareVision: !!(forceFlag & 0b1000), // 0x00000008: share vision
-        shareUnitControl: !!(forceFlag & 0b10000), // 0x00000010: share unit control
-        shareAdvUnitControl: !!(forceFlag & 0b100000) // 0x00000020: share advanced unit control
-      }
-      force.players = outBufferToJSON.readInt() // UNSUPPORTED: (bit "x"=1 --> player "x" is in this force; but carried over for accurate translation
-      force.name = outBufferToJSON.readString()
-
-      result.forces.push(force)
-    }
-
-    // Struct: upgrade avail.
-    const numUpgrades = outBufferToJSON.readInt()
-    for (let i = 0; i < numUpgrades; i++) {
-      result.upgrades.push({
-        playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
-        upgradeId: outBufferToJSON.readChars(4), // upgrade id (as in UpgradeData.slk)
-        level: outBufferToJSON.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
-        availability: outBufferToJSON.readInt() // Availability (0 = unavailable, 1 = available, 2 = researched)
+  let upgrades: UpgradeAvailable[]
+  if (formatVersion >= 0x06) {
+    upgrades = []
+    const upgradeCount = input.readInt()
+    for (let i = 0; i < upgradeCount; i++) {
+      upgrades.push({
+        players  : playerBitmapToPlayerList(input.readInt()),
+        upgradeId: input.readChars(4), // upgrade id (as in UpgradeData.slk)
+        level    : input.readInt(), // Level of the upgrade for which the availability is changed (this is actually the level - 1, so 1 => 0)
+        state    : ((val) => {
+          switch (val) {
+            case 0: return ResearchState.UNAVAILABLE
+            case 1: return ResearchState.AVAILABLE
+            case 2: return ResearchState.RESEARCHED
+            default: return UpgradeAvailableDefaults.state
+          }
+        })(input.readInt())
       })
     }
+  } else {
+    upgrades = InfoDefaults.upgrades
+  }
 
-    // Struct: tech avail.
-    const numTech = outBufferToJSON.readInt()
-    for (let i = 0; i < numTech; i++) {
-      result.techBlacklist.push({
-        playerFlags: outBufferToJSON.readInt(), // Player Flags (bit "x"=1 if this change applies for player "x")
-        techId: outBufferToJSON.readChars(4) // tech id (this can be an item, unit or ability)
+  let techtree: TechUnavailable[]
+  if (formatVersion >= 0x07) {
+    techtree = []
+    const techCount = input.readInt()
+    for (let i = 0; i < techCount; i++) {
+      techtree.push({
+        players: playerBitmapToPlayerList(input.readInt()),
+        techId : input.readChars(4) // tech id (this can be an item, unit or ability)
       })
     }
+  } else {
+    techtree = InfoDefaults.techtree
+  }
 
-    // Struct: random unit table
-    const numUnitTable = outBufferToJSON.readInt()
-    for (let i = 0; i < numUnitTable; i++) {
-      result.randomUnitTables.push({
-        id: outBufferToJSON.readInt(), // Group number
-        name: outBufferToJSON.readString(), // Group name
-        positions: [],
-        chances: []
-      })
+  let randomGroups: RandomGroup[]
+  if (formatVersion >= 0x0C) {
+    randomGroups = []
+    const randomUnitCount = input.readInt()
+    for (let i = 0; i < randomUnitCount; i++) {
+      const randomUnitTable: RandomGroup = {
+        id  : input.readInt(),
+        name: input.readString(),
+        sets: []
+      }
+      randomGroups.push(randomUnitTable)
 
-      const numPositions = outBufferToJSON.readInt() // Number "m" of positions
-      for (let j = 0; j < numPositions; j++) {
-        (result.randomUnitTables[i] as RandomUnitTable).positions.push(outBufferToJSON.readInt()) // Apparently, the following is false: unit table (=0), a building table (=1) or an item table (=2)
+      const objectCount = input.readInt() // Number "m" of positions
+      const types: integer[] = []
+      for (let j = 0; j < objectCount; j++) {
+        types.push(input.readInt())
       }
 
-      const numChances = outBufferToJSON.readInt()
-      for (let j = 0; j < numChances; j++) {
-        (result.randomUnitTables[i] as RandomUnitTable).chances.push({
-          chance: outBufferToJSON.readInt(), // Chance of the unit/item (percentage)
-          unitIds: []
-        })
-
-        for (let k = 0; k < numPositions; k++) {
-          ((result.randomUnitTables[i] as RandomUnitTable).chances[j] as { chance: number, unitIds: string[] }).unitIds.push(outBufferToJSON.readChars(4)) // unit/item id's for this line specified
-        }
-      }
-    }
-
-    // Struct: random item table
-    const numItemTable = outBufferToJSON.readInt()
-    for (let i = 0; i < numItemTable; i++) {
-      result.randomItemTables.push({
-        id: outBufferToJSON.readInt(), // Group number
-        name: outBufferToJSON.readString(), // Group name
-        rows: []
-      })
-
-      const itemSetsCurrentTable = outBufferToJSON.readInt() // Number "m" of item sets on the current item table
-      for (let j = 0; j < itemSetsCurrentTable; j++) {
-        (result.randomItemTables[i] as RandomTable).rows.push({
-          type: 2, // unit table (=0), a building table (=1) or an item table (=2) - not used
+      const randomGroupSetCount = input.readInt()
+      for (let j = 0; j < randomGroupSetCount; j++) {
+        const randomGroupSet: RandomGroupSet = {
+          type: ((type) => {
+            switch (type) {
+              case 0: return RandomGroupSetType.ANY_UNIT
+              case 1: return RandomGroupSetType.ANY_BUILDING
+              case 2: return RandomGroupSetType.ANY_ITEM
+              default: return RandomGroupSetType.ANY_UNIT
+            }
+          })(types[j]),
+          chance : input.readInt(), // Chance of the unit/item (percentage)
           objects: []
-        })
+        }
+        randomUnitTable.sets.push(randomGroupSet)
 
-        const itemsInItemSet = outBufferToJSON.readInt() // Number "i" of items on the current item set
+        for (let k = 0; k < objectCount; k++) {
+          randomGroupSet.objects.push(input.readChars(4)) // unit/item id's for this line specified
+        }
+      }
+    }
+  } else {
+    randomGroups = InfoDefaults.randomGroups
+  }
+
+  let randomItemTables: ItemTable[]
+  if (formatVersion >= 0x18) {
+    randomItemTables = []
+    const itemTableCount = input.readInt()
+    for (let i = 0; i < itemTableCount; i++) {
+      const tableRows: ObjectChance[][] = []
+      randomItemTables.push({
+        id   : input.readInt(), // Group number
+        name : input.readString(), // Group name
+        table: tableRows
+      })
+
+      const itemSetsCurrentTable = input.readInt()
+      for (let j = 0; j < itemSetsCurrentTable; j++) {
+        const objects: ObjectChance[] = []
+        tableRows.push(objects)
+
+        const itemsInItemSet = input.readInt() // Number "i" of items on the current item set
         for (let k = 0; k < itemsInItemSet; k++) {
-          ((result.randomItemTables[i] as RandomTable).rows[j] as  ObjectPool).objects.push({
-            chance: outBufferToJSON.readInt(), // Percentual chance
-            objectId: outBufferToJSON.readChars(4) // Item id (as in ItemData.slk)
+          objects.push({
+            chance  : input.readInt(), // Percentual chance
+            objectId: input.readChars(4) // Item id (as in ItemData.slk)
           })
         }
       }
     }
-
-    return {
-      errors: [],
-      json: result
-    }
+  } else {
+    randomItemTables = InfoDefaults.randomItemTables
   }
+
+  if (formatVersion > 0x19 && formatVersion < 0x1C) {
+    scriptLanguageVal = input.readInt()
+  }
+
+  return [{
+    mapVersion,
+    gameVersion: {
+      major: gameVersionMajor,
+      minor: gameVersionMinor,
+      patch: gameVersionPatch,
+      build: gameVersionBuild
+    },
+    editorVersion,
+    scriptLanguage: ((scriptLanguage) => {
+      switch (scriptLanguage) {
+        case 0: return ScriptLanguage.JASS
+        case 1: return ScriptLanguage.LUA
+        default: return InfoDefaults.scriptLanguage
+      }
+    })(scriptLanguageVal),
+    assetMode,
+    mapDataVersion,
+    map: {
+      name,
+      author,
+      description,
+      recommendedPlayers,
+      playableArea: {
+        width,
+        height
+      },
+      flags: {
+        hideMinimapInPreview,
+        modifyAllyPriorities,
+        isMeleeMap,
+        nonDefaultTilesetMapSizeLargeNeverBeenReducedToMedium,
+        maskedPartiallyVisible,
+        fixedPlayerSetting,
+        useCustomForces,
+        useCustomTechtree,
+        useCustomAbilities,
+        useCustomUpgrades,
+        mapPropertiesMenuOpenedAtLeastOnce,
+        waterWavesOnCliffShores,
+        waterWavesOnRollingShores,
+        useTerrainFog,
+        tftRequired,
+        useItemClassificationSystem,
+        enableWaterTinting,
+        useAccurateProbabilityForCalculations,
+        useCustomAbilitySkins,
+        disableDenyIcon,
+        forceDefaultCameraZoom,
+        forceMaxCameraZoom,
+        forceMinCameraZoom
+      },
+      mainTileType: tileset,
+      fog         : {
+        type       : fogStyle,
+        startHeight: fogZStart,
+        endHeight  : fogZEnd,
+        density    : fogDensity,
+        color      : fogColor
+      },
+      globalWeatherEffect,
+      customSoundEnvironment,
+      customLightEnvironment,
+      waterColor
+    },
+    camera: {
+      bounds : cameraBounds,
+      margins: cameraMargins,
+      forcedDefaultCamDistance,
+      forcedMaxCamDistance,
+      forcedMinCamDistance
+    },
+    gameDataSet: prologueScreenImageId,
+    prologue   : {
+      path    : prologueScreenImageFile,
+      text    : prologueScreenText,
+      title   : prologueScreenTitle,
+      subtitle: prologueScreenSubtitle
+    },
+    loadingScreen: {
+      imageId : loadingScreenImageId,
+      path    : loadingScreenImageFile,
+      text    : loadingScreenText,
+      title   : loadingScreenTitle,
+      subtitle: loadingScreenSubtitle
+    },
+    players,
+    forces,
+    upgrades,
+    techtree,
+    randomGroups,
+    randomItemTables
+  } satisfies Info, formatVersion, editorVersion]
 }

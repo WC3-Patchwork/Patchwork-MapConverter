@@ -1,29 +1,29 @@
-import { type angle } from '../CommonInterfaces'
-import { ItemSet } from './ItemSet'
+import { type vector3, type angle, type integer } from '../CommonInterfaces'
+import { type ItemSet } from './ItemSet'
 
 interface Doodad {
   type: string
-  variation: number
-  position: number[]
+  variation: integer | undefined
+  position: vector3
   angle: angle
-  scale: number[]
-  skinId: string
-  flags: DoodadFlag
-  life: number
-  randomItemSetPtr: number
-  droppedItemSets: ItemSet[]
-  id: number
+  scale: vector3
+  skinId: string | undefined
+  flags: DoodadFlags
+  life: integer
+  randomItemSetPtr: integer | undefined
+  droppedItemSets: ItemSet[] | undefined
+  id: integer | undefined
 }
 
-interface DoodadFlag {
+interface DoodadFlags {
   inUnplayableArea: boolean
   notUsedInScript: boolean
   fixedZ: boolean
 }
 
 interface SpecialDoodad {
-  type: string,
-  position: number[]
+  type: string
+  position: vector3
 }
 
-export type { Doodad, DoodadFlag, SpecialDoodad }
+export type { Doodad, DoodadFlags, SpecialDoodad }

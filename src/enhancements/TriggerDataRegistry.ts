@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { LoggerFactory } from '../logging/LoggerFactory'
 import { TriggerActions, TriggerCalls, TriggerConditions, TriggerEvents, type VariadicParameterTriggerDefinition } from './data/TriggerDefinition'
 import { StatementType } from '../translator/data/statement/StatementType'
@@ -12,7 +12,7 @@ enum TriggerDataSections {
   TRIGGER_CALLS = 'TriggerCalls'
 }
 
-function convertToSectionRowData (section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
+function convertToSectionRowData(section: TriggerDataSections, key: string, value: string): VariadicParameterTriggerDefinition | undefined {
   const values = value.split(',') as [unknown, unknown, unknown, unknown, ...unknown[]]
 
   switch (section) {
@@ -38,17 +38,20 @@ let loaded = false
 const TriggerDataRegistry = {
   loadTriggerData: function (triggerDataFilePath: string) {
     log.info('Loading trigger data from', triggerDataFilePath)
+    if (!existsSync(triggerDataFilePath)) {
+      throw new Error(`File ${triggerDataFilePath} not found, missing trigger data.`)
+    }
     const iniData = readFileSync(triggerDataFilePath, { encoding: 'utf8' })
 
-    let currentSection = 'root'
+    let currentSection = 'root' as TriggerDataSections
     for (const line of iniData.split(/\r\n|\n/)) {
       if (line.startsWith('//')) continue // ignore comment
       if (/\[.*\]/.test(line)) {
-        currentSection = line.substring(1, line.length - 1)
+        currentSection = line.substring(1, line.length - 1) as TriggerDataSections
         continue
       }
-      if (currentSection !== TriggerDataSections.TRIGGER_ACTIONS && currentSection !== TriggerDataSections.TRIGGER_CALLS &&
-        currentSection !== TriggerDataSections.TRIGGER_CONDITIONS && currentSection !== TriggerDataSections.TRIGGER_EVENTS) {
+      if (currentSection !== TriggerDataSections.TRIGGER_ACTIONS && currentSection !== TriggerDataSections.TRIGGER_CALLS
+        && currentSection !== TriggerDataSections.TRIGGER_CONDITIONS && currentSection !== TriggerDataSections.TRIGGER_EVENTS) {
         continue // ignore irrelevant sections
       }
       if (line.startsWith('_')) continue // ignore irrelevant properties
@@ -66,43 +69,46 @@ const TriggerDataRegistry = {
     loaded = true
   },
 
-  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number | undefined {
+  getParameterCount: function (classification: StatementType | TriggerDataSections, name: string): number {
     let sectionRegistry: Record<string, number | undefined> | undefined
     if (!loaded) {
       throw new Error('TriggerData has not been provided, therefore GUI triggers cannot be converted!')
     }
+    let paramCount: number | undefined
     switch (classification) {
       case StatementType.EVENT:
       case TriggerDataSections.TRIGGER_EVENTS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_EVENTS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.CONDITION:
       case TriggerDataSections.TRIGGER_CONDITIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CONDITIONS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.ACTION:
       case TriggerDataSections.TRIGGER_ACTIONS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_ACTIONS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
       case StatementType.CALL:
       case TriggerDataSections.TRIGGER_CALLS:
         sectionRegistry = registry.get(TriggerDataSections.TRIGGER_CALLS)
         if (sectionRegistry != null) {
-          return sectionRegistry[name]
+          paramCount = sectionRegistry[name]
         }
         break
     }
-
-    return 0 // TODO: do actual error handling?
+    if (paramCount == null) {
+      throw new Error(`Unknown trigger ${classification} named '${name}'`)
+    }
+    return paramCount
   }
 
 }

@@ -5,7 +5,7 @@ interface TriggerContainer extends TriggerContent {
   children: (TriggerContainer | TriggerContent)[]
 }
 
-function GetTriggerContainerChildren (node: TriggerContent): TriggerContent[] {
+function GetTriggerContainerChildren(node: TriggerContent): TriggerContent[] {
   return (node as TriggerContainer).children
 }
 

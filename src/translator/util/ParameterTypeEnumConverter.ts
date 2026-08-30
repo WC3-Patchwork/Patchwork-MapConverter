@@ -18,7 +18,7 @@ reverseDictionary.set(ParameterType.VALUE, 3)
 const ParameterTypeEnumConverter = {
   toEnum: (identifier: number): ParameterType => {
     if (dictionary.has(identifier)) {
-      return dictionary.get(identifier) as ParameterType
+      return dictionary.get(identifier)!
     } else {
       throw new Error('Unknown ParameterType for identifier: ' + String(identifier))
     }
@@ -26,7 +26,7 @@ const ParameterTypeEnumConverter = {
 
   toIdentifier: (type: ParameterType): number => {
     if (reverseDictionary.has(type)) {
-      return reverseDictionary.get(type) as number
+      return reverseDictionary.get(type)!
     } else {
       throw new Error('Unknown identifier for ParameterType: ' + String(type))
     }

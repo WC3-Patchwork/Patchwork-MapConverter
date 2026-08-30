@@ -16,7 +16,7 @@ reverseDictionary.set(StatementType.CALL, 3)
 const StatementTypeEnumConverter = {
   toEnum: (identifier: number): StatementType => {
     if (dictionary.has(identifier)) {
-      return dictionary.get(identifier) as StatementType
+      return dictionary.get(identifier)!
     } else {
       throw new Error('Unknown StatementType for identifier: ' + String(identifier))
     }
@@ -24,7 +24,7 @@ const StatementTypeEnumConverter = {
 
   toIdentifier: (type: StatementType): number => {
     if (reverseDictionary.has(type)) {
-      return reverseDictionary.get(type) as number
+      return reverseDictionary.get(type)!
     } else {
       throw new Error('Unknown identifier for StatementType: ' + String(type))
     }

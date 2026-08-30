@@ -1,23 +1,10 @@
-enum TableType {
-  original = 'original',
-  custom = 'custom'
-}
+import { type FourCC, type integer } from '../CommonInterfaces'
 
 enum ModificationType {
-  int = 'int',
-  real = 'real',
-  unreal = 'unreal',
-  string = 'string'
-}
-
-enum FileTypeExtension { // (*) - uses the two optional ints after variable type
-  units = 'w3u',
-  items = 'w3t',
-  destructables = 'w3b',
-  doodads = 'w3d', // (*)
-  abilities = 'w3a', // (*)
-  buffs = 'w3h',
-  upgrades = 'w3q' // (*)
+  INTEGER = 'INTEGER', // 0
+  REAL = 'REAL', // 1
+  UNREAL = 'UNREAL', // 2 - real but with value within [0.00, 1.00]
+  STRING = 'STRING' // 3
 }
 
 enum ObjectType {
@@ -31,21 +18,25 @@ enum ObjectType {
 }
 
 interface Modification {
-  id: string
-  type: ModificationType // 'int' | 'real' | 'unreal' | 'string',
-  value: unknown
+  id: FourCC
+  type: ModificationType
+  value: integer | string
 
   // Marked optional because these fields are not needed on any table.
   // They can be specified for: Doodads, Abilities, Upgrades, but if
   // not specified, they default to the value 0.
-  level?: number
-  column?: number
-  variation?: number
+  levelVariation?: integer
+  dataPointer?: integer
+}
+
+interface ObjectData {
+  originalId: FourCC
+  modifications: Modification[]
 }
 
 interface ObjectModificationTable {
-  original: Record<string, Modification[]>
-  custom: Record<string, Modification[]>
+  original: Record<FourCC, ObjectData>
+  custom?: Record<FourCC, ObjectData>
 }
 
-export { TableType, ModificationType, FileTypeExtension, ObjectType, type Modification, type ObjectModificationTable }
+export { ModificationType, type ObjectData, ObjectType, type Modification, type ObjectModificationTable }

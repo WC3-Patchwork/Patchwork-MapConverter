@@ -1,6 +1,6 @@
 export * from './Camera'
 export * from './Doodad'
-export * from './Import'
+export * from './Asset'
 export * from './Info'
 export * from './ObjectModificationTable'
 export * from './Region'

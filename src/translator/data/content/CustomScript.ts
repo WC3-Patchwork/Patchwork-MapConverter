@@ -1,8 +1,6 @@
-import { type Describable } from '../properties/Describable'
-import { type Enableable } from '../properties/Enableable'
 import { type ScriptContent } from '../properties/ScriptContent'
-import { type TriggerContent } from './TriggerContent'
+import { type TriggerItemBase } from './TriggerItemBase'
 
-interface CustomScript extends TriggerContent, Enableable, ScriptContent, Describable {}
+interface CustomScript extends TriggerItemBase, ScriptContent {}
 
 export type { CustomScript }

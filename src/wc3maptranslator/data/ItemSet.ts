@@ -1,10 +1,12 @@
+import { type integer } from '../CommonInterfaces'
+
 interface ItemSet {
-  items: DroppableItem[]
+  items: DroppableItem[] | undefined
 }
 
 interface DroppableItem {
-  itemId: string,
-  chance: number
+  itemId: string
+  chance: integer
 }
 
 export type { ItemSet, DroppableItem }

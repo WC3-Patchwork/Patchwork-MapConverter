@@ -4,23 +4,29 @@ export class W3Buffer {
   private _offset = 0
   private readonly _buffer: Buffer
 
-  constructor (buffer: Buffer) {
+  constructor(buffer: Buffer) {
     this._buffer = buffer
   }
 
-  public readInt (): number {
+  public readInt(): number {
     const int: number = this._buffer.readInt32LE(this._offset)
     this._offset += 4
     return int
   }
 
-  public readShort (): number {
+  public readUint(): number {
+    const uint: number = this._buffer.readUInt32LE(this._offset)
+    this._offset += 4
+    return uint
+  }
+
+  public readShort(): number {
     const int: number = this._buffer.readInt16LE(this._offset)
     this._offset += 2
     return int
   }
 
-  public readFloat (): number {
+  public readFloat(): number {
     const float: number = this._buffer.readFloatLE(this._offset)
     this._offset += 4
     return roundTo(float, 3)
@@ -72,10 +78,10 @@ export class W3Buffer {
   public readByte (): number {
     const byte = this._buffer.readUInt8(this._offset);
     this._offset += 1
-    return byte
+    return byte ?? 0
   }
 
-  public isExhausted (): boolean {
+  public isExhausted(): boolean {
     return this._offset === this._buffer.length
   }
 }
