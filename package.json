@@ -21,6 +21,7 @@
     "prebuild": "node generateProgramMetadata.js > src/metadata.ts",
     "clean": "tsc --build --clean",
     "build": "pnpm run clean && tsc --build",
+    "dev": "node .",
     "lint": "pnpm exec eslint --cache --concurrency auto",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

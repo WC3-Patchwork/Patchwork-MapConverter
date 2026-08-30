@@ -3,6 +3,7 @@
 /.vscode
 /dist
 /tsconfig.tsbuildinfo
+/.devcontainer/devcontainer-lock.json
 
 # generated
 /src/metadata.ts
