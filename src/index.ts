@@ -37,10 +37,10 @@ program
   .addOption(new Option('--ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('--mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
   .addOption(new Option('--tf, --triggers-filename', 'Filename for triggers file which contains both GUI triggers and custom scripts, Does not work with compose-triggers.').default(EnhancementManager.triggersFilename))
-  .addOption(new Option('-ctf, --chunkified-terrain-folder', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
-  .option('-chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
-  .addOption(new Option('-cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
-  .addOption(new Option('-cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
+  .addOption(new Option('--ctf, --chunkified-terrain-folder', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
+  .option('--chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
+  .addOption(new Option('--cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
+  .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
     const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
     EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
     EnhancementManager.chunkSize.sizeY = Number.parseInt(sizeY)
@@ -90,7 +90,8 @@ program
     if (/\\|\//.test(options.triggersFilename as string)) {
       throw new Error(`Invalid triggersFilename '${options.triggersFilename}' must not be a path!`)
     } else {
-      if (options.composeTriggers) {
+      if (options.composeTriggers && options.triggersFilename != EnhancementManager.triggersFilename) { 
+        // different from default -> explicitly specified by user
         log.warn(`Will ignore triggersFilename options since composeTriggers is enabled.`)
       } else {
         EnhancementManager.triggersFilename = options.triggersFilename as string
@@ -125,7 +126,7 @@ program
 program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
-  .option('-gtp, --generate-target-profile', 'Generate target profile json file for json2war')
+  .option('--gtp, --generate-target-profile', 'Generate target profile json file for json2war')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argOptional())

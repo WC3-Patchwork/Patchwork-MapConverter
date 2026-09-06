@@ -10,7 +10,7 @@ function int2Hex(num: number, isShort = false, unsigned: boolean) {
   const hex = val.toString(16).padStart(width, '0').toUpperCase();
 
   // split into bytes and reverse
-  return hex.match(/.{2}/g)!.reverse().join('');
+  return hex.match(/.{2}/g)!.map(it => `0x${it}`).reverse();
 }
 const charToHex = (character: string): string => {
   return `0x${character.charCodeAt(0).toString(16)}`
@@ -51,8 +51,8 @@ export class HexBuffer {
     })
   }
 
-  public addInt (int: number, isShort = false): void {
-    this._buffer.push(... int2Hex(int, isShort, false))
+  public addInt(int: number, isShort = false): void {
+    this._buffer.push(...int2Hex(int, isShort, false))
   }
 
   public addUInt(int: number, isShort = false): void {

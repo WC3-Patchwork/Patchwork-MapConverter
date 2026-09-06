@@ -11,8 +11,8 @@ import { mergeBoolRecords } from '../Util'
 const log = LoggerFactory.createLogger('UnitsTranslator')
 
 export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversion: integer, editorVersion: integer): Buffer {
-  if (formatVersion >= 9) {
-    throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 9`)
+  if (formatVersion >= 10) {
+    throw new Error(`Unknown preplaced units format version=${formatVersion}, expected below 10`)
   }
 
   if (formatSubversion >= 12) {
@@ -147,8 +147,8 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
     log.warn(`Mismatched file format magic number, found '${fileId}', expected 'W3do', will attempt parsing...`)
   }
   const formatVersion = input.readInt()
-  if (formatVersion >= 9) {
-    log.warn(`Unknown preplaced units format version '${formatVersion}', expected less than 9, will attempt parsing...`)
+  if (formatVersion >= 10) {
+    log.warn(`Unknown preplaced units format version '${formatVersion}', expected less than 10, will attempt parsing...`)
   } else {
     log.info(`Preplaced units format version is ${formatVersion}.`)
   }

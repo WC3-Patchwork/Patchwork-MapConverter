@@ -85,7 +85,9 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       case ContentType.CATEGORY:
         elementId = 0x02000000 + categoryCount++
         triggerStack.push(...(currentTrigger as TriggerContainer).children)
-
+        for (const childTrigger of (currentTrigger as TriggerContainer).children) {
+          parentReference.set(childTrigger, elementId)
+        }
         break
       case ContentType.TRIGGER:
       case ContentType.TRIGGER_SCRIPTED:

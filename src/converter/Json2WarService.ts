@@ -113,7 +113,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
         if ((trigger as MapHeader).children != null) { // Found header
           scriptArg.headerComment = trigger.description
         }
-        scriptArg.scripts.push(trigger.script)
+        scriptArg.scripts.push(trigger.script ?? '')
       } else {
         scriptArg.scripts.push('')
       }
@@ -293,7 +293,7 @@ export const Json2WarService = {
         const importedFiles = ImportComposer.composeImportRegistry(importDirectoryTree)
         promises.push(exportImportsFile(importedFiles, importFileOutputPath, profile))
 
-        for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(importDirectoryTree, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
+        for (const [, file] of TreeIterator<DirectoryTree>(directoryTree((importDirectoryTree as DirectoryTree<Record<string, unknown>>).path, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
           if (FileBlacklist.isDirectoryTreeBlacklisted(parent)) return
           return parent.children
         })) {

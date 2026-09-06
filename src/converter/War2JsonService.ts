@@ -374,6 +374,7 @@ export const War2JsonService = {
     if (EnhancementManager.generateTargetProfile) {
       log.info('Writing profile.json...')
       await WriteAndCreatePath(path.join(outputPath, 'profile.json'), JSONConverter.stringify(recordedProfile))
+      log.info(`Profile generated at ${path.join(outputPath, 'profile.json')}`)
     }
   }
 }

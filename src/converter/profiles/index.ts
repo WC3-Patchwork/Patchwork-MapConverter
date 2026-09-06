@@ -1,6 +1,7 @@
+import { TargetProfile } from '../Profile'
 import { LatestProfile } from './Latest'
 
-const Profiles = {
+const Profiles : Record<string, TargetProfile> = { 
   latest: LatestProfile
 }
 
