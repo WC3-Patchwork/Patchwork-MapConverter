@@ -31,7 +31,7 @@ const soundChannelEnum = {
   20: SoundChannel.CINEMATIC_SFX1,
   21: SoundChannel.CINEMATIC_SFX2,
   22: SoundChannel.CINEMATIC_SFX3,
-  [-1]: SoundChannel.GENERAL // 0xFFFFFFFF - this key takes priority in reverse 
+  [-1]: SoundChannel.GENERAL // this key takes priority in reverse 
 } as Record<integer, SoundChannel>
 
 const soundChannelEnumReverse = Object.entries(soundChannelEnum).reduce((acc: Record<string, integer>, it) => {
@@ -76,7 +76,7 @@ export function jsonToWar(soundsJson: Sound[], formatVersion: integer): Buffer {
     output.addFloat(sound['3d']?.cone?.orientation?.[1] ?? SoundDefaults['3d'].cone.orientation[1])
     output.addFloat(sound['3d']?.cone?.orientation?.[2] ?? SoundDefaults['3d'].cone.orientation[2])
 
-    if (formatVersion > 1) {
+    if (formatVersion >= 2) {
       const assetFlags = sound.assetFlags ?? 0
 
       output.addString(sound.name)
@@ -92,7 +92,7 @@ export function jsonToWar(soundsJson: Sound[], formatVersion: integer): Buffer {
       output.addString(sound.animationGroup ?? SoundDefaults.animationGroup)
       output.addString(sound.animationSetFilepath ?? SoundDefaults.animationSetFilepath)
 
-      if (formatVersion > 2) {
+      if (formatVersion >= 3) {
         output.addInt(+(sound.animationSetFilepathIsMapRelative ?? SoundDefaults.animationSetFilepathIsMapRelative))
       }
     }
@@ -136,19 +136,19 @@ export function warToJson(buffer: Buffer): [Sound[], integer] {
     const coneOrientationZ = input.readFloat()
     let channel = soundChannelEnum[channelValue] as SoundChannel | undefined
 
-    let labelSLK = ''
-    let dialogueId = 0xFFFFFFFF
-    let productionComments = ''
-    let speakerNameId = 0xFFFFFFFF
-    let listenerName = ''
-    let assetFlags = 0
-    let speakerUnitId = ''
-    let animationLabel = ''
-    let animationGroup = ''
-    let animationSetFilepath = ''
-    let animationSetFilepathIsMapRelative = true
+    let labelSLK = SoundDefaults.labelSLK
+    let dialogueId = SoundDefaults.dialogueId
+    let productionComments = SoundDefaults.productionComments
+    let speakerNameId = SoundDefaults.speakerNameId
+    let listenerName = SoundDefaults.listenerName
+    let assetFlags = SoundDefaults.assetFlags
+    let speakerUnitId = SoundDefaults.speakerUnitId
+    let animationLabel = SoundDefaults.animationLabel
+    let animationGroup = SoundDefaults.animationGroup
+    let animationSetFilepath = SoundDefaults.animationSetFilepath
+    let animationSetFilepathIsMapRelative = SoundDefaults.animationSetFilepathIsMapRelative
 
-    if (formatVersion > 1) {
+    if (formatVersion >= 2) {
       name = input.readString()
       labelSLK = input.readString()
       path = input.readString()
@@ -162,8 +162,7 @@ export function warToJson(buffer: Buffer): [Sound[], integer] {
       animationGroup = input.readString()
       animationSetFilepath = input.readString()
 
-      if (formatVersion > 2) {
-        // Note: This field is true for older file formats, but editor generates sounds with this field as false by default
+      if (formatVersion >= 3) {
         animationSetFilepathIsMapRelative = !!input.readInt()
       }
     }
