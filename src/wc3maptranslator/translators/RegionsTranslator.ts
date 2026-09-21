@@ -4,36 +4,9 @@ import { type integer, type color } from '../CommonInterfaces'
 import { type Region } from '../data/Region'
 import { LoggerFactory } from '../../logging/LoggerFactory'
 import { RegionDefaults } from '../default/Region'
+import { colorBytesToHex, colorHexToBytes } from '../Util'
 
 const log = LoggerFactory.createLogger('RegionTranslator')
-
-function bytesToHexString(...byteArray: integer[]): string {
-  return Array.from(byteArray, function (byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2)
-  }).join('')
-}
-
-function hexStringToBytes(hex: string): integer[] {
-  const bytes: integer[] = []
-  for (let c = 0; c < hex.length; c += 2) {
-    bytes.push(parseInt(hex.substring(c, c + 2), 16))
-  }
-  return bytes
-}
-
-// json wants it in ARGB, but .w3r file stores it as BB GG RR AA
-function colorBytesToHex(blue: integer, green: integer, red: integer, alpha: integer): color {
-  return `#${bytesToHexString(alpha, red, green, blue)}`
-}
-
-// The order in .w3r is BB GG RR AA, whereas the JSON spec order is #AARRGGBB
-function colorHexToBytes(hex: color): [integer, integer, integer, integer] {
-  if (hex.startsWith('#') && hex.length === 9) {
-    return hexStringToBytes(hex.substring(1)).reverse() as [integer, integer, integer, integer]
-  } else {
-    throw new Error(`Unable to parse ${hex} as color, expected '#AARRGGBB' format!`)
-  }
-}
 
 export function jsonToWar(regionsJson: Region[], formatVersion: integer): Buffer {
   if (formatVersion < 0 || formatVersion > 7) {
