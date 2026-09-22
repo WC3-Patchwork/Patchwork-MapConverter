@@ -17,19 +17,8 @@ const DoodadDefaults = {
   lights: []
 }
 
-const DoodadLightDefaults = {
-  isShadowCasting: false,
-  color: "#FFFFFFFF",
-  intensity: 10,
-  shadowCastingStart: 0,
-  shadowCastingEnd: 0,
-  quadraticFalloff: 0,
-  linearFalloff: 0,
-  damping: 0
-}
-
 const SpecialDoodadDefaults = {
   variation: 0
 }
 
-export { DoodadDefaults, DoodadLightDefaults, SpecialDoodadDefaults }
+export { DoodadDefaults, SpecialDoodadDefaults }

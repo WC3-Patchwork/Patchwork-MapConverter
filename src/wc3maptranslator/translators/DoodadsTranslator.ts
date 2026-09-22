@@ -1,11 +1,13 @@
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { type SpecialDoodad, type Doodad, DoodadLight } from '../data/Doodad'
+import { type SpecialDoodad, type Doodad } from '../data/Doodad'
 import { rad2Deg, deg2Rad, mergeBoolRecords, colorHexToBytes, colorBytesToHex } from '../Util'
 import { type integer, type vector3 } from '../CommonInterfaces'
 import { type DroppableItem, type ItemSet } from '../data/ItemSet'
 import { LoggerFactory } from '../../logging/LoggerFactory'
-import { DoodadDefaults, DoodadLightDefaults, SpecialDoodadDefaults } from '../default/Doodad'
+import { DoodadDefaults, SpecialDoodadDefaults } from '../default/Doodad'
+import { WidgetLightDefaults } from '../default/WidgetLight'
+import { WidgetLight } from '../data/WidgetLight'
 
 const log = LoggerFactory.createLogger('DoodadsTranslator')
 
@@ -90,16 +92,16 @@ export function jsonToWar({ doodads, specialDoodads }: DoodadsTranslatorOutput, 
       output.addInt(doodadLights.length)
       doodadLights.forEach((light, index) => {
         output.addInt(index)
-        output.addInt(+(light.isShadowCasting ?? DoodadLightDefaults.isShadowCasting))
-        colorHexToBytes(light.color ?? DoodadLightDefaults.color).forEach((it) => {
+        output.addInt(+(light.isShadowCasting ?? WidgetLightDefaults.isShadowCasting))
+        colorHexToBytes(light.color ?? WidgetLightDefaults.color).forEach((it) => {
           output.addByte(it)
         })
-        output.addFloat(light.intensity ?? DoodadLightDefaults.intensity)
-        output.addFloat(light.shadowCastingStart ?? DoodadLightDefaults.shadowCastingStart)
-        output.addFloat(light.shadowCastingEnd ?? DoodadLightDefaults.shadowCastingEnd)
-        output.addFloat(light.quadraticFalloff ?? DoodadLightDefaults.quadraticFalloff)
-        output.addFloat(light.linearFalloff ?? DoodadLightDefaults.linearFalloff)
-        output.addFloat(light.damping ?? DoodadLightDefaults.damping)
+        output.addFloat(light.intensity ?? WidgetLightDefaults.intensity)
+        output.addFloat(light.shadowCastingStart ?? WidgetLightDefaults.shadowCastingStart)
+        output.addFloat(light.shadowCastingEnd ?? WidgetLightDefaults.shadowCastingEnd)
+        output.addFloat(light.quadraticFalloff ?? WidgetLightDefaults.quadraticFalloff)
+        output.addFloat(light.linearFalloff ?? WidgetLightDefaults.linearFalloff)
+        output.addFloat(light.damping ?? WidgetLightDefaults.damping)
       });
     }
   })
@@ -224,7 +226,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [DoodadsTrans
 
     let roll: number| undefined
     let pitch: number| undefined
-    let lights: DoodadLight[]| undefined
+    let lights: WidgetLight[]| undefined
     if (formatVersion >= 13) {
       roll = input.readFloat()
       pitch = input.readFloat()

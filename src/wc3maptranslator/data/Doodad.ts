@@ -1,5 +1,6 @@
 import { type vector3, type angle, type integer, vector2, color } from '../CommonInterfaces'
 import { type ItemSet } from './ItemSet'
+import { WidgetLight } from './WidgetLight'
 
 interface Doodad {
   type: string
@@ -17,7 +18,7 @@ interface Doodad {
   id: integer | undefined
   roll: number | undefined
   pitch: number | undefined
-  lights: DoodadLight[] | undefined
+  lights: WidgetLight[] | undefined
 }
 
 interface DoodadFlags {
@@ -27,22 +28,10 @@ interface DoodadFlags {
   useModelAxes: boolean
 }
 
-interface DoodadLight {
-  index: number
-  isShadowCasting: boolean
-  color: color
-  intensity: number
-  shadowCastingStart: number
-  shadowCastingEnd: number
-  quadraticFalloff: number
-  linearFalloff: number
-  damping: number
-}
-
 interface SpecialDoodad {
   type: string
   variation: integer | undefined
   position: vector2
 }
 
-export type { Doodad, DoodadFlags, DoodadLight, SpecialDoodad }
+export type { Doodad, DoodadFlags, SpecialDoodad }
