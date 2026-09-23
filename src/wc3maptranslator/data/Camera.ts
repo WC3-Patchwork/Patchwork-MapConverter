@@ -15,6 +15,10 @@ interface Camera {
   localPitch: number | undefined
   localYaw: number | undefined
   localRoll: number | undefined
+  dofDistance: number | undefined
+  dofScale: number | undefined
+  posAbsoluteZ: number | undefined
+  freeCamera: boolean | undefined
 }
 
 export type { Camera }
