@@ -1,4 +1,4 @@
-import { type integer } from '../CommonInterfaces'
+import { color, type integer } from '../CommonInterfaces'
 
 interface Info {
   mapVersion: number
@@ -10,7 +10,7 @@ interface Info {
     build: integer
   }
   gameDataSet: number
-  mapDataVersion: number
+  gameDataVersion: number
   map: {
     name: string
     author: string
@@ -44,6 +44,9 @@ interface Info {
       forceDefaultCameraZoom: boolean // 0x100000
       forceMaxCameraZoom: boolean // 0x200000
       forceMinCameraZoom: boolean // 0x400000
+      overrideHdWaterColor: boolean // 0x800000
+      alphaTileDefaultMinimapColor: boolean // 0x1000000
+      dynamicMinimap: boolean // 0x2000000
     }
     mainTileType: string
     fog: {
@@ -51,12 +54,30 @@ interface Info {
       startHeight: number
       endHeight: number
       density: number
-      color: [integer, integer, integer, integer]
+      color: color
+      newHeightStart: number
+      newHeightEnd: number
+      newLinearStart: number
+      newLinearEnd: number
+      maxOpacity: number
+      drawFogOverSky: boolean
     }
     globalWeatherEffect: number
     customSoundEnvironment: string
     customLightEnvironment: number
-    waterColor: [integer, integer, integer, integer]
+    water: {
+      color: color
+      hdMinOpacity: integer
+      hdMaxOpacity: integer
+      hdReflectivity: integer
+      hdEmissivity: integer
+      hdEdgeSoftness: integer
+      hdWavesVertexDisplacement: integer
+      hdWavesNormalMapStrength: integer
+      hdEnvmapReflectivity: integer
+      hdColor: color
+    },
+    alphaTileMinimapColor: color
   }
   camera: {
     bounds: [number, number, number, number, number, number, number, number] // x,y pairs
@@ -68,6 +89,7 @@ interface Info {
   }
   loadingScreen: {
     imageId: number
+    raceCrest: RaceCrest
     path: string
     text: string
     title: string
@@ -83,6 +105,7 @@ interface Info {
   assetMode: {
     SD: boolean
     HD: boolean
+    DE: boolean
   }
   players: Player[] | undefined
   forces: Force[] | undefined
@@ -96,6 +119,7 @@ interface Player {
   slotId: integer
   type: PlayerType
   race: Race
+  raceCrest: RaceCrest
   name: string
   startLocation: {
     x: number
@@ -151,15 +175,22 @@ interface RandomGroup {
 }
 
 interface RandomGroupSet {
-  type: RandomGroupSetType
   chance: integer
-  objects: string[]
+  objects: RandomGroupSetObject[]
+}
+
+interface RandomGroupSetObject {
+  type: RandomGroupObjectType
+  objectId: string
 }
 
 enum FogType {
   LINEAR = 'LINEAR',
   EXPONENTIAL1 = 'EXPONENTIAL1',
-  EXPONENTIAL2 = 'EXPONENTIAL2'
+  EXPONENTIAL2 = 'EXPONENTIAL2',
+  NEW_EXPONENTIAL1 = 'NEW_EXPONENTIAL1',
+  NEW_EXPONENTIAL2 = 'NEW_EXPONENTIAL2',
+  HEIGHT = 'HEIGHT'
 }
 
 enum Race {
@@ -168,6 +199,15 @@ enum Race {
   UNDEAD = 'UNDEAD',
   NIGHT_ELF = 'NIGHT_ELF',
   RANDOM = 'RANDOM'
+}
+
+enum RaceCrest {
+  SELECTED_RACE = 'SELECTED_RACE',
+  HUMAN = 'HUMAN',
+  ORC = 'ORC',
+  UNDEAD = 'UNDEAD',
+  NIGHT_ELF = 'NIGHT_ELF',
+  FORSAKEN = 'FORSAKEN'
 }
 
 enum PlayerType {
@@ -179,7 +219,7 @@ enum PlayerType {
 
 type PlayerList = integer[] // 0-indexed player IDs
 
-enum RandomGroupSetType {
+enum RandomGroupObjectType {
   ANY_UNIT = 'ANY_UNIT',
   ANY_BUILDING = 'ANY_BUILDING',
   ANY_ITEM = 'ANY_ITEM'
@@ -196,5 +236,5 @@ enum ResearchState {
   RESEARCHED = 'RESEARCHED'
 }
 
-export { PlayerType, Race, RandomGroupSetType, FogType, ResearchState, ScriptLanguage }
+export { PlayerType, Race, RaceCrest, RandomGroupObjectType, FogType, ResearchState, ScriptLanguage }
 export type { Info, Player, PlayerList, Force, UpgradeAvailable, TechUnavailable, ItemTable, RandomGroup, RandomGroupSet, ObjectChance }
