@@ -1,4 +1,4 @@
-import { color, type integer } from '../CommonInterfaces'
+import { color, FourCC, type integer } from '../CommonInterfaces'
 
 interface Info {
   mapVersion: number
@@ -9,8 +9,8 @@ interface Info {
     patch: integer
     build: integer
   }
-  gameDataSet: number
-  gameDataVersion: number
+  gameDataSet: GameDataSet
+  gameDataVersion: GameDataVersion
   map: {
     name: string
     author: string
@@ -48,7 +48,7 @@ interface Info {
       alphaTileDefaultMinimapColor: boolean // 0x1000000
       dynamicMinimap: boolean // 0x2000000
     }
-    mainTileType: string
+    mainTileType: Tileset
     fog: {
       type: FogType
       startHeight: number
@@ -62,9 +62,9 @@ interface Info {
       maxOpacity: number
       drawFogOverSky: boolean
     }
-    globalWeatherEffect: number
-    customSoundEnvironment: string
-    customLightEnvironment: number
+    globalWeatherEffect: FourCC
+    customSoundEnvironment: string // dynamic string
+    customLightEnvironment: string // single char
     water: {
       color: color
       hdMinOpacity: integer
@@ -236,5 +236,42 @@ enum ResearchState {
   RESEARCHED = 'RESEARCHED'
 }
 
-export { PlayerType, Race, RaceCrest, RandomGroupObjectType, FogType, ResearchState, ScriptLanguage }
+enum GameDataSet {
+  DEFAULT = 'DEFAULT',
+  CUSTOM = 'CUSTOM',
+  MELEE = 'MELEE'
+}
+
+enum GameDataVersion {
+  ROC = 'ROC',
+  TFT = 'TFT',
+  FK = 'FK'
+}
+
+enum Tileset {
+  ASHENVALE = 'ASHENVALE',
+  BARRENS = 'BARRENS',
+  FELWOOD = 'FELWOOD',
+  DUNGEON = 'DUNGEON',
+  LORDAERON_FALL = 'LORDAERON_FALL',
+  UNDERGROUND = 'UNDERGROUND',
+  ICECROWN = 'ICECROWN',
+  DALARAN_RUINS = 'DALARAN_RUINS',
+  BLACK_CITADEL = 'BLACK_CITADEL',
+  LORDAERON_SUMMER = 'LORDAERON_SUMMER',
+  NORTHREND = 'NORTHREND',
+  OUTLAND = 'OUTLAND',
+  CITYSCAPE_RUINS = 'CITYSCAPE_RUINS',
+  VILLAGE_FALL = 'VILLAGE_FALL',
+  LORDAERON_CAPITAL_RUINS = 'LORDAERON_CAPITAL_RUINS',
+  VILLAGE = 'VILLAGE',
+  LORDAERON_WINTER = 'LORDAERON_WINTER',
+  DALARAN = 'DALARAN',
+  CITYSCAPE = 'CITYSCAPE',
+  SUNKEN_RUINS = 'SUNKEN_RUINS',
+  LORDAERON_CAPITAL = 'LORDAERON_CAPITAL',
+  UNDERCITY = 'UNDERCITY'
+}
+
+export { PlayerType, Race, RaceCrest, RandomGroupObjectType, FogType, ResearchState, ScriptLanguage, GameDataSet, GameDataVersion, Tileset }
 export type { Info, Player, PlayerList, Force, UpgradeAvailable, TechUnavailable, ItemTable, RandomGroup, RandomGroupSet, ObjectChance }

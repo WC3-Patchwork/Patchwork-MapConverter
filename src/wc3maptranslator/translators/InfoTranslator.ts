@@ -3,7 +3,7 @@ import { color, type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { mergeBoolRecords, colorBytesToHex, colorHexToBytes } from '../Util'
 import { W3Buffer } from '../W3Buffer'
-import { type ObjectChance, type Force, type Info, type Player, type RandomGroup, type RandomGroupSet, type TechUnavailable, type UpgradeAvailable, type PlayerList, ScriptLanguage, ResearchState, PlayerType, Race, FogType, type ItemTable, RandomGroupObjectType, RaceCrest } from '../data/Info'
+import { type ObjectChance, type Force, type Info, type Player, type RandomGroup, type RandomGroupSet, type TechUnavailable, type UpgradeAvailable, type PlayerList, ScriptLanguage, ResearchState, PlayerType, Race, FogType, type ItemTable, RandomGroupObjectType, RaceCrest, GameDataVersion, GameDataSet, Tileset } from '../data/Info'
 import { ForceDefaults, InfoDefaults, PlayerDefaults, RandomGroupDefaults, UpgradeAvailableDefaults } from '../default/Info'
 
 const log = LoggerFactory.createLogger('InfoTranslator')
@@ -11,13 +11,15 @@ const log = LoggerFactory.createLogger('InfoTranslator')
 function playerBitmapToPlayerList(playerBitmap: integer): PlayerList {
   const playerList: integer[] = []
   for (let i = 0; i < 24; i++) {
-    playerList.push(playerBitmap & (1 << i))
+    if (playerBitmap & (1 << i)){
+      playerList.push(i)
+    }
   }
   return playerList
 }
 
 function playerListToPlayerBitmap(playerList: PlayerList): integer {
-  return playerList.map(it => 1 << it).reduce((acc, it) => acc | it)
+  return playerList.map(it => 1 << it).reduce((acc, it) => acc | it, 0)
 }
 
 export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
@@ -114,7 +116,56 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   if (formatVersion >= 8) {
-    output.addChar(infoJson.map?.mainTileType ?? InfoDefaults.map.mainTileType)
+    output.addChar(((value) => {
+      switch(value){
+        case Tileset.ASHENVALE: 
+          return 'A'
+        case Tileset.BARRENS: 
+          return 'B'
+        case Tileset.FELWOOD: 
+          return 'C'
+        case Tileset.DUNGEON: 
+          return 'D'
+        case Tileset.LORDAERON_FALL: 
+          return 'F'
+        case Tileset.UNDERGROUND: 
+          return 'G'
+        case Tileset.ICECROWN: 
+          return 'I'
+        case Tileset.DALARAN_RUINS: 
+          return 'J'
+        case Tileset.BLACK_CITADEL: 
+          return 'K'
+        case Tileset.LORDAERON_SUMMER: 
+          return 'L'
+        case Tileset.NORTHREND: 
+          return 'N'
+        case Tileset.OUTLAND: 
+          return 'O'
+        case Tileset.CITYSCAPE_RUINS: 
+          return 'P'
+        case Tileset.VILLAGE_FALL: 
+          return 'Q'
+        case Tileset.LORDAERON_CAPITAL_RUINS: 
+          return 'R'
+        case Tileset.VILLAGE: 
+          return 'V'
+        case Tileset.LORDAERON_WINTER: 
+          return 'W'
+        case Tileset.DALARAN: 
+          return 'X'
+        case Tileset.CITYSCAPE: 
+          return 'Y'
+        case Tileset.SUNKEN_RUINS: 
+          return 'Z'
+        case Tileset.LORDAERON_CAPITAL: 
+          return 'e'
+        case Tileset.UNDERCITY: 
+          return 'u'
+        default:
+          return 'L'
+      }
+    })(infoJson.map?.mainTileType ?? InfoDefaults.map.mainTileType))
   }
 
   if (formatVersion >= 10) {
@@ -147,7 +198,18 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
 
   if (formatVersion >= 13) {
     if (formatVersion >= 17) {
-      output.addInt(infoJson.gameDataSet ?? InfoDefaults.gameDataSet) // used to be prologue imageId
+      output.addInt(((value) => {
+        switch(value){
+          case GameDataSet.DEFAULT:
+            return -1; // prefer -1 instead of 0
+          case GameDataSet.CUSTOM:
+            return 1;
+          case GameDataSet.MELEE:
+            return 2;
+          default:
+            return -1;
+        }
+      })(infoJson.gameDataSet ?? InfoDefaults.gameDataSet)) // used to be prologue imageId
     }
     if (formatVersion < 18) {
       output.addString('')
@@ -191,7 +253,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   if (formatVersion >= 21) {
-    output.addInt(infoJson.map?.globalWeatherEffect ?? InfoDefaults.map.globalWeatherEffect)
+    output.addChars(infoJson.map?.globalWeatherEffect ?? InfoDefaults.map.globalWeatherEffect)
   }
 
   if (formatVersion >= 22) {
@@ -199,7 +261,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   if (formatVersion >= 23) {
-    output.addByte(infoJson.map?.customLightEnvironment ?? InfoDefaults.map.customLightEnvironment)
+    output.addChar(infoJson.map?.customLightEnvironment ?? InfoDefaults.map.customLightEnvironment)
   }
 
   if (formatVersion >= 25) {
@@ -218,7 +280,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
     output.addInt(scriptLanguageValue)
   }
 
-  const assetMode = { ...infoJson?.assetMode, ...InfoDefaults.assetMode }
+  const assetMode = { ...InfoDefaults.assetMode, ...infoJson?.assetMode }
   if (formatVersion >= 29) {
     let supportedModes = 0
     if (assetMode?.SD) supportedModes |= 0x01
@@ -228,7 +290,18 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   }
 
   if (formatVersion >= 30) {
-    output.addInt(infoJson.gameDataVersion ?? InfoDefaults.gameDataVersion)
+    output.addInt(((value) => {
+      switch(value){
+        case GameDataVersion.ROC:
+          return 0;
+        case GameDataVersion.TFT:
+          return 1;
+        case GameDataVersion.FK:
+          return 2;
+        default:
+          return 0; // prefer ROC for backwards compat
+      }
+    })(infoJson.gameDataVersion ?? InfoDefaults.gameDataVersion))
   }
 
   if (formatVersion >= 32) {
@@ -419,7 +492,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
         let randomGroupObjectType: keyof typeof RandomGroupObjectType;
         for (randomGroupObjectType in RandomGroupObjectType) {
           for (let i = 0; i < objectTypeCounts[randomGroupObjectType]; i++) {
-            output.addChars(row[RandomGroupObjectType.ANY_UNIT][i] ?? RandomGroupDefaults.objectId)
+            output.addChars(row[randomGroupObjectType][i] ?? RandomGroupDefaults.objectId)
           }
         }
       });
@@ -533,7 +606,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
   if (formatVersion >= 14) {
     cameraMargins = [input.readInt(), input.readInt(), input.readInt(), input.readInt()]
   } else {
-    cameraMargins = [...InfoDefaults.camera.margins]
+    cameraMargins = [...InfoDefaults.camera.margins] as [integer, integer, integer, integer]
   }
 
   let width: number
@@ -636,9 +709,58 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
     dynamicMinimap = InfoDefaults.map.flags.dynamicMinimap
   }
 
-  let tileset: string
+  let tileset: Tileset
   if (formatVersion >= 8) {
-    tileset = input.readChars()
+    tileset = (((value)=>{
+      switch(value){
+        case 'A': 
+          return Tileset.ASHENVALE
+        case 'B': 
+          return Tileset.BARRENS
+        case 'C': 
+          return Tileset.FELWOOD
+        case 'D': 
+          return Tileset.DUNGEON
+        case 'F': 
+          return Tileset.LORDAERON_FALL
+        case 'G': 
+          return Tileset.UNDERGROUND
+        case 'I': 
+          return Tileset.ICECROWN
+        case 'J': 
+          return Tileset.DALARAN_RUINS
+        case 'K': 
+          return Tileset.BLACK_CITADEL
+        case 'L': 
+          return Tileset.LORDAERON_SUMMER
+        case 'N': 
+          return Tileset.NORTHREND
+        case 'O': 
+          return Tileset.OUTLAND
+        case 'P': 
+          return Tileset.CITYSCAPE_RUINS
+        case 'Q': 
+          return Tileset.VILLAGE_FALL
+        case 'R': 
+          return Tileset.LORDAERON_CAPITAL_RUINS
+        case 'V': 
+          return Tileset.VILLAGE
+        case 'W': 
+          return Tileset.LORDAERON_WINTER
+        case 'X': 
+          return Tileset.DALARAN
+        case 'Y': 
+          return Tileset.CITYSCAPE
+        case 'Z': 
+          return Tileset.SUNKEN_RUINS
+        case 'e': 
+          return Tileset.LORDAERON_CAPITAL
+        case 'u': 
+          return Tileset.UNDERCITY
+        default:
+          return Tileset.LORDAERON_SUMMER
+      }
+    })(input.readChars()))
   } else {
     tileset = InfoDefaults.map.mainTileType
   }
@@ -695,14 +817,25 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
     loadingScreenSubtitle = InfoDefaults.loadingScreen.subtitle
   }
 
-  let prologueScreenImageId: integer
+  let prologueScreenImageId: GameDataSet
   let prologueScreenImageFile: string
   let prologueScreenText: string
   let prologueScreenTitle: string
   let prologueScreenSubtitle: string
   if (formatVersion >= 13) {
     if (formatVersion >= 17) {
-      prologueScreenImageId = input.readInt()
+      prologueScreenImageId = ((value) => {
+        switch(value){
+          case 0:
+            return GameDataSet.DEFAULT
+          case 1:
+            return GameDataSet.CUSTOM
+          case 2:
+            return GameDataSet.MELEE
+          default:
+            return GameDataSet.DEFAULT
+        }
+      })(input.readInt())
     } else {
       prologueScreenImageId = InfoDefaults.gameDataSet
     }
@@ -780,9 +913,9 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
     fogDrawOverSky = InfoDefaults.map.fog.drawFogOverSky
   }
 
-  let globalWeatherEffect: integer
+  let globalWeatherEffect: string
   if (formatVersion >= 21) {
-    globalWeatherEffect = input.readInt()
+    globalWeatherEffect = input.readChars(4)
   } else {
     globalWeatherEffect = InfoDefaults.map.globalWeatherEffect
   }
@@ -794,9 +927,9 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
     customSoundEnvironment = InfoDefaults.map.customSoundEnvironment
   }
 
-  let customLightEnvironment: integer
+  let customLightEnvironment: string
   if (formatVersion >= 23) {
-    customLightEnvironment = input.readByte()
+    customLightEnvironment = input.readChars(1)
   } else {
     customLightEnvironment = InfoDefaults.map.customLightEnvironment
   }
@@ -816,7 +949,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
   let assetMode: { SD: boolean, HD: boolean, DE: boolean }
   if (formatVersion >= 29) {
     let assetModeVal = input.readInt()
-    if (assetModeVal === 0) assetModeVal = 3
+    if (assetModeVal === 0) assetModeVal = 7
     assetMode = {
       SD: !!(assetModeVal & 0x01),
       HD: !!(assetModeVal & 0x02),
@@ -826,9 +959,20 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
     assetMode = { ...InfoDefaults.assetMode }
   }
 
-  let gameDataVersion: integer
+  let gameDataVersion: GameDataVersion
   if (formatVersion >= 30) {
-    gameDataVersion = input.readInt()
+    gameDataVersion = ((value) => {
+      switch(value){
+        case 0:
+          return GameDataVersion.ROC;
+        case 1:
+          return GameDataVersion.TFT;
+        case 2:
+          return GameDataVersion.FK;
+        default:
+          return GameDataVersion.ROC;
+      }
+    })(input.readInt())
   } else {
     gameDataVersion = InfoDefaults.gameDataVersion
   }

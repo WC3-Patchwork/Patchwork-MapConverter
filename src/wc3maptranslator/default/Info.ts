@@ -1,27 +1,27 @@
 import { color, type integer } from '../CommonInterfaces'
-import { FogType, PlayerType, Race, RaceCrest, RandomGroupObjectType, ResearchState, ScriptLanguage } from '../data'
+import { FogType, GameDataSet, GameDataVersion, PlayerType, Race, RaceCrest, RandomGroupObjectType, ResearchState, ScriptLanguage, Tileset } from '../data'
 
 const InfoDefaults = {
-  mapVersion: 0,
+  mapVersion: 1,
   editorVersion: 0,
   gameVersion: {
-    major: 0,
+    major: 3,
     minor: 0,
     patch: 0,
-    build: 0
+    build: 24268
   },
-  gameDataSet: -1,
-  gameDataVersion: 0, // TODO: find default
+  gameDataSet: GameDataSet.DEFAULT,
+  gameDataVersion: GameDataVersion.FK,
   map: {
     name: 'Just another Patchworked map',
     author: 'Someone who didn\'t put their name here',
-    description: '',
-    recommendedPlayers: '',
+    description: 'Nondescript',
+    recommendedPlayers: 'Any',
     playableArea: {
-      width: 0, // TODO: find default value
-      height: 0 // TODO: find default value
+      width: 52,
+      height: 52
     },
-    flags: { // TODO: confirm default values
+    flags: {
       hideMinimapInPreview: false,
       modifyAllyPriorities: false,
       isMeleeMap: false,
@@ -32,7 +32,7 @@ const InfoDefaults = {
       useCustomTechtree: false,
       useCustomAbilities: false,
       useCustomUpgrades: false,
-      mapPropertiesMenuOpenedAtLeastOnce: false,
+      mapPropertiesMenuOpenedAtLeastOnce: true,
       waterWavesOnCliffShores: true,
       waterWavesOnRollingShores: true,
       useTerrainFog: false,
@@ -49,43 +49,43 @@ const InfoDefaults = {
       alphaTileDefaultMinimapColor: false,
       dynamicMinimap: false
     },
-    mainTileType: '\0',
+    mainTileType: Tileset.LORDAERON_SUMMER,
     fog: {
-      type: FogType.LINEAR, // TODO: find default
-      startHeight: 0, // TODO: find default
-      endHeight: 0, // TODO: find default
-      density: 0, // TODO: find default
-      color: "#FFFFFFFF" as color, // TODO: find default
-      newHeightStart: 0, // TODO: find default
-      newHeightEnd: 0, // TODO: find default
-      newLinearStart: 0, // TODO: find default
-      newLinearEnd: 0, // TODO: find default
-      maxOpacity: 0, // TODO: find default
-      drawFogOverSky: false // TODO: find default
+      type: FogType.LINEAR,
+      startHeight: 3000,
+      endHeight: 5000,
+      density: 0.5,
+      color: "#FF000000" as color,
+      newHeightStart: 0,
+      newHeightEnd: 0,
+      newLinearStart: 10000,
+      newLinearEnd: 10000,
+      maxOpacity: 1,
+      drawFogOverSky: false
     },
-    globalWeatherEffect: 0, // TODO: find default
-    customSoundEnvironment: '', // TODO: find default
-    customLightEnvironment: 0, // TODO: find default
+    globalWeatherEffect: '\0\0\0\0',
+    customSoundEnvironment: '', // dynamic string
+    customLightEnvironment: '', // single char
     water: {
-      color: "#FFFFFFFF" as color, // TODO: find default
-      hdMinOpacity: 0, // TODO: find default
-      hdMaxOpacity: 0, // TODO: find default
-      hdReflectivity: 0, // TODO: find default
-      hdEmissivity: 0, // TODO: find default
-      hdEdgeSoftness: 0, // TODO: find default
-      hdWavesVertexDisplacement: 0, // TODO: find default
-      hdWavesNormalMapStrength: 0, // TODO: find default
-      hdEnvmapReflectivity: 0, // TODO: find default
-      hdColor: "#FFFFFFFF" as color, // TODO: find default
+      color: "#FFFFFFFF" as color,
+      hdMinOpacity: 0,
+      hdMaxOpacity: 100,
+      hdReflectivity: 10,
+      hdEmissivity: 0,
+      hdEdgeSoftness: 50,
+      hdWavesVertexDisplacement: 20,
+      hdWavesNormalMapStrength: 100,
+      hdEnvmapReflectivity: 100,
+      hdColor: "#00000000" as color
     },
-    alphaTileMinimapColor: "#FFFFFFFF" as color, // TODO: find default
+    alphaTileMinimapColor: "#FFFFFFFF" as color
   },
   camera: {
-    bounds: [0, 0, 0, 0, 0, 0, 0, 0] as [number, number, number, number, number, number, number, number], // TODO: find default values
-    margins: [0, 0, 0, 0] as [number, number, number, number], // TODO: find default values
-    forcedDefaultCamDistance: 0, // TODO: find default
-    forcedMaxCamDistance: 0, // TODO: find default
-    forcedMinCamDistance: 0 // TODO: find default
+    bounds: [-2816, -3328, 2816, 2816, -2816, 2816, 2816, -3328],
+    margins: [6, 6, 4, 8],
+    forcedDefaultCamDistance: 0,
+    forcedMaxCamDistance: 0,
+    forcedMinCamDistance: 0
   },
   loadingScreen: {
     imageId: -1,
@@ -105,7 +105,7 @@ const InfoDefaults = {
   assetMode: {
     SD: true,
     HD: true,
-    DE: true
+    DE: false
   },
   players: [],
   upgrades: [],
