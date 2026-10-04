@@ -24,11 +24,11 @@ const testData: ObjectModificationTable = {
 const output = ObjectsTranslator.jsonToWar(testData, ObjectType.Abilities, 3);
 const [readData, formatVersion] = ObjectsTranslator.warToJson(output, ObjectType.Abilities);
 
-describe('Region data translation', () => {
+describe('Object data translation', () => {
     it('Format versions match', () => {
         expect(formatVersion).to.equal(3)
     })
-    it('Region IO matches', () => {
+    it('Object data IO matches', () => {
         expect(readData).to.deep.equal(testData)
     })
 })
