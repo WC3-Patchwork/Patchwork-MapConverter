@@ -33,7 +33,7 @@ function getRandomInt(min: integer, max: integer): integer {
 }
 
 function getRandomNumber(min: number, max: number): number {
-    return getRandomInt(4*min, 4*max)/4
+    return getRandomInt(4 * min, 4 * max) / 4
 }
 
 function getRandomBoolean(): boolean {

@@ -1,4 +1,5 @@
 import { color, FourCC, type integer } from '../CommonInterfaces'
+import { Tileset } from './Terrain'
 
 interface Info {
   mapVersion: number
