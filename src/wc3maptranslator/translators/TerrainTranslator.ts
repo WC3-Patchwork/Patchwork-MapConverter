@@ -2,7 +2,8 @@ import { LoggerFactory } from '../../logging/LoggerFactory'
 import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
-import { Boundary, type Terrain } from '../data/Terrain'
+import { Tileset } from '../data'
+import { Boundary, toTileset, type Terrain } from '../data/Terrain'
 import { TerrainDefaults } from '../default/Terrain'
 
 const log = LoggerFactory.createLogger('TerrainTranslator')
@@ -12,7 +13,7 @@ function heightIntToFloat(heightVal: integer, cliffLevel: integer): number {
 }
 
 function heightFloatToInt(heightVal: number, cliffLevel: integer): integer {
-  return (heightVal * 4) + 8192 - (cliffLevel - 2) * 512
+  return Number.parseInt(((heightVal * 4) + 8192 - (cliffLevel - 2) * 512).toFixed(0))
 }
 
 export function jsonToWar(terrainJson: Terrain, formatVersion: number): Buffer {
@@ -128,10 +129,10 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
     log.info(`Terrain format version is ${formatVersion}.`)
   }
 
-  let tileset: string
+  let tileset: Tileset
   let customTileset: boolean
   if (formatVersion >= 0x06) {
-    tileset = input.readChars(1)
+    tileset = toTileset(input.readChars(1))
     customTileset = !!(input.readInt() & 0x01)
   } else {
     tileset = TerrainDefaults.tileset
@@ -147,7 +148,6 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
   const cliffTileIds: string[] = []
   if (formatVersion > 0x06) {
     const cliffTileCount = input.readInt()
-    const cliffTileIds: string[] = []
     for (let i = 0; i < cliffTileCount; i++) {
       cliffTileIds.push(input.readChars(4))
     }

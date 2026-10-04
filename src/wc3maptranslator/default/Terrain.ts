@@ -1,7 +1,7 @@
-import { Boundary } from '../data'
+import { Boundary, Tileset } from '../data'
 
 const TerrainDefaults = {
-  tileset         : '\0',
+  tileset         : Tileset.LORDAERON_SUMMER,
   customTileset   : true,
   tilePalette     : [],
   cliffTilePalette: [],

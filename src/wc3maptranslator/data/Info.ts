@@ -248,30 +248,5 @@ enum GameDataVersion {
   FK = 'FK'
 }
 
-enum Tileset {
-  ASHENVALE = 'ASHENVALE',
-  BARRENS = 'BARRENS',
-  FELWOOD = 'FELWOOD',
-  DUNGEON = 'DUNGEON',
-  LORDAERON_FALL = 'LORDAERON_FALL',
-  UNDERGROUND = 'UNDERGROUND',
-  ICECROWN = 'ICECROWN',
-  DALARAN_RUINS = 'DALARAN_RUINS',
-  BLACK_CITADEL = 'BLACK_CITADEL',
-  LORDAERON_SUMMER = 'LORDAERON_SUMMER',
-  NORTHREND = 'NORTHREND',
-  OUTLAND = 'OUTLAND',
-  CITYSCAPE_RUINS = 'CITYSCAPE_RUINS',
-  VILLAGE_FALL = 'VILLAGE_FALL',
-  LORDAERON_CAPITAL_RUINS = 'LORDAERON_CAPITAL_RUINS',
-  VILLAGE = 'VILLAGE',
-  LORDAERON_WINTER = 'LORDAERON_WINTER',
-  DALARAN = 'DALARAN',
-  CITYSCAPE = 'CITYSCAPE',
-  SUNKEN_RUINS = 'SUNKEN_RUINS',
-  LORDAERON_CAPITAL = 'LORDAERON_CAPITAL',
-  UNDERCITY = 'UNDERCITY'
-}
-
-export { PlayerType, Race, RaceCrest, RandomGroupObjectType, FogType, ResearchState, ScriptLanguage, GameDataSet, GameDataVersion, Tileset }
+export { PlayerType, Race, RaceCrest, RandomGroupObjectType, FogType, ResearchState, ScriptLanguage, GameDataSet, GameDataVersion }
 export type { Info, Player, PlayerList, Force, UpgradeAvailable, TechUnavailable, ItemTable, RandomGroup, RandomGroupSet, ObjectChance }
