@@ -117,12 +117,13 @@ const TriggerComposer = {
   composeTriggerJson: async function (input: DirectoryTree): Promise<TriggerContainer> {
     const tasks: Promise<unknown>[] = []
     const result = {
-      name       : EnhancementManager.mapHeaderFilename,
+      name: EnhancementManager.mapHeaderFilename,
       contentType: ContentType.HEADER,
-      isExpanded : false,
-      children   : [],
+      isExpanded: false,
+      children: [],
       description: '',
-      script     : ''
+      script: '',
+      isComment: false
     } satisfies MapHeader
 
     const parentMap = new Map<DirectoryTree, TriggerContainer>()
@@ -157,10 +158,12 @@ const TriggerComposer = {
 
       if (file.type === 'directory' && file !== input) {
         const container = {
-          name       : file.name,
+          name: file.name,
           contentType: ContentType.CATEGORY,
-          isExpanded : false,
-          children   : []
+          isExpanded: false,
+          children: [],
+          isComment: false,
+          description: ''
         } satisfies TriggerContainer
         parentMap.set(file, container)
         triggerContentMap.set(container, new Map<string, TriggerContent[]>())
@@ -294,12 +297,14 @@ const TriggerComposer = {
           exportObj.description = (content as MapHeader).description
           tasks.push(WriteAndCreatePath(path.join(outPath, `${EnhancementManager.mapHeaderFilename}${EnhancementManager.scriptExtension}`), (content as ScriptContent).script, 'utf8'))
           exportObj.isExpanded = (content as TriggerContainer).isExpanded
+          exportObj.isComment = (content as TriggerContainer).isComment
           exportObj.order = generateTriggerOrder(content as TriggerContainer)
           tasks.push(WriteAndCreatePath(path.join(outPath, `${EnhancementManager.mapHeaderFilename}${EnhancementManager.containerInfoExtension}`), ini.encode(exportObj), 'utf8'))
           break
         case ContentType.LIBRARY:
         case ContentType.CATEGORY:
           exportObj.isExpanded = (content as TriggerContainer).isExpanded
+          exportObj.isComment = (content as TriggerContainer).isComment
           exportObj.order = generateTriggerOrder(content as TriggerContainer)
           tasks.push(WriteAndCreatePath(path.join(outPath, content.name, `${content.name}${EnhancementManager.containerInfoExtension}`), ini.encode(exportObj), 'utf8'))
           break

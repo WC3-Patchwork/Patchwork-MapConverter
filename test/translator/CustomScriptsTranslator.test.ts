@@ -5,8 +5,8 @@ import { CustomScriptsTranslatorOutput } from '../../src/translator/CustomScript
 const CustomScriptsTranslator = translators.CustomScriptsTranslator;
 
 const testData: CustomScriptsTranslatorOutput = {
-    headerComment: 'Header comment here!',
-    scripts: ["This is a script", "", "this is another script"]
+    headerComment: 'Header comment here!—————————————————————————————————————————————',
+    scripts: ["This is a script", "", "this is another script—————————————————————————————————————————————"]
 };
 
 const output = CustomScriptsTranslator.jsonToWar(testData, 0x80000004, 1);
