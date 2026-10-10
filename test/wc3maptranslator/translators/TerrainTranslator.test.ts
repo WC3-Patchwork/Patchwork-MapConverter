@@ -10,7 +10,7 @@ const testData: Terrain = {
     tilePalette: ['Pdrt', 'Pdtr', 'Pblm', 'Pbtl', 'Psqd', 'Prtl', 'Pgsb', 'Phdg', 'Pwmb'],
     cliffTilePalette: ['CPdi', 'CPsq'],
     map: {
-        sizeX: 2,
+        sizeX: 3,
         sizeY: 2,
         offsetX: -4096,
         offsetY: -4096

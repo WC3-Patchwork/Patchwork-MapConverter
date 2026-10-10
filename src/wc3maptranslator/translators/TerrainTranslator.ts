@@ -99,7 +99,7 @@ export function jsonToWar(terrainJson: Terrain, formatVersion: number): Buffer {
         }
       } else {
         output.addShort(heightFloatToInt(groundHeight, cliffLevel))
-        output.addShort(heightFloatToInt(waterHeight, cliffLevel) & 0x3FFF | (hasEdgeBoundary ? 0x4000 : 0))
+        output.addShort(heightFloatToInt(waterHeight, cliffLevel) & 0x7FFF | (hasEdgeBoundary ? 0x8000 : 0))
         if (formatVersion >= 0x0C) {
           output.addShort((groundTexture & 0x003F) | ((flags << 2) & 0xFFC0))
         } else {
@@ -245,8 +245,8 @@ export function warToJson(buffer: Buffer): [Terrain, integer] {
       } else {
         groundHeight = input.readShort()
         const waterHeightAndBoundary = input.readShort()
-        waterHeight = waterHeightAndBoundary & 0x3FFF
-        boundaryFlag = (waterHeightAndBoundary & 0x4000) ? Boundary.Type1 : Boundary.None
+        waterHeight = waterHeightAndBoundary & 0x7FFF
+        boundaryFlag = (waterHeightAndBoundary & 0x8000) ? Boundary.Type1 : Boundary.None
 
         if (formatVersion >= 0x0C) {
           const flagsAndGroundTexture = input.readShort()
