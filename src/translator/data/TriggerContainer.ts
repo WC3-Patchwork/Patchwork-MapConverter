@@ -1,7 +1,9 @@
 import { type TriggerContent } from './content/TriggerContent'
+import { Describable } from './properties/Describable'
 
-interface TriggerContainer extends TriggerContent {
+interface TriggerContainer extends TriggerContent, Describable {
   isExpanded: boolean
+  isComment: boolean
   children: (TriggerContainer | TriggerContent)[]
 }
 

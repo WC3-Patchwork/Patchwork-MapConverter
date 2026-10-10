@@ -13,6 +13,7 @@ const header = {
     contentType: ContentType.HEADER,
     name: 'header',
     isExpanded: false,
+    isComment: false,
     children: [],
     script: '',
     description: ''
@@ -21,7 +22,9 @@ const header = {
 const category = {
     contentType: ContentType.CATEGORY,
     name: 'Folder',
+    description: '',
     isExpanded: false,
+    isComment: false,
     children: []
 } as TriggerContainer
 
@@ -230,15 +233,15 @@ const script = {
     name: 'CustomScriptExample',
     description: 'Dummy lel',
     isEnabled: true,
-    script: "if local then something idfk"
+    script: ""
 } as CustomScript
 
 header.children.push(category);
-category.children.push(comment, trigger, script);
+category.children.push(trigger, comment, script);
 
 const testData: TriggerTranslatorOutput = {
     root: header,
-    scriptReferences: [header, script]
+    scriptReferences: [header, null, script]
 }
 
 const output = TriggersTranslator.jsonToWar(testData, 7, 2, 2147483652)
