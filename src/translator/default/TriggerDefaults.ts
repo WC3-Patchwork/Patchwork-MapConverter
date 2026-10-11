@@ -13,4 +13,8 @@ const TriggerDefaults = {
   children    : []
 }
 
-export { TriggerDefaults }
+const VariableDefaults = {
+  userDefined: true
+}
+
+export { TriggerDefaults, VariableDefaults }

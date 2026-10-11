@@ -20,7 +20,7 @@ import { LoggerFactory } from '../logging/LoggerFactory'
 import { type MapHeader } from './data/MapHeader'
 import { type TriggerItemBase } from './data/content/TriggerItemBase'
 import { type BaseTrigger } from './data/content/BaseTrigger'
-import { TriggerDefaults } from './default/TriggerDefaults'
+import { TriggerDefaults, VariableDefaults } from './default/TriggerDefaults'
 
 const log = LoggerFactory.createLogger('TriggersTranslator')
 
@@ -126,7 +126,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     for (const variable of variables) {
       output.addString(variable.name)
       output.addString(variable.type)
-      output.addInt(+variable.userDefined)
+      output.addInt(+(variable.userDefined ?? VariableDefaults.userDefined))
       output.addInt(+variable.isArray)
       if (variableFormatVersion >= 2) {
         output.addInt(variable.arrayLength)
@@ -280,8 +280,9 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
 
     if (formatVersion > 5) {
       const childTriggerFunctions = triggerFunction?.statements ?? TriggerDefaults.statements
-      output.addInt(Object.values(childTriggerFunctions).flatMap(it => it).length)
+      output.addInt(Object.values(childTriggerFunctions).filter(it => it != null).flatMap(it => it).length)
       for (const [groupIndex, groupFunctions] of Object.entries(childTriggerFunctions)) {
+        if (!groupFunctions) continue;
         for (const childTriggerFunction of groupFunctions as Statement[]) {
           output.addInt(StatementTypeEnumConverter.toIdentifier(childTriggerFunction.type))
           output.addInt(groupIndex as unknown as integer)
@@ -368,7 +369,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       description: TriggerDefaults.description
     } satisfies MapHeader]) {
       output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.HEADER))
-      saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, 0)
+      saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, -1)
     }
     for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[] ?? []) {
       output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.LIBRARY))
