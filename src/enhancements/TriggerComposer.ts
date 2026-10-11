@@ -238,18 +238,10 @@ const TriggerComposer = {
       }
     }
 
-    for (const file of input.children) {
-      if (file.type === 'file') {
-        if (file.extension === EnhancementManager.containerInfoExtension) {
-          tasks.push(populateParentDetails(result, file))
-        }
-      }
-    }
-
     await Promise.all(tasks)
     for (const [container, contentMap] of triggerContentMap) {
       for (const [, contents] of contentMap) {
-        if (contents.length > 1) {
+        if (contents.length >= 2) {
           let injectedRef: CustomScript | GUITrigger | ScriptedTrigger | undefined
           let script: CustomScript | undefined
           let trigger: GUITrigger | ScriptedTrigger | undefined
@@ -270,7 +262,7 @@ const TriggerComposer = {
               (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
             }
           }
-        } else {
+        } else if(contents.length == 0){
           contents.forEach(it => container.children.push(it))
         }
       }

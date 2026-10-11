@@ -16,7 +16,7 @@ function* TreeIterator<NODE>(root: NODE, getChildNodes: (parent: NODE) => NODE[]
 
     childParentPath.push(node)
     if (children != null) {
-      for (const child of children) {
+      for (const child of children.toReversed()) {
         parentMaps.set(child, childParentPath)
         traversalStack.push(child)
       }

@@ -82,7 +82,7 @@ function getAllContentForScriptFile(root: TriggerContainer): TriggerContent[] {
       // eslint-disable-next-line no-fallthrough
       case ContentType.LIBRARY:
       case ContentType.CATEGORY:
-        triggerStack.push(...(currentTrigger as TriggerContainer).children.reverse())
+        triggerStack.push(...(currentTrigger as TriggerContainer).children.toReversed())
         break
       case ContentType.CUSTOM_SCRIPT:
       case ContentType.TRIGGER:

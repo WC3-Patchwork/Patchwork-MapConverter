@@ -75,6 +75,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
         for (const childTrigger of (currentTrigger as TriggerContainer).children) {
           parentReference.set(childTrigger, elementId)
         }
+        parentReference.set(currentTrigger, -1) // the only valid value for map header
         break
       case ContentType.LIBRARY:
         elementId = 0x01000000 + libraryCount++
@@ -119,6 +120,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       triggersByContentType.set(contentType, [currentTrigger])
     }
   }
+  triggersByContentType.forEach(it => it.reverse()) // reorient to proper order
 
   const saveGlobals = function (variables: GlobalVariable[], parentReference: Map<TriggerContent, integer>): void {
     output.addInt(variableFormatVersion)
@@ -312,11 +314,6 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     output.addInt(parentContainerId)
   }
 
-  let totalElements = 0
-  for (const elements of triggersByContentType.values()) {
-    totalElements = totalElements + elements.length
-  }
-
   if (formatSubversion < 0x80000000) {
     output.addInt((triggersByContentType.get(ContentType.CATEGORY) as [])?.length ?? 0)
     for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
@@ -358,43 +355,32 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     output.addInt(0) // deleted count
 
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? [], parentReference)
-    output.addInt(totalElements)
-    for (const header of triggersByContentType.get(ContentType.HEADER) ?? [{
-      isExpanded: TriggerDefaults.isExpanded,
-      isComment: TriggerDefaults.isComment,
-      children: TriggerDefaults.children,
-      name: '',
-      contentType: ContentType.HEADER,
-      script: '',
-      description: TriggerDefaults.description
-    } satisfies MapHeader]) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.HEADER))
-      saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, -1)
-    }
-    for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[] ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.LIBRARY))
-      saveContainer(elementReference.get(library)!, library, parentReference.get(library)!)
-    }
-    for (const container of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.CATEGORY))
-      saveContainer(elementReference.get(container)!, container, parentReference.get(container)!)
-    }
 
-    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[] ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.TRIGGER))
-      saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
-    }
-    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[] ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.COMMENT))
-      saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
-    }
-    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.CUSTOM_SCRIPT))
-      saveTrigger(elementReference.get(customScript)!, customScript, parentReference.get(customScript)!)
-    }
-    for (const variable of triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? []) {
-      output.addInt(ContentTypeEnumConverter.toIdentifier(ContentType.VARIABLE))
-      saveTriggerVariable(elementReference.get(variable)!, variable, parentReference.get(variable)!)
+    output.addInt(triggersByContentType.values().map(it => it.length).reduce((acc, value) => acc + value, 0))
+    triggerStack.push(json.root);
+    while (triggerStack.length > 0) {
+      const currentTrigger = triggerStack.pop()
+      if (currentTrigger == null) continue
+      output.addInt(ContentTypeEnumConverter.toIdentifier(currentTrigger.contentType))
+      switch (currentTrigger.contentType) {
+        case ContentType.HEADER:
+        case ContentType.LIBRARY:
+        case ContentType.CATEGORY:
+          saveContainer(elementReference.get(currentTrigger)!, currentTrigger as TriggerContainer, parentReference.get(currentTrigger)!)
+          triggerStack.push(...(currentTrigger as TriggerContainer).children.toReversed())
+          break
+        case ContentType.TRIGGER:
+        case ContentType.TRIGGER_SCRIPTED:
+        case ContentType.COMMENT:
+        case ContentType.CUSTOM_SCRIPT:
+          saveTrigger(elementReference.get(currentTrigger)!, currentTrigger, parentReference.get(currentTrigger)!)
+          break
+        case ContentType.VARIABLE:
+          saveTriggerVariable(elementReference.get(currentTrigger)!, currentTrigger as GlobalVariable, parentReference.get(currentTrigger)!)
+          break
+        default:
+          continue
+      }
     }
   }
 
