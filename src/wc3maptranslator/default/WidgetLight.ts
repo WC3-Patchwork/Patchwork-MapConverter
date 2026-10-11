@@ -1,6 +1,6 @@
 export const WidgetLightDefaults = {
   isShadowCasting: false,
-  color: "#FFFFFFFF",
+  color: "#ffffffff",
   intensity: 10,
   shadowCastingStart: 0,
   shadowCastingEnd: 0,

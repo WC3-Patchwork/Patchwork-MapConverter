@@ -3,7 +3,7 @@ import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { Tileset } from '../data'
-import { Boundary, toTileset, type Terrain } from '../data/Terrain'
+import { Boundary, toTileset, toTilesetValue, type Terrain } from '../data/Terrain'
 import { TerrainDefaults } from '../default/Terrain'
 
 const log = LoggerFactory.createLogger('TerrainTranslator')
@@ -25,7 +25,7 @@ export function jsonToWar(terrainJson: Terrain, formatVersion: number): Buffer {
   output.addInt(formatVersion)
 
   if (formatVersion > 0x06) {
-    output.addChar(terrainJson.tileset ?? TerrainDefaults.tileset)
+    output.addChar(toTilesetValue(terrainJson.tileset ?? TerrainDefaults.tileset))
     output.addInt(+(terrainJson.customTileset ?? TerrainDefaults.customTileset))
   }
 

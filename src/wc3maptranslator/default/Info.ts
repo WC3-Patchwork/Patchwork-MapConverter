@@ -1,4 +1,4 @@
-import { color, type integer } from '../CommonInterfaces'
+import { color } from '../CommonInterfaces'
 import { FogType, GameDataSet, GameDataVersion, PlayerType, Race, RaceCrest, RandomGroupObjectType, ResearchState, ScriptLanguage, Tileset } from '../data'
 
 const InfoDefaults = {
@@ -55,7 +55,7 @@ const InfoDefaults = {
       startHeight: 3000,
       endHeight: 5000,
       density: 0.5,
-      color: "#FF000000" as color,
+      color: "#ff000000" as color,
       newHeightStart: 0,
       newHeightEnd: 0,
       newLinearStart: 10000,
@@ -67,7 +67,7 @@ const InfoDefaults = {
     customSoundEnvironment: '', // dynamic string
     customLightEnvironment: '', // single char
     water: {
-      color: "#FFFFFFFF" as color,
+      color: "#ffffffff" as color,
       hdMinOpacity: 0,
       hdMaxOpacity: 100,
       hdReflectivity: 10,
@@ -78,7 +78,7 @@ const InfoDefaults = {
       hdEnvmapReflectivity: 100,
       hdColor: "#00000000" as color
     },
-    alphaTileMinimapColor: "#FFFFFFFF" as color
+    alphaTileMinimapColor: "#ffffffff" as color
   },
   camera: {
     bounds: [-2816, -3328, 2816, 2816, -2816, 2816, 2816, -3328],
