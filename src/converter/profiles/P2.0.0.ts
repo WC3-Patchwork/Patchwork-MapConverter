@@ -1,6 +1,6 @@
 import { TargetProfile } from '../Profile'
 
-export const LatestProfile: TargetProfile = {
+export const P2004: TargetProfile = {
   editorVersion           : 6116,
   impFormatVersion        : 1,
   wtgFormatVersion        : 7,
@@ -9,10 +9,10 @@ export const LatestProfile: TargetProfile = {
   wctFormatVersion        : 2147483652,
   wctFormatSubversion     : 1,
   w3iFormatVersion        : 33,
-  objectFormatVersion     : 3,
+  objectFormatVersion     : 2, //technically 3, but Patchwork doesn't know how to export into that format
   w3eFormatVersion        : 12,
-  unitsDooFormatVersion   : 8,
-  unitsDooFormatSubversion: 9,
+  unitsDooFormatVersion   : 9,
+  unitsDooFormatSubversion: 11,
   dooFormatVersion        : 8,
   dooFormatSubversion     : 11,
   specialDooFormatVersion : 0,
