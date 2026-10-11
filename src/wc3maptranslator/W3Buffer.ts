@@ -26,10 +26,10 @@ export class W3Buffer {
     return int
   }
 
-  public readFloat(): number {
+  public readFloat(precision = 14): number {
     const float: number = this._buffer.readFloatLE(this._offset)
     this._offset += 4
-    return roundTo(float, 3)
+    return roundTo(float, precision)
   }
 
   public readString(len: number | null = null): string {

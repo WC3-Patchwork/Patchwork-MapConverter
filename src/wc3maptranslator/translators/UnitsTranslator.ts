@@ -117,11 +117,11 @@ export function jsonToWar(units: Unit[], formatVersion: integer, formatSubversio
       })
     } else if (formatSubversion >= 8) {
       const randomUnitSet = unit.random?.unitSet ?? UnitDefaults.random.unitSet
-      output.addInt(unit.random?.type ?? -1)
+      output.addInt(unit.random?.type ?? UnitDefaults.random.type)
       switch (unit.random?.type) {
         case 0:
-          output.addInt(((unit.random.level!) & 0x00FFFFFFFF)
-            | (((unit.random.itemClass!) ?? 0) << 24) & 0xFF00000000)
+          output.addInt(((unit.random?.level ?? UnitDefaults.random.level) & 0x00FFFFFFFF)
+            | ((unit.random?.itemClass ?? UnitDefaults.random.itemClass) << 24) & 0xFF00000000)
           break
         case 1:
           output.addInt(unit.random.groupIndex!)
@@ -363,7 +363,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
           }
           break
       }
-      if (randomType > 0) {
+      if (randomType >= 0) {
         random = {
           type: randomType,
           level: randomLevel,
@@ -393,9 +393,9 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Unit[], inte
       id = 0 //TODO: generate
     }
 
-    let roll: number| undefined
-    let pitch: number| undefined
-    let lights: WidgetLight[]| undefined
+    let roll: number | undefined
+    let pitch: number | undefined
+    let lights: WidgetLight[] | undefined
     if (formatVersion >= 13) {
       roll = input.readFloat()
       pitch = input.readFloat()

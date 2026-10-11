@@ -24,8 +24,10 @@ const UnitDefaults = {
   abilities: [],
   // color: whatever 'player' is,
   random: {
-    type: -1,
-    unitSet: []
+    type: 0,
+    unitSet: [],
+    itemClass: 0,
+    level: 1
   },
   waygate: -1,
   // id: generated somehow
