@@ -12,7 +12,7 @@ const data = [
     { type: TestDataType.byte, value: 0x7 },
     { type: TestDataType.int, value: -2147483648 },
     { type: TestDataType.char, value: 'C' },
-    { type: TestDataType.float, value: 12.123 },
+    { type: TestDataType.float, value: 12.1230001449585 },
     { type: TestDataType.int, value: -231 },
     { type: TestDataType.char, value: 'Crs\0' },
     { type: TestDataType.uint, value: 2311 },

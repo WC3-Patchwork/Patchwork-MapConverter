@@ -9,8 +9,8 @@ const testData: DoodadsTranslatorOutput = {
             type: 'dood',
             variation: 5,
             position: [10, 20, 30],
-            angle: 4.010704565915763,
-            scale: [1.2, 4.2, 0.3],
+            angle: 4.0107045829910515,
+            scale: [1.20000004768372, 4.19999980926514, 0.30000001192093],
             skinId: 'dood',
             groupId: -1,
             flags: {
@@ -34,7 +34,7 @@ const testData: DoodadsTranslatorOutput = {
             color: -1,
             id: 4,
             roll: 2.5,
-            pitch: 3.1,
+            pitch: 3.09999990463257,
             lights: [
                 {
                     index: 0,
