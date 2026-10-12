@@ -266,7 +266,7 @@ export const War2JsonService = {
           importFileResolve(assets)
           return assets
         }))
-      } else if(filename.endsWith('.w3l')) {
+      } else if (filename.endsWith('.w3l')) {
         foundMapLights = true
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
           const [mapLights, formatVersion] = MapLightTranslator.warToJson(buffer)
@@ -274,7 +274,7 @@ export const War2JsonService = {
           mapLightsFileResolve(mapLights);
           return mapLights;
         }))
-      } else if(filename.endsWith('.w3grp')) {
+      } else if (filename.endsWith('.w3grp')) {
         foundWidgetGroups = true
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
           const [widgetGroups, formatVersion] = WidgetGroupTranslator.warToJson(buffer)
@@ -394,11 +394,19 @@ export const War2JsonService = {
       customScriptFileReject('Custom scripts file not found.')
     }
 
-    if (!foundMapLights){
+    // Optional files
+    mapLightsFilePromise.catch((msg) => {
+      log.warn(msg)
+    })
+    widgetGroupsFilePromise.catch((msg) => {
+      log.warn(msg)
+    })
+
+    if (!foundMapLights) {
       mapLightsFileReject('Map lights file not found.')
     }
 
-    if (!foundWidgetGroups){
+    if (!foundWidgetGroups) {
       widgetGroupsFileReject('Widget groups file not found.')
     }
 
