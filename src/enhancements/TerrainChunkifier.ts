@@ -60,51 +60,48 @@ function calculateChunkSizes(offset: integer, chunkSize: integer, mapSize: integ
 function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: integer, midChunkSize: integer, midChunkCount: integer, endChunkSize: integer): number[] {
   const result: number[] = []
   let index = 0
-  result[index++] = absOffset + startChunkSize * TILE_SIZE
-  for (let i = 0; i < midChunkCount; i++, index++) {
+  result[index++] = absOffset
+  if (startChunkSize > 0) {
+    result[index] = result[index-1] as number + startChunkSize * TILE_SIZE
+    index++;
+  }
+  for (let i = index - 1; i < midChunkCount; i++, index++) {
     result[index] = result[i] as number + midChunkSize * TILE_SIZE
   }
-  result[index] = result[index - 1] as number + endChunkSize * TILE_SIZE
+  if (endChunkSize > 0) {
+    result[index] = result[index - 1] as number + endChunkSize * TILE_SIZE
+  }
   return result
 }
 
 function calculateChunkCoordinates(absOffset: number, chunkSizes: integer[]): number[] {
   const result: number[] = []
   let index = 0
-  for (const chunkSize of chunkSizes) {
-    result[index++] = absOffset + chunkSize * TILE_SIZE
+  result[index++] = absOffset
+  for (let i = 0; i < chunkSizes.length; i++, index++) {
+    result[index] = (result[i] as number) + (chunkSizes[i] as number) * TILE_SIZE
   }
   return result
 }
 
-function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number, yCoordinate = false): integer {
+function getObjectChunkIndex(chunkThresholds: number[], objectCoordinate: number): integer {
   const chunks = chunkThresholds
-  for (let i = 0; i < chunks.length; i++) {
-    if (yCoordinate) {
-      if (objectCoordinate > (chunks[i] as number)) {
-        return i
-      }
-    } else {
-      if (objectCoordinate < (chunks[i] as number)) {
-        return i
-      }
+  for (let i = 1; i < chunks.length; i++) {
+    if (objectCoordinate <= (chunks[i] as number)) {
+      return i - 1
     }
   }
   return -1
 }
 
-function calculateCoordinate(coordinate: number, chunkStart: number, yCoordinate = false) {
-  if (yCoordinate) {
-    return chunkStart - coordinate
-  } else {
-    return coordinate - chunkStart
-  }
+function calculateCoordinate(coordinate: number, oldChunkStart: number, newChunkStart: number) {
+  return coordinate - newChunkStart + oldChunkStart
 }
 
 const TerrainChunkifier = {
   composeTerrain: async function (input: DirectoryTree): Promise<[Terrain, Doodad[], SpecialDoodad[], Unit[], Region[], Camera[]]> {
     const tasks: Promise<TerrainChunkWMetaData>[] = []
-    const filenameRegex = new RegExp(`terrain-(?<row>\\d+)-(?<col>\\d+)\\${EnhancementManager.mapDataExtension}`)
+    const filenameRegex = new RegExp(`${EnhancementManager.chunkifiedTerrainFolder}-(?<row>\\d+)-(?<col>\\d+)\\${EnhancementManager.mapDataExtension}`)
 
     let foundTerrain = false
     const [terrainPromise, terrainResolve, terrainReject] = PromiseSupplier<TerrainData & TerrainChunkObjects>()
@@ -169,8 +166,9 @@ const TerrainChunkifier = {
     const chunkColCoordinatesX = calculateChunkCoordinates(terrain.map.offsetX, columnChunkSizes)
     const chunkRowCoordinatesY = calculateChunkCoordinates(terrain.map.offsetY, rowChunkSizes)
 
-    let i = 0, j = 0
+    let fromY = 0
     for (const chunkRow of chunks) {
+      let fromX = 0
       for (const chunk of chunkRow) {
         if (chunk.sizeX !== columnChunkSizes[chunk.col]) {
           log.warn(`Mismatched chunk sizeX for chunk ${chunk.row}-${chunk.col}, expected ${columnChunkSizes[chunk.col]}, found ${chunk.sizeX}!`)
@@ -178,77 +176,80 @@ const TerrainChunkifier = {
         if (chunk.sizeY !== rowChunkSizes[chunk.row]) {
           log.warn(`Mismatched chunk sizeX for chunk ${chunk.row}-${chunk.col}, expected ${rowChunkSizes[chunk.row]}, found ${chunk.sizeY}!`)
         }
-        for (let x = 0; x < chunk.sizeX; x++) {
-          const groundTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundTexture[x] as string)
-          const groundVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundVariation[x] as string)
-          const cliffTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffTexture[x] as string)
-          const cliffVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffVariation[x] as string)
-          const cliffLevelRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffLevel[x] as string)
-          const groundHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.groundHeight[x] as string, (data: string) => Number.parseFloat(data))
-          const waterHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.waterHeight[x] as string, (data: string) => Number.parseFloat(data))
-          const rampRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.ramp[x] as string)
-          const blightRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.blight[x] as string)
-          const waterRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.water[x] as string)
-          const boundaryRow = ArrayStringifier.ConvertFromSingleDigitString(chunk.boundary[x] as string)
-          for (let y = 0; y < chunk.sizeY; y++) {
+        for (let y = 0; y <= chunk.sizeY; y++) {
+          const groundTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundTexture[y] as string)
+          const groundVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.groundVariation[y] as string)
+          const cliffTextureRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffTexture[y] as string)
+          const cliffVariationRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffVariation[y] as string)
+          const cliffLevelRow = ArrayStringifier.ConvertFromPaddedDoubleDigitString(chunk.cliffLevel[y] as string)
+          const groundHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.groundHeight[y] as string, (data: string) => Number.parseFloat(data))
+          const waterHeightRow = ArrayStringifier.ConvertFromCSVString(chunk.waterHeight[y] as string, (data: string) => Number.parseFloat(data))
+          const rampRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.ramp[y] as string)
+          const blightRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.blight[y] as string)
+          const waterRow = ArrayStringifier.ConvertFromBinaryDigitString(chunk.water[y] as string)
+          const boundaryRow = ArrayStringifier.ConvertFromSingleDigitString(chunk.boundary[y] as string)
+          const i = fromY + y
+          for (let x = 0; x <= chunk.sizeX; x++) {
+            const j = fromX + x
             terrain.groundTexture[i] ??= [] as number[]
-            (terrain.groundTexture[i] as number[])[j] = groundTextureRow[y] as number
+            (terrain.groundTexture[i] as number[])[j] = groundTextureRow[x] as number
             terrain.groundVariation[i] ??= [] as number[]
-            (terrain.groundVariation[i] as number[])[j] = groundVariationRow[y] as number
+            (terrain.groundVariation[i] as number[])[j] = groundVariationRow[x] as number
             terrain.cliffTexture[i] ??= [] as number[]
-            (terrain.cliffTexture[i] as number[])[j] = cliffTextureRow[y] as number
+            (terrain.cliffTexture[i] as number[])[j] = cliffTextureRow[x] as number
             terrain.cliffVariation[i] ??= [] as number[]
-            (terrain.cliffVariation[i] as number[])[j] = cliffVariationRow[y] as number
+            (terrain.cliffVariation[i] as number[])[j] = cliffVariationRow[x] as number
             terrain.cliffLevel[i] ??= [] as number[]
-            (terrain.cliffLevel[i] as number[])[j] = cliffLevelRow[y] as number
+            (terrain.cliffLevel[i] as number[])[j] = cliffLevelRow[x] as number
             terrain.groundHeight[i] ??= [] as number[]
-            (terrain.groundHeight[i] as number[])[j] = groundHeightRow[y] as number
+            (terrain.groundHeight[i] as number[])[j] = groundHeightRow[x] as number
             terrain.waterHeight[i] ??= [] as number[]
-            (terrain.waterHeight[i] as number[])[j] = waterHeightRow[y] as number
+            (terrain.waterHeight[i] as number[])[j] = waterHeightRow[x] as number
             terrain.ramp[i] ??= [] as boolean[]
-            (terrain.ramp[i] as boolean[])[j] = rampRow[y] as boolean
+            (terrain.ramp[i] as boolean[])[j] = rampRow[x] as boolean
             terrain.blight[i] ??= [] as boolean[]
-            (terrain.blight[i] as boolean[])[j] = blightRow[y] as boolean
+            (terrain.blight[i] as boolean[])[j] = blightRow[x] as boolean
             terrain.water[i] ??= [] as boolean[]
-            (terrain.water[i] as boolean[])[j] = waterRow[y] as boolean
+            (terrain.water[i] as boolean[])[j] = waterRow[x] as boolean
             terrain.boundary[i] ??= [] as number[]
-            (terrain.boundary[i] as number[])[j] = boundaryRow[y] as number
-            j++
+            (terrain.boundary[i] as number[])[j] = boundaryRow[x] as number
+
           }
-          i++
         }
+        fromX += chunk.sizeX
 
         chunk.doodads.forEach((it) => {
           doodads.push(it)
-          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number)
-          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
         })
         chunk.specialDoodads.forEach((it) => {
           specialDoodads.push(it)
-          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number)
-          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
         })
         chunk.units.forEach((it) => {
           units.push(it)
-          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number)
-          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number)
+          it.position[0] = calculateCoordinate(it.position[0], chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
+          it.position[1] = calculateCoordinate(it.position[1], chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
         })
         chunk.cameras.forEach((it) => {
           cameras.push(it)
-          it.targetX = calculateCoordinate(it.targetX, chunkColCoordinatesX[chunk.col] as number)
-          it.targetY = calculateCoordinate(it.targetY, chunkRowCoordinatesY[chunk.row] as number)
+          it.targetX = calculateCoordinate(it.targetX, chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
+          it.targetY = calculateCoordinate(it.targetY, chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
         })
         chunk.regions.forEach((it) => {
           regions.push(it)
-          it.position.top = calculateCoordinate(it.position.top, chunkRowCoordinatesY[chunk.row] as number)
-          it.position.bottom = calculateCoordinate(it.position.bottom, chunkRowCoordinatesY[chunk.row] as number)
-          it.position.left = calculateCoordinate(it.position.left, chunkColCoordinatesX[chunk.col] as number)
-          it.position.right = calculateCoordinate(it.position.right, chunkColCoordinatesX[chunk.col] as number)
+          it.position.top = calculateCoordinate(it.position.top, chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
+          it.position.bottom = calculateCoordinate(it.position.bottom, chunkRowCoordinatesY[chunk.row] as number, terrainData.map.offsetY)
+          it.position.left = calculateCoordinate(it.position.left, chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
+          it.position.right = calculateCoordinate(it.position.right, chunkColCoordinatesX[chunk.col] as number, terrainData.map.offsetX)
         })
       }
+      fromY += (chunkRow[0] as TerrainChunkWMetaData).sizeY
     }
 
-    return [terrain, doodads, specialDoodads, units, regions, cameras]
+    return [terrain, doodads.sort((a, b) => a.id! - b.id!), specialDoodads, units.sort((a, b) => a.id! - b.id!), regions.sort((a, b) => a.id - b.id), cameras]
   },
 
   chunkifyTerrain: async function (output: string, terrain: Terrain, doodads: Doodad[], specialDoodads: SpecialDoodad[], units: Unit[], regions: Region[], cameras: Camera[], chunkSize: MapSize): Promise<void> {
@@ -347,7 +348,7 @@ const TerrainChunkifier = {
     const [startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX] = calculateChunkSizes(chunkSize.offsetX, chunkSize.sizeX * 4, sizeX)
     const [startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY] = calculateChunkSizes(chunkSize.offsetY, chunkSize.sizeY * 4, sizeY)
     const chunkAbsCoordinateThresholdsX = calculateChunkCoordinateThresholds(offsetX, startChunkSizeX, midChunkSizeX, midChunkCountX, endChunkSizeX)
-    const chunkAbsCoordinateThresholdsY = calculateChunkCoordinateThresholds(offsetY, endChunkSizeY, midChunkSizeY, midChunkCountY, startChunkSizeY).reverse() // invert Y for reasons
+    const chunkAbsCoordinateThresholdsY = calculateChunkCoordinateThresholds(offsetY, startChunkSizeY, midChunkSizeY, midChunkCountY, endChunkSizeY)
 
     function readTerrainChunkRow(colStart: integer, colEnd: integer): TerrainChunk[] {
       const row: TerrainChunk[] = []
@@ -358,7 +359,6 @@ const TerrainChunkifier = {
       for (let i = 0; i < midChunkCountX; i++, chunkRow += midChunkSizeX) {
         row.push(readTerrainChunk(chunkRow, chunkRow + midChunkSizeX, colStart, colEnd))
       }
-      chunkRow -= midChunkSizeX
       if (endChunkSizeX > 0) {
         row.push(readTerrainChunk(chunkRow, chunkRow + endChunkSizeX, colStart, colEnd))
       }
@@ -382,7 +382,6 @@ const TerrainChunkifier = {
     }
 
     // Bottom
-    chunkColStart -= midChunkSizeY
     chunkColEnd = chunkColStart + endChunkSizeY
     if (chunkColEnd - chunkColStart > 0) {
       chunks.push(readTerrainChunkRow(chunkColStart, chunkColEnd))
@@ -392,11 +391,11 @@ const TerrainChunkifier = {
       for (const object of objects) {
         const [x, y] = objectPositionGetter(object)
         const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, x)
-        const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, y, true)
+        const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, y)
         if (xIndex === -1 || yIndex === -1) {
           chunkSaver(terrainData, object)
         } else {
-          objectPositionSetter(object, calculateCoordinate(x, chunkAbsCoordinateThresholdsX[xIndex] as number), calculateCoordinate(y, chunkAbsCoordinateThresholdsY[yIndex] as number, true))
+          objectPositionSetter(object, calculateCoordinate(x, terrain.map.offsetX, chunkAbsCoordinateThresholdsX[xIndex] as number), calculateCoordinate(y, terrain.map.offsetY, chunkAbsCoordinateThresholdsY[yIndex] as number))
           chunkSaver((chunks[yIndex] as TerrainChunk[])[xIndex] as TerrainChunk, object)
         }
       }
@@ -425,21 +424,21 @@ const TerrainChunkifier = {
     for (const region of regions) {
       const regionPosition = region.position
       const xIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsX, regionPosition.left)
-      const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, regionPosition.top, true)
+      const yIndex = getObjectChunkIndex(chunkAbsCoordinateThresholdsY, regionPosition.top)
       if (xIndex === -1 || yIndex === -1) {
         terrainData.regions.push(region)
       } else {
-        regionPosition.left = calculateCoordinate(regionPosition.left, chunkAbsCoordinateThresholdsX[xIndex] as number)
-        regionPosition.right = calculateCoordinate(regionPosition.right, chunkAbsCoordinateThresholdsX[xIndex] as number)
-        regionPosition.top = calculateCoordinate(regionPosition.top, chunkAbsCoordinateThresholdsY[yIndex] as number, true)
-        regionPosition.bottom = calculateCoordinate(regionPosition.bottom, chunkAbsCoordinateThresholdsY[yIndex] as number, true);
+        regionPosition.left = calculateCoordinate(regionPosition.left, terrain.map.offsetX, chunkAbsCoordinateThresholdsX[xIndex] as number)
+        regionPosition.right = calculateCoordinate(regionPosition.right, terrain.map.offsetX, chunkAbsCoordinateThresholdsX[xIndex] as number)
+        regionPosition.top = calculateCoordinate(regionPosition.top, terrain.map.offsetY, chunkAbsCoordinateThresholdsY[yIndex] as number)
+        regionPosition.bottom = calculateCoordinate(regionPosition.bottom, terrain.map.offsetY, chunkAbsCoordinateThresholdsY[yIndex] as number);
         ((chunks[yIndex] as TerrainChunk[])[xIndex] as TerrainChunk).regions.push(region)
       }
     }
 
     for (let i = 0; i < chunks.length; i++) {
       for (let j = 0; j < (chunks[i] as TerrainChunk[]).length; j++) {
-        tasks.push(writeData(((chunks[i]as TerrainChunk[])[j] as TerrainChunk), path.join(output, EnhancementManager.chunkifiedTerrainFolder, `terrain-${i}-${j}${EnhancementManager.chunkFileExtension}`)))
+        tasks.push(writeData(((chunks[i] as TerrainChunk[])[j] as TerrainChunk), path.join(output, EnhancementManager.chunkifiedTerrainFolder, `terrain-${i}-${j}${EnhancementManager.chunkFileExtension}`)))
       }
     }
 
