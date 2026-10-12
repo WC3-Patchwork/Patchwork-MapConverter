@@ -2,7 +2,7 @@ import { type TriggerContent } from './TriggerContent'
 
 interface GlobalVariable extends TriggerContent {
   type: string
-  userDefined: boolean
+  userDefined: boolean | undefined
   isArray: boolean
   arrayLength: number
   isInitialized: boolean

@@ -1,9 +1,9 @@
 import { type integer } from '../../wc3maptranslator/CommonInterfaces'
-import { type Region, type Camera, type Unit, type Doodad, type MapSize, SpecialDoodad } from '../../wc3maptranslator/data'
+import { type Region, type Camera, type Unit, type Doodad, type MapSize, SpecialDoodad, Tileset } from '../../wc3maptranslator/data'
 import { type SingleDigitString, type PaddedDoubleDigitString, type BinaryDigitString, type CSVString } from '../ArrayStringifier'
 
 interface TerrainData {
-  tileset: string
+  tileset: Tileset
   customTileset: boolean
   tilePalette: string[]
   cliffTilePalette: string[]

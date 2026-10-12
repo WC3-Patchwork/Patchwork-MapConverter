@@ -7,6 +7,8 @@ interface Region {
   weatherEffect: string
   ambientSound: string
   color: color
+  blockCamera: boolean
+  alphaTileMinimapColor: boolean
 }
 
 interface Rect {

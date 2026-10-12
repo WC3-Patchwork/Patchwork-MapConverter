@@ -1,6 +1,7 @@
 import { type vector3, type angle, type integer } from '../CommonInterfaces'
 import { type ItemSet } from './ItemSet'
 import { type UnitSet } from './UnitSet'
+import { WidgetLight } from './WidgetLight'
 
 interface Unit {
   type: string
@@ -8,7 +9,8 @@ interface Unit {
   position: vector3
   angle: angle
   scale: vector3 | undefined
-  skin: string | undefined
+  skinId: string | undefined
+  groupId: integer | undefined
   flags: UnitFlag
   player: integer
   hitpoints: number
@@ -21,14 +23,18 @@ interface Unit {
   inventory: Inventory[] | undefined
   abilities: Abilities[] | undefined
   random: RandomSpawn | undefined
-  playerColor: integer | undefined
+  color: integer | undefined
   waygate: integer | undefined
   id: integer | undefined
+  roll: number | undefined
+  pitch: number | undefined
+  lights: WidgetLight[] | undefined
 }
 
 interface UnitFlag {
   isUprooted: boolean
   fixedZ: boolean
+  useModelAxes: boolean
 }
 
 interface Hero {

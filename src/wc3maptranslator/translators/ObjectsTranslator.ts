@@ -3,7 +3,7 @@ import { type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type Modification, ModificationType, type ObjectData, type ObjectModificationTable, ObjectType } from '../data/ObjectModificationTable'
-import { ModificationDefaults, ObjectModificationTableDefaults } from '../default/ObjectModificationTable'
+import { ModificationDefaults } from '../default/ObjectModificationTable'
 
 const log = LoggerFactory.createLogger('ObjectsTranslator')
 
@@ -19,7 +19,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
   const output = new HexBuffer()
   output.addInt(formatVersion)
 
-  const generateTableFromJson = (tableType: TableType, tableData: Record<string, ObjectData>): void => {
+  const generateTableFromJson = (tableType: TableType, tableData: Record<string, ObjectData>|undefined): void => {
     const data = tableData ? Object.entries(tableData) : []
     output.addInt(data.length)
     data.forEach(([defKey, objectData]) => {
@@ -63,7 +63,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
             useExtraData = true
             break
           case ObjectType.Doodads:
-            useExtraData = formatVersion > 0x01
+            useExtraData = formatVersion >= 2
             break
           default:
             useExtraData = false
@@ -88,7 +88,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
             break
         }
 
-        if (formatVersion > 0x00) {
+        if (formatVersion >= 1) {
           output.addChars(defKey)
         }
       }
@@ -96,9 +96,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
   }
 
   generateTableFromJson(TableType.original, json.original)
-  if (json.custom) {
-    generateTableFromJson(TableType.custom, json.custom)
-  }
+  generateTableFromJson(TableType.custom, json.custom)
 
   return output.getBuffer()
 }
@@ -125,7 +123,7 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
       if (formatVersion >= 3) {
         sets = input.readInt()
       } else {
-        sets = 1
+        sets = ModificationDefaults.setCount
       }
 
       for (let j = 0; j < sets; j++) {
@@ -144,7 +142,7 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
               useExtraData = true
               break
             case ObjectType.Doodads:
-              useExtraData = formatVersion > 0x01
+              useExtraData = formatVersion >= 2
               break
             default:
               useExtraData = false
@@ -157,8 +155,8 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
             levelVariant = input.readInt()
             dataPointer = input.readInt()
           } else {
-            levelVariant = -1
-            dataPointer = -1
+            levelVariant = ModificationDefaults.levelVariation
+            dataPointer = ModificationDefaults.dataPointer
           }
 
           let fieldType: ModificationType
@@ -184,7 +182,7 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
               throw new Error(`Unknown object modification type ${fieldTypeValue} for '${originalId}'->'${fieldId}'`)
           }
 
-          if (formatVersion > 0x00) {
+          if (formatVersion >= 1) {
             input.readChars(4) // ObjectID, again
           }
 
@@ -205,12 +203,6 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
   }
 
   const original = readModificationTable(input, objectType, formatVersion)
-  let custom: Record<string, ObjectData>
-  if (!input.isExhausted()) {
-    custom = readModificationTable(input, objectType, formatVersion)
-  } else {
-    custom = ObjectModificationTableDefaults.custom
-  }
-
+  const custom = readModificationTable(input, objectType, formatVersion)
   return [{ original, custom }, formatVersion]
 }

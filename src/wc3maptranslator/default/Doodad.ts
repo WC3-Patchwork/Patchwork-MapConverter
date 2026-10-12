@@ -1,14 +1,24 @@
 const DoodadDefaults = {
   variation: 0,
-  scale    : [1, 1, 1],
-  flags    : {
-    fixedZ          : false,
-    notUsedInScript : true,
-    inUnplayableArea: false
+  scale: [1, 1, 1],
+  groupId: -1,
+  flags: {
+    fixedZ: false,
+    notUsedInScript: true,
+    inUnplayableArea: false,
+    useModelAxes: false
   },
-  life            : 100,
+  life: 100,
   randomItemSetPtr: -1,
-  droppedItemSets : []
+  droppedItemSets: [],
+  color: -1,
+  roll: 0,
+  pitch: 0,
+  lights: []
 }
 
-export { DoodadDefaults }
+const SpecialDoodadDefaults = {
+  variation: 0
+}
+
+export { DoodadDefaults, SpecialDoodadDefaults }

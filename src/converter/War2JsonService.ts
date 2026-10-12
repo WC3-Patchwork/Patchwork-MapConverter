@@ -6,10 +6,10 @@ import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
-import { type Asset, ObjectType, Terrain, Unit, Camera, Region } from '../wc3maptranslator/data'
+import { type Asset, ObjectType, Terrain, Unit, Camera, Region, MapLight, WidgetGroups } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
 import { MapHeader, translators } from '../translator'
-import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator } from '../wc3maptranslator/translators'
+import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, MapLightTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator, WidgetGroupTranslator } from '../wc3maptranslator/translators'
 import { type integer } from '../wc3maptranslator/CommonInterfaces'
 import { type TargetProfile } from './Profile'
 import TreeIterator from '../util/TreeIterator'
@@ -26,24 +26,26 @@ import { FormatConverter } from './formats/FormatConverter'
 const log = LoggerFactory.createLogger('War2Json')
 
 const recordedProfile: TargetProfile = {
-  w3eFormatVersion        : 0,
-  unitsDooFormatVersion   : 0,
+  w3eFormatVersion: 0,
+  unitsDooFormatVersion: 0,
   unitsDooFormatSubversion: 0,
-  dooFormatVersion        : 0,
-  dooFormatSubversion     : undefined,
-  specialDooFormatVersion : undefined,
-  w3rFormatVersion        : 0,
-  w3cFormatVersion        : 0,
-  w3sFormatVersion        : 0,
-  objectFormatVersion     : 0,
-  editorVersion           : 0,
-  impFormatVersion        : 0,
-  wtgFormatVersion        : 0,
-  wtgFormatSubversion     : 0,
+  dooFormatVersion: 0,
+  dooFormatSubversion: undefined,
+  specialDooFormatVersion: undefined,
+  w3rFormatVersion: 0,
+  w3cFormatVersion: 0,
+  w3sFormatVersion: 0,
+  objectFormatVersion: 0,
+  editorVersion: 0,
+  impFormatVersion: 0,
+  wtgFormatVersion: 0,
+  wtgFormatSubversion: 0,
   wtgVariableFormatVersion: 0,
-  wctFormatVersion        : 0,
-  wctFormatSubversion     : 0,
-  w3iFormatVersion        : 0
+  wctFormatVersion: 0,
+  wctFormatSubversion: 0,
+  w3iFormatVersion: 0,
+  w3lFormatVersion: undefined,
+  w3grpFormatVersion: undefined
 }
 
 async function parseFileNoAsyncContext<T>(input: string, translator: ((buffer: Buffer) => Promise<T>)): Promise<T> {
@@ -119,6 +121,12 @@ export const War2JsonService = {
 
     let foundCustomScripts = false
     const [customScriptFilePromise, customScriptFileResolve, customScriptFileReject] = PromiseSupplier<CustomScriptsTranslatorOutput>()
+
+    let foundMapLights = false
+    const [mapLightsFilePromise, mapLightsFileResolve, mapLightsFileReject] = PromiseSupplier<MapLight>()
+
+    let foundWidgetGroups = false
+    const [widgetGroupsFilePromise, widgetGroupsFileResolve, widgetGroupsFileReject] = PromiseSupplier<WidgetGroups>()
 
     const promises: Promise<unknown>[] = []
 
@@ -258,6 +266,22 @@ export const War2JsonService = {
           importFileResolve(assets)
           return assets
         }))
+      } else if(filename.endsWith('.w3l')) {
+        foundMapLights = true
+        promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
+          const [mapLights, formatVersion] = MapLightTranslator.warToJson(buffer)
+          recordedProfile.w3lFormatVersion = formatVersion
+          mapLightsFileResolve(mapLights);
+          return mapLights;
+        }))
+      } else if(filename.endsWith('.w3grp')) {
+        foundWidgetGroups = true
+        promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
+          const [widgetGroups, formatVersion] = WidgetGroupTranslator.warToJson(buffer)
+          recordedProfile.w3grpFormatVersion = formatVersion
+          widgetGroupsFileResolve(widgetGroups);
+          return widgetGroups;
+        }))
       } else {
         if (EnhancementManager.smartImport) {
           importFilePromise.then((assets: Asset[]) => {
@@ -370,10 +394,19 @@ export const War2JsonService = {
       customScriptFileReject('Custom scripts file not found.')
     }
 
+    if (!foundMapLights){
+      mapLightsFileReject('Map lights file not found.')
+    }
+
+    if (!foundWidgetGroups){
+      widgetGroupsFileReject('Widget groups file not found.')
+    }
+
     await Promise.all(promises)
     if (EnhancementManager.generateTargetProfile) {
       log.info('Writing profile.json...')
       await WriteAndCreatePath(path.join(outputPath, 'profile.json'), JSONConverter.stringify(recordedProfile))
+      log.info(`Profile generated at ${path.join(outputPath, 'profile.json')}`)
     }
   }
 }

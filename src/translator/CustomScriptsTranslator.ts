@@ -27,12 +27,8 @@ export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: in
 
   const saveCustomScript = function (text: string): void {
     if (text.length > 0) {
-      const buf = Buffer.from(text, 'utf-8')
-      output.addInt(buf.length + 1) // + nul char
-      for (const byte of buf) {
-        output.addByte(byte)
-      }
-      output.addByte(0) // nul char
+      output.addInt(Buffer.byteLength(text, 'utf-8') + 1) // + nul char
+      output.addString(text);
     } else {
       output.addInt(0)
     }
@@ -98,7 +94,7 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
   const loadCustomScript = function (): string {
     const scriptLengthWithNulChar = input.readInt()
     if (scriptLengthWithNulChar > 0) {
-      return input.readChars(scriptLengthWithNulChar).slice(0, -1) // remove \0 character
+      return input.readString(scriptLengthWithNulChar - 1);
     } else {
       return ''
     }

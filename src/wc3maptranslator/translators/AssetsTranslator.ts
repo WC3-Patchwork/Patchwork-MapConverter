@@ -33,8 +33,8 @@ export function jsonToWar(imports: Asset[], formatVersion: number): Buffer {
     output.addByte(importedFile.type === AssetType.Custom ? 0x01 : 0x00)
 
     // Temporary: always start the file path with war3mapImported\ until other file support is added
-    if (!importedFile.path.startsWith('war3mapImported\\') && importedFile.type === AssetType.Standard) {
-      importedFile.path = `war3mapImported\\${importedFile.path}`
+    if (!importedFile.path.startsWith('war3mapImported') && importedFile.type === AssetType.Standard) {
+      importedFile.path = `war3mapImported/${importedFile.path}`
     }
     output.addString(importedFile.path)
   })

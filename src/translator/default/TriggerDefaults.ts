@@ -1,6 +1,7 @@
 const TriggerDefaults = {
   description : '',
   isExpanded  : false,
+  isComment   : false,
   isEnabled   : true,
   initiallyOff: false,
   runOnMapInit: false,
@@ -12,4 +13,8 @@ const TriggerDefaults = {
   children    : []
 }
 
-export { TriggerDefaults }
+const VariableDefaults = {
+  userDefined: true
+}
+
+export { TriggerDefaults, VariableDefaults }

@@ -19,5 +19,7 @@ interface TargetProfile {
   w3rFormatVersion: integer
   w3cFormatVersion: integer
   w3sFormatVersion: integer
+  w3lFormatVersion: integer | undefined
+  w3grpFormatVersion: integer | undefined
 }
 export type { TargetProfile }

@@ -12,8 +12,8 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { Camera, Info, ObjectModificationTable, ObjectType, Region, Sound, Terrain, Unit, type Asset } from '../wc3maptranslator/data'
-import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator } from '../wc3maptranslator/translators'
+import { Camera, Info, MapLight, ObjectModificationTable, ObjectType, Region, Sound, Terrain, Unit, WidgetGroups, type Asset } from '../wc3maptranslator/data'
+import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, MapLightTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator, WidgetGroupTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
 import { translators } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
@@ -22,7 +22,7 @@ import TreeIterator from '../util/TreeIterator'
 import { AsyncTaskContextWrapper } from '../logging/AsyncTaskContextWrapper'
 import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
-import { CustomScriptsTranslatorOutput } from '../translator/CustomScriptsTranslator'
+import { CustomScriptsTranslatorOutput, jsonToWar } from '../translator/CustomScriptsTranslator'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
 const log = LoggerFactory.createLogger('Json2War')
@@ -82,7 +82,7 @@ function getAllContentForScriptFile(root: TriggerContainer): TriggerContent[] {
       // eslint-disable-next-line no-fallthrough
       case ContentType.LIBRARY:
       case ContentType.CATEGORY:
-        triggerStack.push(...(currentTrigger as TriggerContainer).children.reverse())
+        triggerStack.push(...(currentTrigger as TriggerContainer).children.toReversed())
         break
       case ContentType.CUSTOM_SCRIPT:
       case ContentType.TRIGGER:
@@ -113,7 +113,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
         if ((trigger as MapHeader).children != null) { // Found header
           scriptArg.headerComment = trigger.description
         }
-        scriptArg.scripts.push(trigger.script)
+        scriptArg.scripts.push(trigger.script ?? '')
       } else {
         scriptArg.scripts.push('')
       }
@@ -273,7 +273,7 @@ export const Json2WarService = {
         promises.push(processFile<Info>(file.path, translatedOutputFile,
           info => InfoTranslator.jsonToWar(info, profile.w3iFormatVersion)
         ))
-      } else if (filename.endsWith('.imp')) {
+      } else if (filename.endsWith(`.imp${EnhancementManager.mapDataExtension}`)) {
         if (EnhancementManager.smartImport) {
           log.warn(`Detected war3map.imp${EnhancementManager.mapDataExtension} but Smart Import option is requested, will ignore this file.`)
         } else {
@@ -281,6 +281,10 @@ export const Json2WarService = {
             assets => AssetsTranslator.jsonToWar(assets, profile.impFormatVersion)
           ))
         }
+      } else if (filename.endsWith(`.w3l${EnhancementManager.mapDataExtension}`)) {
+        promises.push(processFile<MapLight>(file.path, translatedOutputFile, mapLight => MapLightTranslator.jsonToWar(mapLight, profile.w3lFormatVersion!)))
+      } else if (filename.endsWith(`.w3grp${EnhancementManager.mapDataExtension}`)) {
+        promises.push(processFile<WidgetGroups>(file.path, translatedOutputFile, widgetGroups => WidgetGroupTranslator.jsonToWar(widgetGroups, profile.w3grpFormatVersion!)))
       } else {
         promises.push(copyFileWithDirCreation(file.path, outputFile))
       }
@@ -293,7 +297,7 @@ export const Json2WarService = {
         const importedFiles = ImportComposer.composeImportRegistry(importDirectoryTree)
         promises.push(exportImportsFile(importedFiles, importFileOutputPath, profile))
 
-        for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(importDirectoryTree, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
+        for (const [, file] of TreeIterator<DirectoryTree>(directoryTree((importDirectoryTree as DirectoryTree<Record<string, unknown>>).path, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
           if (FileBlacklist.isDirectoryTreeBlacklisted(parent)) return
           return parent.children
         })) {

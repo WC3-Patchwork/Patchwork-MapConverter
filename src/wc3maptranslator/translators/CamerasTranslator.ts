@@ -8,8 +8,8 @@ import { CameraDefaults } from '../default/Camera'
 const log = LoggerFactory.createLogger('CamerasTranslator')
 
 export function jsonToWar(cameras: Camera[], formatVersion: integer, editorVersion: integer): Buffer {
-  if (formatVersion !== 0) {
-    throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 0.`)
+  if (formatVersion > 3) {
+    throw new Error(`Unknown file format version=${formatVersion} for cameras file, expected 3 or less.`)
   }
   const output = new HexBuffer()
   output.addInt(formatVersion)
@@ -25,12 +25,24 @@ export function jsonToWar(cameras: Camera[], formatVersion: integer, editorVersi
     output.addFloat(camera.fieldOfView)
     output.addFloat(camera.farClipping)
     output.addFloat(camera.nearClipping)
+
     if (editorVersion >= 6071) { // if editor version is 1.30+
       output.addFloat(camera.localPitch ?? CameraDefaults.localPitch)
       output.addFloat(camera.localYaw ?? CameraDefaults.localYaw)
       output.addFloat(camera.localRoll ?? CameraDefaults.localRoll)
     }
+
+    if (formatVersion >= 3) {
+      output.addFloat(camera.dofDistance ?? CameraDefaults.dofDistance)
+      output.addFloat(camera.dofScale ?? CameraDefaults.dofScale)
+      output.addFloat(camera.posAbsoluteZ ?? CameraDefaults.posAbsoluteZ)
+    }
+
     output.addString(camera.name)
+
+    if (formatVersion >= 3) {
+      output.addInt(+(camera.freeCamera ?? CameraDefaults.freeCamera))
+    }
   })
 
   return output.getBuffer()
@@ -39,7 +51,7 @@ export function jsonToWar(cameras: Camera[], formatVersion: integer, editorVersi
 export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readInt()
-  if (formatVersion !== 0) {
+  if (formatVersion > 3) {
     log.warn(`Unknown camera file format version ${formatVersion} will attempt reading...`)
   } else {
     log.info(`Camera format version is ${formatVersion}.`)
@@ -58,6 +70,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], in
     const fieldOfView = input.readFloat()
     const farClipping = input.readFloat()
     const nearClipping = input.readFloat()
+
     let localPitch: integer
     let localYaw: integer
     let localRoll: integer
@@ -70,7 +83,29 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], in
       localYaw = CameraDefaults.localYaw
       localRoll = CameraDefaults.localRoll
     }
+
+    let dofDistance: number
+    let dofScale: number
+    let posAbsoluteZ: number
+    if (formatVersion >= 3) {
+      dofDistance = input.readFloat()
+      dofScale = input.readFloat()
+      posAbsoluteZ = input.readFloat()
+    } else {
+      dofDistance = CameraDefaults.dofDistance
+      dofScale = CameraDefaults.dofScale
+      posAbsoluteZ = CameraDefaults.posAbsoluteZ
+    }
+
     const name = input.readString()
+
+    let freeCamera: boolean
+    if (formatVersion >= 3) {
+      freeCamera = !!input.readInt()
+    } else {
+      freeCamera = CameraDefaults.freeCamera
+    }
+
     result[i] = {
       targetX,
       targetY,
@@ -85,7 +120,11 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [Camera[], in
       localPitch,
       localRoll,
       localYaw,
-      name
+      dofDistance,
+      dofScale,
+      posAbsoluteZ,
+      name,
+      freeCamera
     }
   }
 

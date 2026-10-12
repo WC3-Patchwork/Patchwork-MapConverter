@@ -20,16 +20,16 @@ import { LoggerFactory } from '../logging/LoggerFactory'
 import { type MapHeader } from './data/MapHeader'
 import { type TriggerItemBase } from './data/content/TriggerItemBase'
 import { type BaseTrigger } from './data/content/BaseTrigger'
-import { TriggerDefaults } from './default/TriggerDefaults'
+import { TriggerDefaults, VariableDefaults } from './default/TriggerDefaults'
 
 const log = LoggerFactory.createLogger('TriggersTranslator')
 
 export interface TriggerTranslatorOutput {
-  root: TriggerContainer
+  root: MapHeader
   scriptReferences: (ScriptContent | null)[]
 }
 
-export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer, variableFormatVersion: integer, formatSubversion?: integer): Buffer {
+export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer, variableFormatVersion: integer, formatSubversion: integer = 0x7FFFFFFF): Buffer {
   if (formatVersion < 0 || formatVersion > 0x80000004) {
     throw new Error(`Unknown map scripts format version=${formatVersion}, expected value from range [0, 0x80000004]`)
   }
@@ -40,14 +40,15 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
 
   const output = new HexBuffer()
   output.addChars('WTG!')
-  output.addUInt(formatVersion)
-  if (formatVersion > 0x7FFFFFFF) {
-    if (!formatSubversion || formatSubversion < 0 || formatSubversion > 7) {
-      throw new Error(`Unknown map triggers format subversion=${formatSubversion ?? 'undefined'}, expected value from range [0, 7]`)
-    }
+
+  if (formatSubversion > 0x7FFFFFFF) {
     output.addUInt(formatSubversion)
   }
-  const finalFormatSubversion = formatSubversion ?? 0x7FFFFFFF
+
+  if (formatVersion < 0 || formatVersion > 7) {
+    throw new Error(`Unknown map triggers format version=${formatSubversion ?? 'undefined'}, expected value from range [0, 7]`)
+  }
+  output.addUInt(formatVersion)
 
   const parentReference = new Map<TriggerContent, integer>()
   const elementReference = new Map<TriggerContent, integer>()
@@ -74,6 +75,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
         for (const childTrigger of (currentTrigger as TriggerContainer).children) {
           parentReference.set(childTrigger, elementId)
         }
+        parentReference.set(currentTrigger, -1) // the only valid value for map header
         break
       case ContentType.LIBRARY:
         elementId = 0x01000000 + libraryCount++
@@ -85,7 +87,9 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       case ContentType.CATEGORY:
         elementId = 0x02000000 + categoryCount++
         triggerStack.push(...(currentTrigger as TriggerContainer).children)
-
+        for (const childTrigger of (currentTrigger as TriggerContainer).children) {
+          parentReference.set(childTrigger, elementId)
+        }
         break
       case ContentType.TRIGGER:
       case ContentType.TRIGGER_SCRIPTED:
@@ -116,6 +120,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       triggersByContentType.set(contentType, [currentTrigger])
     }
   }
+  triggersByContentType.forEach(it => it.reverse()) // reorient to proper order
 
   const saveGlobals = function (variables: GlobalVariable[], parentReference: Map<TriggerContent, integer>): void {
     output.addInt(variableFormatVersion)
@@ -123,7 +128,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     for (const variable of variables) {
       output.addString(variable.name)
       output.addString(variable.type)
-      output.addInt(+variable.userDefined)
+      output.addInt(+(variable.userDefined ?? VariableDefaults.userDefined))
       output.addInt(+variable.isArray)
       if (variableFormatVersion >= 2) {
         output.addInt(variable.arrayLength)
@@ -133,7 +138,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       }
       output.addString(variable.initialValue)
 
-      if (finalFormatSubversion >= 0x80000000) {
+      if (formatSubversion >= 0x80000000) {
         const elementId = elementReference.get(variable)
         if (elementId == null) {
           throw new Error(`Variable ${variable.name} missing ID`)
@@ -148,10 +153,10 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     output.addInt(elementId)
     output.addString(container.name)
     if (formatVersion > 6) {
-      output.addInt(+(container.contentType === ContentType.COMMENT)) // should always be false
+      output.addInt(+(container.isComment))
     }
 
-    if (finalFormatSubversion >= 0x80000000) {
+    if (formatSubversion >= 0x80000000) {
       output.addInt(+container.isExpanded)
       output.addInt(parentContainerId)
     }
@@ -223,8 +228,8 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
       output.addInt(+isComment)
     }
 
-    if (formatVersion < 5 || finalFormatSubversion > 0x7FFFFFFF) {
-      if (finalFormatSubversion > 0x80000000) {
+    if (formatVersion < 5 || formatSubversion > 0x7FFFFFFF) {
+      if (formatSubversion > 0x80000000) {
         output.addInt(elementId)
       }
       output.addInt(+(isEnabled))
@@ -277,8 +282,10 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
 
     if (formatVersion > 5) {
       const childTriggerFunctions = triggerFunction?.statements ?? TriggerDefaults.statements
+      output.addInt(Object.values(childTriggerFunctions).filter(it => it != null).flatMap(it => it).length)
       for (const [groupIndex, groupFunctions] of Object.entries(childTriggerFunctions)) {
-        for (const childTriggerFunction of groupFunctions) {
+        if (!groupFunctions) continue;
+        for (const childTriggerFunction of groupFunctions as Statement[]) {
           output.addInt(StatementTypeEnumConverter.toIdentifier(childTriggerFunction.type))
           output.addInt(groupIndex as unknown as integer)
           saveTriggerFunction(childTriggerFunction)
@@ -307,12 +314,7 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     output.addInt(parentContainerId)
   }
 
-  let totalElements = 0
-  for (const elements of triggersByContentType.values()) {
-    totalElements = totalElements + elements.length
-  }
-
-  if (finalFormatSubversion < 0x80000000) {
+  if (formatSubversion < 0x80000000) {
     output.addInt((triggersByContentType.get(ContentType.CATEGORY) as [])?.length ?? 0)
     for (const category of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
       saveContainer(elementReference.get(category)!, category, parentReference.get(category)!)
@@ -321,8 +323,8 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
 
     const triggerContentCount
       = ((triggersByContentType.get(ContentType.COMMENT) as [])?.length ?? 0)
-        + ((triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as [])?.length ?? 0)
-        + ((triggersByContentType.get(ContentType.TRIGGER) as [])?.length ?? 0)
+      + ((triggersByContentType.get(ContentType.CUSTOM_SCRIPT) as [])?.length ?? 0)
+      + ((triggersByContentType.get(ContentType.TRIGGER) as [])?.length ?? 0)
 
     output.addInt(triggerContentCount)
     for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[] ?? []) {
@@ -353,35 +355,32 @@ export function jsonToWar(json: TriggerTranslatorOutput, formatVersion: integer,
     output.addInt(0) // deleted count
 
     saveGlobals(triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? [], parentReference)
-    output.addInt(totalElements)
-    for (const header of triggersByContentType.get(ContentType.HEADER) ?? [{
-      isExpanded : TriggerDefaults.isExpanded,
-      children   : TriggerDefaults.children,
-      name       : '',
-      contentType: ContentType.HEADER,
-      script     : '',
-      description: TriggerDefaults.description
-    } satisfies MapHeader]) {
-      saveContainer(elementReference.get(header) ?? 0, header as TriggerContainer, 0)
-    }
-    for (const library of triggersByContentType.get(ContentType.LIBRARY) as TriggerContainer[] ?? []) {
-      saveContainer(elementReference.get(library)!, library, parentReference.get(library)!)
-    }
-    for (const container of triggersByContentType.get(ContentType.CATEGORY) as TriggerContainer[] ?? []) {
-      saveContainer(elementReference.get(container)!, container, parentReference.get(container)!)
-    }
 
-    for (const trigger of triggersByContentType.get(ContentType.TRIGGER) as GUITrigger[] ?? []) {
-      saveTrigger(elementReference.get(trigger)!, trigger, parentReference.get(trigger)!)
-    }
-    for (const comment of triggersByContentType.get(ContentType.COMMENT) as TriggerComment[] ?? []) {
-      saveTrigger(elementReference.get(comment)!, comment, parentReference.get(comment)!)
-    }
-    for (const customScript of triggersByContentType.get(ContentType.CUSTOM_SCRIPT) ?? []) {
-      saveTrigger(elementReference.get(customScript)!, customScript, parentReference.get(customScript)!)
-    }
-    for (const variable of triggersByContentType.get(ContentType.VARIABLE) as GlobalVariable[] ?? []) {
-      saveTriggerVariable(elementReference.get(variable)!, variable, parentReference.get(variable)!)
+    output.addInt(triggersByContentType.values().map(it => it.length).reduce((acc, value) => acc + value, 0))
+    triggerStack.push(json.root);
+    while (triggerStack.length > 0) {
+      const currentTrigger = triggerStack.pop()
+      if (currentTrigger == null) continue
+      output.addInt(ContentTypeEnumConverter.toIdentifier(currentTrigger.contentType))
+      switch (currentTrigger.contentType) {
+        case ContentType.HEADER:
+        case ContentType.LIBRARY:
+        case ContentType.CATEGORY:
+          saveContainer(elementReference.get(currentTrigger)!, currentTrigger as TriggerContainer, parentReference.get(currentTrigger)!)
+          triggerStack.push(...(currentTrigger as TriggerContainer).children.toReversed())
+          break
+        case ContentType.TRIGGER:
+        case ContentType.TRIGGER_SCRIPTED:
+        case ContentType.COMMENT:
+        case ContentType.CUSTOM_SCRIPT:
+          saveTrigger(elementReference.get(currentTrigger)!, currentTrigger, parentReference.get(currentTrigger)!)
+          break
+        case ContentType.VARIABLE:
+          saveTriggerVariable(elementReference.get(currentTrigger)!, currentTrigger as GlobalVariable, parentReference.get(currentTrigger)!)
+          break
+        default:
+          continue
+      }
     }
   }
 
@@ -479,8 +478,11 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
     const loadContainer = function (type: ContentType): TriggerContainer {
       const elementId = input.readInt()
       const name = input.readString()
+      let isComment: boolean
       if (formatVersion > 6) {
-        input.readInt() // isComment: boolean - pretty sure this will always be false.
+        isComment = !!input.readInt()
+      } else {
+        isComment = false
       }
 
       let isExpanded: boolean
@@ -495,8 +497,10 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       const container = {
         name,
         isExpanded,
+        isComment,
         contentType: type,
-        children   : []
+        description: '',
+        children: []
       } satisfies TriggerContainer
       containers[elementId] = container
 
@@ -557,9 +561,9 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
               isEnabled,
               initiallyOff,
               runOnMapInit,
-              events    : [],
+              events: [],
               conditions: [],
-              actions   : []
+              actions: []
             } satisfies GUITrigger as TriggerContent
             content[elementId] = triggerContent
             customScripts.push(null)
@@ -637,24 +641,29 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       const triggerFunction = {
         name,
         type,
-        isEnabled,
-        parameters: [] as Parameter[],
-        statements: {} as Record<integer, Statement[]>
-      } satisfies Statement
+        isEnabled
+      } as Statement
+
+      if (paramCount > 0) {
+        triggerFunction.parameters = [];
+      }
 
       for (let i = 0; i < paramCount; i++) {
-        triggerFunction.parameters[i] = loadTriggerFunctionParameter()
+        (triggerFunction.parameters as Parameter[])[i] = loadTriggerFunctionParameter()
       }
       if (formatVersion > 5) {
         const triggerFunctionCount = input.readInt()
+        if (triggerFunctionCount > 0) {
+          triggerFunction.statements = {};
+        }
         for (let i = 0; i < triggerFunctionCount; i++) {
           const functionType = StatementTypeEnumConverter.toEnum(input.readInt())
           const groupIndex = input.readInt() // if-then-else groups
           let statements: Statement[]
-          if (triggerFunction.statements[groupIndex] == null) {
-            statements = triggerFunction.statements[groupIndex] = [] as Statement[]
+          if ((triggerFunction.statements as Record<integer, Statement[]>)[groupIndex] == null) {
+            statements = (triggerFunction.statements as Record<integer, Statement[]>)[groupIndex] = []
           } else {
-            statements = triggerFunction.statements[groupIndex]
+            statements = (triggerFunction.statements as Record<integer, Statement[]>)[groupIndex] as Statement[]
           }
 
           statements.push(loadTriggerFunction(functionType))
@@ -677,12 +686,17 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       if (isArray) {
         arrayIndex = loadTriggerFunctionParameter()
       }
-      return {
+      const parameter = {
         type,
-        value,
-        statement,
-        arrayIndex
-      } satisfies Parameter
+        value
+      } as Parameter
+      if (statement != null) {
+        parameter.statement = statement;
+      }
+      if (arrayIndex != null) {
+        parameter.arrayIndex = arrayIndex;
+      }
+      return parameter
     }
 
     const loadTriggerVariable = function (): void {
@@ -695,12 +709,13 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
 
     if (formatSubversion < 0x80000000) {
       const header = {
-        name       : 'header',
+        name: 'header',
         description: '',
         contentType: ContentType.HEADER,
-        isExpanded : true,
-        script     : '',
-        children   : []
+        isExpanded: true,
+        isComment: false,
+        script: '',
+        children: []
       } satisfies MapHeader
       customScripts.push(header as ScriptContent)
       const triggerCategoryCount = input.readInt()
@@ -737,6 +752,7 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
           case ContentType.CATEGORY:
             element = loadContainer(type)
             if (type === ContentType.HEADER) {
+              (element as MapHeader).script = ''
               customScripts.push(element as ScriptContent)
             }
             break
@@ -752,13 +768,13 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
       }
     }
 
-    let root: TriggerContainer | null = null
+    let root: MapHeader | null = null
     const missingElements: { data?: TriggerContainer | TriggerContent, elementId?: number, parentId?: number, foundParent: boolean, foundElement: boolean }[] = []
     // Generate data tree structure
     for (const [elementId, parentId] of elementRelations.entries()) {
-      if (parentId === -1) {
+      if (elementId === 0) {
         if (containers[elementId] != null) {
-          root = containers[elementId]
+          root = containers[elementId] as MapHeader
         }
       } else {
         let parent: TriggerContainer | undefined
@@ -776,10 +792,10 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
         if (parent == null || element == null) {
           missingElements.push({
             foundElement: element != null,
-            foundParent : parent != null,
+            foundParent: parent != null,
             elementId,
             parentId,
-            data        : parent ?? element
+            data: parent ?? element
           })
           continue
         }
@@ -790,11 +806,14 @@ export function warToJson(buffer: Buffer): [TriggerTranslatorOutput, integer, in
 
     return [{
       root: root ?? {
-        isExpanded : false,
-        children   : [],
-        name       : '',
-        contentType: ContentType.HEADER
-      } satisfies TriggerContainer,
+        isExpanded: false,
+        isComment: false,
+        children: [],
+        name: '',
+        description: '',
+        contentType: ContentType.HEADER,
+        script: ''
+      } satisfies MapHeader,
       scriptReferences: customScripts
     }, formatVersion, variableFormatVersion, formatSubversion]
   } catch (e) {
