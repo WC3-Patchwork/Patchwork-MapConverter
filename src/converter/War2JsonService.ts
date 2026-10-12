@@ -272,6 +272,7 @@ export const War2JsonService = {
           const [mapLights, formatVersion] = MapLightTranslator.warToJson(buffer)
           recordedProfile.w3lFormatVersion = formatVersion
           mapLightsFileResolve(mapLights);
+          return mapLights;
         }))
       } else if(filename.endsWith('.w3grp')) {
         foundWidgetGroups = true
@@ -279,6 +280,7 @@ export const War2JsonService = {
           const [widgetGroups, formatVersion] = WidgetGroupTranslator.warToJson(buffer)
           recordedProfile.w3grpFormatVersion = formatVersion
           widgetGroupsFileResolve(widgetGroups);
+          return widgetGroups;
         }))
       } else {
         if (EnhancementManager.smartImport) {

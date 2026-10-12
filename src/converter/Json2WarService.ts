@@ -273,7 +273,7 @@ export const Json2WarService = {
         promises.push(processFile<Info>(file.path, translatedOutputFile,
           info => InfoTranslator.jsonToWar(info, profile.w3iFormatVersion)
         ))
-      } else if (filename.endsWith('.imp')) {
+      } else if (filename.endsWith(`.imp${EnhancementManager.mapDataExtension}`)) {
         if (EnhancementManager.smartImport) {
           log.warn(`Detected war3map.imp${EnhancementManager.mapDataExtension} but Smart Import option is requested, will ignore this file.`)
         } else {
@@ -281,9 +281,9 @@ export const Json2WarService = {
             assets => AssetsTranslator.jsonToWar(assets, profile.impFormatVersion)
           ))
         }
-      } else if (filename.endsWith('.w3l')) {
+      } else if (filename.endsWith(`.w3l${EnhancementManager.mapDataExtension}`)) {
         promises.push(processFile<MapLight>(file.path, translatedOutputFile, mapLight => MapLightTranslator.jsonToWar(mapLight, profile.w3lFormatVersion!)))
-      } else if (filename.endsWith('.w3grp')) {
+      } else if (filename.endsWith(`.w3grp${EnhancementManager.mapDataExtension}`)) {
         promises.push(processFile<WidgetGroups>(file.path, translatedOutputFile, widgetGroups => WidgetGroupTranslator.jsonToWar(widgetGroups, profile.w3grpFormatVersion!)))
       } else {
         promises.push(copyFileWithDirCreation(file.path, outputFile))
