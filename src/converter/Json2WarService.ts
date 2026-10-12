@@ -12,8 +12,8 @@ import { type MapHeader } from '../translator/data/MapHeader'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
 import { TriggerComposer } from '../enhancements/TriggerComposer'
-import { Camera, Info, ObjectModificationTable, ObjectType, Region, Sound, Terrain, Unit, type Asset } from '../wc3maptranslator/data'
-import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator } from '../wc3maptranslator/translators'
+import { Camera, Info, MapLight, ObjectModificationTable, ObjectType, Region, Sound, Terrain, Unit, WidgetGroups, type Asset } from '../wc3maptranslator/data'
+import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, MapLightTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator, WidgetGroupTranslator } from '../wc3maptranslator/translators'
 import { FormatConverters } from './formats/FormatConverters'
 import { translators } from '../translator'
 import { type TriggerTranslatorOutput } from '../translator/TriggersTranslator'
@@ -22,7 +22,7 @@ import TreeIterator from '../util/TreeIterator'
 import { AsyncTaskContextWrapper } from '../logging/AsyncTaskContextWrapper'
 import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
-import { CustomScriptsTranslatorOutput } from '../translator/CustomScriptsTranslator'
+import { CustomScriptsTranslatorOutput, jsonToWar } from '../translator/CustomScriptsTranslator'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
 const log = LoggerFactory.createLogger('Json2War')
@@ -281,6 +281,10 @@ export const Json2WarService = {
             assets => AssetsTranslator.jsonToWar(assets, profile.impFormatVersion)
           ))
         }
+      } else if (filename.endsWith('.w3l')) {
+        promises.push(processFile<MapLight>(file.path, translatedOutputFile, mapLight => MapLightTranslator.jsonToWar(mapLight, profile.w3lFormatVersion!)))
+      } else if (filename.endsWith('.w3grp')) {
+        promises.push(processFile<WidgetGroups>(file.path, translatedOutputFile, widgetGroups => WidgetGroupTranslator.jsonToWar(widgetGroups, profile.w3grpFormatVersion!)))
       } else {
         promises.push(copyFileWithDirCreation(file.path, outputFile))
       }
