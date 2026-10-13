@@ -4,5 +4,6 @@ import { FileBlacklist } from './FileBlacklist'
 import ImportComposer from './ImportComposer'
 import { TriggerComposer } from './TriggerComposer'
 import { TriggerDataRegistry } from './TriggerDataRegistry'
+import { ObjectDataMerger } from './ObjectDataMerger'
 
-export { TriggerDefinition, EnhancementManager, FileBlacklist, ImportComposer, TriggerComposer, TriggerDataRegistry }
+export { TriggerDefinition, EnhancementManager, FileBlacklist, ImportComposer, TriggerComposer, TriggerDataRegistry, ObjectDataMerger }

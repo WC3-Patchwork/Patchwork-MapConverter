@@ -25,6 +25,8 @@ import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/Doodads
 import { CustomScriptsTranslatorOutput, jsonToWar } from '../translator/CustomScriptsTranslator'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
+import { integer } from '@/wc3maptranslator/CommonInterfaces'
+import { ObjectDataMerger } from '@/enhancements'
 const log = LoggerFactory.createLogger('Json2War')
 
 async function parseFileNoAsyncContext<T>(input: string): Promise<T> {
@@ -61,10 +63,28 @@ async function processFile<T>(input: string, output: string, translator: ((json:
   })
 }
 
+async function processObjectDataFile(input: string, output: string, objectType: ObjectType, objectFormatVersion: integer, merge: boolean) {
+  if (merge) {
+    const objectData = await parseFile<ObjectModificationTable>(input)
+    ObjectDataMerger.appendData(objectData, objectType, output)
+  } else {
+    return processFile<ObjectModificationTable>(input, output, objects => ObjectsTranslator.jsonToWar(objects, objectType, objectFormatVersion))
+  }
+}
+
 async function exportImportsFile(data: Asset[], output: string, profile: TargetProfile): Promise<void> {
   await AsyncTaskContextWrapper(async () => {
     log.info('Exporting generated war3map.imp file.')
     const buffer = AssetsTranslator.jsonToWar(data, profile.impFormatVersion)
+    await WriteAndCreatePath(output, buffer)
+    log.info('Finished exporting', output)
+  })
+}
+
+async function exportObjectDataFile(data: ObjectModificationTable, type: ObjectType, output: string, profile: TargetProfile): Promise<void> {
+  await AsyncTaskContextWrapper(async () => {
+    log.info(`Exporting generated ${output} file.`)
+    const buffer = ObjectsTranslator.jsonToWar(data, type, profile.objectFormatVersion)
     await WriteAndCreatePath(output, buffer)
     log.info('Finished exporting', output)
   })
@@ -132,6 +152,7 @@ export const Json2WarService = {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 
     const promises: Promise<unknown>[] = []
+    const objectDataPromises: Promise<unknown>[] = []
     let importDirectoryTree: DirectoryTree<Record<string, unknown>> | null = null
 
     for (const [, file] of TreeIterator<DirectoryTree>(directoryTree(inputPath, { attributes: ['type', 'extension'] }), (parent: directoryTree.DirectoryTree<Record<string, string>>) => {
@@ -223,33 +244,19 @@ export const Json2WarService = {
           sounds => SoundsTranslator.jsonToWar(sounds, profile.w3sFormatVersion)
         ))
       } else if (filename.endsWith(`.w3u${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Units, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Units, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3t${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Items, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Items, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3a${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Abilities, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Abilities, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3b${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Destructables, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Destructables, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3d${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Doodads, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Doodads, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3q${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Upgrades, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Upgrades, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.w3h${EnhancementManager.mapDataExtension}`)) {
-        promises.push(processFile<ObjectModificationTable>(file.path, translatedOutputFile,
-          objects => ObjectsTranslator.jsonToWar(objects, ObjectType.Buffs, profile.objectFormatVersion)
-        ))
+        objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Buffs, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))
       } else if (filename.endsWith(`.wts${EnhancementManager.mapDataExtension}`)) {
         promises.push(processFile<Record<string, string>>(file.path, translatedOutputFile,
           StringsTranslator.jsonToWar
@@ -290,6 +297,15 @@ export const Json2WarService = {
       }
     }
 
+    const finalObjectDataPromise = Promise.all(objectDataPromises).then(() => {
+      if (EnhancementManager.mergeObjectSkinData){
+        log.debug('Object data merge requested')
+        for (const exportData of ObjectDataMerger.exportData()){
+          promises.push(exportObjectDataFile(exportData.data, exportData.type, exportData.expectedOutput, profile))
+        }
+      }
+    });
+
     if (EnhancementManager.smartImport) {
       log.debug('SmartImports requested')
       const importFileOutputPath = path.join(outputPath, 'war3map.imp')
@@ -311,6 +327,7 @@ export const Json2WarService = {
       }
     }
 
+    await finalObjectDataPromise
     await Promise.all(promises)
   }
 }
