@@ -99,7 +99,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
   await AsyncTaskContextWrapper(async () => {
     const tasks: Promise<unknown>[] = []
     const triggerAndScript: TriggerTranslatorOutput = {
-      root            : triggersJson,
+      root: triggersJson,
       scriptReferences: getAllContentForScriptFile(triggersJson) as ScriptContent[]
     }
 

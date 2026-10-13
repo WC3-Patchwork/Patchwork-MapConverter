@@ -136,11 +136,11 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
     try {
       do {
         scripts.push(loadCustomScript())
-      // eslint-disable-next-line no-constant-condition
+        // eslint-disable-next-line no-constant-condition
       } while (true)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
-    // catch EOF
+      // catch EOF
     }
   }
 

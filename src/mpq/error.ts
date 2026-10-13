@@ -13,7 +13,7 @@ function stormlibErrorToText(code: number) {
         case 11:
             return ['ERROR_BAD_FORMAT', 'An attempt was made to load a program with an incorrect format.'];
         case 14:
-            return ['ERROR_OUTOFMEMORY','Not enough storage is available to complete this operation.'];
+            return ['ERROR_OUTOFMEMORY', 'Not enough storage is available to complete this operation.'];
         case 38:
             return ['ERROR_HANDLE_EOF', 'The handle is at the end of the file.'];
         case 87:
@@ -60,7 +60,7 @@ function stormlibErrorToText(code: number) {
 
 export function makeError(code: number) {
     const kinds = stormlibErrorToText(code);
-    if (code === 0){
+    if (code === 0) {
         // this is not supposed to happen
         return new Error(`Execution is done and finished, but somehow stormlib say that it is failed to do so`);
     }

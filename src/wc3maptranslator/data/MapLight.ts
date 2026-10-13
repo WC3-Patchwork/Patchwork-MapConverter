@@ -6,4 +6,4 @@ interface MapLight {
     useCustomBothLights: boolean
 }
 
-export type {MapLight}
+export type { MapLight }

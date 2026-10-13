@@ -13,9 +13,9 @@ export function jsonToWar(widgetGroupsJson: WidgetGroups, formatVersion: integer
   const output = new HexBuffer()
   output.addInt(formatVersion)
 
-  function writeGroup(groups: WidgetGroup[]){
+  function writeGroup(groups: WidgetGroup[]) {
     output.addInt(groups?.length ?? 0)
-    for(const group of groups){
+    for (const group of groups) {
       output.addInt(group.groupId)
       output.addString(group.groupName)
     }

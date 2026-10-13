@@ -173,20 +173,20 @@ const TriggerComposer = {
           tasks.push(populateParentDetails(containerParent, file))
         } else if (file.extension === EnhancementManager.guiExtension) {
           const element = {
-            name         : file.name.substring(0, file.name.lastIndexOf('.')),
-            contentType  : ContentType.TRIGGER,
-            actions      : [],
-            arrayLength  : 0,
-            conditions   : [],
-            description  : '',
-            events       : [],
-            initiallyOff : false,
-            initialValue : '',
-            isArray      : false,
-            isEnabled    : false,
+            name: file.name.substring(0, file.name.lastIndexOf('.')),
+            contentType: ContentType.TRIGGER,
+            actions: [],
+            arrayLength: 0,
+            conditions: [],
+            description: '',
+            events: [],
+            initiallyOff: false,
+            initialValue: '',
+            isArray: false,
+            isEnabled: false,
             isInitialized: false,
-            runOnMapInit : false,
-            type         : ''
+            runOnMapInit: false,
+            type: ''
           } satisfies GUITrigger | GlobalVariable | ScriptedTrigger
           if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
             triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
@@ -200,11 +200,11 @@ const TriggerComposer = {
             tasks.push(populateCustomScript(result as unknown as CustomScript, file))
           } else {
             const element = {
-              name       : file.name.substring(0, file.name.lastIndexOf('.')),
+              name: file.name.substring(0, file.name.lastIndexOf('.')),
               contentType: ContentType.CUSTOM_SCRIPT,
-              script     : '',
+              script: '',
               description: '',
-              isEnabled  : !scriptDisabled
+              isEnabled: !scriptDisabled
             } satisfies CustomScript
             if ((triggerContentMap.get(containerParent)?.has(element.name)) ?? false) {
               triggerContentMap.get(containerParent)?.get(element.name)?.push(element as TriggerContent)
@@ -216,9 +216,9 @@ const TriggerComposer = {
           }
         } else if (file.extension === EnhancementManager.commentExtension) {
           const element = {
-            name       : file.name.substring(0, file.name.lastIndexOf('.')),
+            name: file.name.substring(0, file.name.lastIndexOf('.')),
             contentType: ContentType.COMMENT,
-            comment    : ''
+            comment: ''
           } satisfies TriggerComment
           if (!commentCounters.has(containerParent)) {
             commentCounters.set(containerParent, { [element.name]: 1 })
@@ -262,7 +262,7 @@ const TriggerComposer = {
               (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
             }
           }
-        } else if(contents.length == 0){
+        } else if (contents.length == 0) {
           contents.forEach(it => container.children.push(it))
         }
       }

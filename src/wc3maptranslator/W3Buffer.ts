@@ -45,7 +45,7 @@ export class W3Buffer {
       this._offset += len;
     }
 
-    if (this._offset == start){
+    if (this._offset == start) {
       this._offset += 1; // consume the \0 end-of-string delimiter
       return '';
     }

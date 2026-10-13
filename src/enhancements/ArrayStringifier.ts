@@ -64,7 +64,7 @@ const ArrayStringifier = {
     return data.join(',')
   },
 
-  ConvertFromCSVString: function<T>(stringData: CSVString, parser: (data: string) => T): T[] {
+  ConvertFromCSVString: function <T>(stringData: CSVString, parser: (data: string) => T): T[] {
     const result: T[] = []
     for (const data of stringData.split(',')) {
       result.push(parser(data))

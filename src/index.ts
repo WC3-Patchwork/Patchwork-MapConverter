@@ -90,7 +90,7 @@ program
     if (/\\|\//.test(options.triggersFilename as string)) {
       throw new Error(`Invalid triggersFilename '${options.triggersFilename}' must not be a path!`)
     } else {
-      if (options.composeTriggers && options.triggersFilename != EnhancementManager.triggersFilename) { 
+      if (options.composeTriggers && options.triggersFilename != EnhancementManager.triggersFilename) {
         // different from default -> explicitly specified by user
         log.warn(`Will ignore triggersFilename options since composeTriggers is enabled.`)
       } else {

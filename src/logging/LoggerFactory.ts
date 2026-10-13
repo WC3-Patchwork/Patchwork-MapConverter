@@ -24,16 +24,16 @@ const LoggerFactory = {
 
   createLogger: function (module: string): AppLogger {
     const logger = new Logger<ILogObj>({
-      name                           : module,
-      minLevel                       : minLogLevel,
-      hideLogPositionForProduction   : true,
-      type                           : 'pretty',
-      prettyLogTemplate              : '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{asyncId}}]{{filePathWithLine}}{{nameWithDelimiterPrefix}}\t',
-      prettyErrorTemplate            : '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
-      prettyErrorStackTemplate       : '  • {{fileName}}\t{{method}}\n\t{{filePathWithLine}}',
+      name: module,
+      minLevel: minLogLevel,
+      hideLogPositionForProduction: true,
+      type: 'pretty',
+      prettyLogTemplate: '{{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}\t{{logLevelName}}\t[{{asyncId}}]{{filePathWithLine}}{{nameWithDelimiterPrefix}}\t',
+      prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
+      prettyErrorStackTemplate: '  • {{fileName}}\t{{method}}\n\t{{filePathWithLine}}',
       prettyErrorParentNamesSeparator: ':',
-      prettyErrorLoggerNameDelimiter : '\t',
-      overwrite                      : {
+      prettyErrorLoggerNameDelimiter: '\t',
+      overwrite: {
         addPlaceholders: (_: IMeta, placeholderValues: Record<string, string | number>) => {
           placeholderValues.asyncId = GetAsyncContext()
         }

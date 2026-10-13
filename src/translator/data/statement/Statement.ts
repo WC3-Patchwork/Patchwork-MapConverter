@@ -6,8 +6,8 @@ import { type integer } from '../../../wc3maptranslator/CommonInterfaces'
 interface Statement extends Enableable {
   name: string
   type: StatementType
-  parameters: Parameter[]|undefined
-  statements: Record<integer, Statement[]>|undefined
+  parameters: Parameter[] | undefined
+  statements: Record<integer, Statement[]> | undefined
 }
 
 export { type Statement }

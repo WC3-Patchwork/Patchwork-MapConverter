@@ -39,7 +39,7 @@ export class MpqArchive {
 	/**
 	 * Get this archive handle
 	 */
-	get handle(){
+	get handle() {
 		return this._archive;
 	}
 
@@ -145,28 +145,28 @@ export class MpqArchive {
 		return new MpqArchive(archivePtr[0]!);
 	}
 
-	private processAddedFile(){
+	private processAddedFile() {
 		let f = this._added.pop();
 		const flags =
 			ArchiveAddFileFlags.MPQ_FILE_COMPRESS | ArchiveAddFileFlags.MPQ_FILE_SECTOR_CRC | ArchiveAddFileFlags.MPQ_FILE_REPLACEEXISTING;
 		const comp = MPQCompressFlag.MPQ_COMPRESSION_ZLIB;
-		while (f != undefined){
+		while (f != undefined) {
 			const sz = f.byteLength;
 			const nm = f.name;
 			const fh = [null];
 			let r = nats.fileCreate(this._archive, nm, 0, sz, 0, flags, fh);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 			const fp = fh[0]!;
 
 			const buff = f.binary;
 			r = nats.fileWrite(fp, buff, buff.byteLength, comp);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 			r = nats.fileWriteFinish(fp);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 
@@ -175,11 +175,11 @@ export class MpqArchive {
 		}
 	}
 
-	private processRenamedFile(){
+	private processRenamedFile() {
 		let f = this._renamed.pop();
-		while (f != undefined){
+		while (f != undefined) {
 			const r = nats.fileRen(this._archive, f.oldName, f.name);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 
@@ -188,11 +188,11 @@ export class MpqArchive {
 		}
 	}
 
-	private processRemovedFile(){
+	private processRemovedFile() {
 		let f = this._removed.pop();
-		while (f != undefined){
+		while (f != undefined) {
 			const r = nats.fileRem(this._archive, f.name);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 			this._files.delete(f.name);
@@ -201,23 +201,23 @@ export class MpqArchive {
 		}
 	}
 
-	private applyChange(){
+	private applyChange() {
 		// apply modification
 		let needCompact = false;
-		if (this._removed.length > 0){
+		if (this._removed.length > 0) {
 			this.processRemovedFile();
 			needCompact = true;
 		}
-		if (this._added.length > 0){
+		if (this._added.length > 0) {
 			this.processAddedFile();
 			needCompact = true;
 		}
 		if (this._renamed.length > 0) this.processRenamedFile();
 
 		// cleanup cache
-		if (needCompact){
+		if (needCompact) {
 			const r = nats.compactArchive(this._archive, null, 0);
-			if (r !== true){
+			if (r !== true) {
 				throw makeError(nats.errGet());
 			}
 		}
@@ -234,7 +234,7 @@ export class MpqArchive {
 
 		this._valid = false;
 		const r = nats.closeMPQ(this._archive);
-		if (r !== true){
+		if (r !== true) {
 			throw makeError(nats.errGet());
 		}
 	}
@@ -248,7 +248,7 @@ export class MpqArchive {
 		this.applyChange();
 
 		const r = nats.flushMPQ(this._archive);
-		if (r !== true){
+		if (r !== true) {
 			throw makeError(nats.errGet());
 		}
 	}
@@ -292,12 +292,12 @@ export class MpqArchive {
 	 * @param data Data to add to that file, if empty return an empty handle
 	 * @returns The file handle that is already added to the MPQ
 	 */
-	FileAdd(name: string, data?: Buffer<ArrayBuffer>){
+	FileAdd(name: string, data?: Buffer<ArrayBuffer>) {
 		if (name.length <= 0 || name === '') throw new Error(`Can not add an empty name file to MPQ`);
 		if (this._files.has(name)) throw new Error("Can not add file that are already exists");
 
 		let f: MpqFile;
-		if (data){
+		if (data) {
 			f = MpqFile.fromBufferEx(name, this, data);
 		} else {
 			f = MpqFile.create(name, this);
@@ -399,7 +399,7 @@ export class MpqArchive {
 	 * @param name The file name to be renamed
 	 * @param newName The new name for that file
 	 */
-	FileRename(name: string, newName: string){
+	FileRename(name: string, newName: string) {
 		this.isHandleValid();
 		if (name.length <= 0 || name === '') throw new Error(`There is no file within the MPQ named 'empty', and never will be`);
 

@@ -514,8 +514,8 @@ export class MpqFile {
 	 *
 	 * Clean the object so it look like new
 	 */
-	clean(){
-		if (!this._valid){
+	clean() {
+		if (!this._valid) {
 			// it was freed, dont do shit
 			// it also meant that this object is for holding a living file handle
 			return;

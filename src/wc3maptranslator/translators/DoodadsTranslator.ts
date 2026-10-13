@@ -210,7 +210,7 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [DoodadsTrans
       droppedItemSets = [...DoodadDefaults.droppedItemSets]
     }
 
-    let color: integer| undefined
+    let color: integer | undefined
     if (formatVersion >= 13) {
       color = input.readInt()
     } else {
@@ -224,9 +224,9 @@ export function warToJson(buffer: Buffer, editorVersion: integer): [DoodadsTrans
       id = undefined
     }
 
-    let roll: number| undefined
-    let pitch: number| undefined
-    let lights: WidgetLight[]| undefined
+    let roll: number | undefined
+    let pitch: number | undefined
+    let lights: WidgetLight[] | undefined
     if (formatVersion >= 13) {
       roll = input.readFloat()
       pitch = input.readFloat()

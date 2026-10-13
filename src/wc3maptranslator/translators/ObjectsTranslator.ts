@@ -19,7 +19,7 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
   const output = new HexBuffer()
   output.addInt(formatVersion)
 
-  const generateTableFromJson = (tableType: TableType, tableData: Record<string, ObjectData>|undefined): void => {
+  const generateTableFromJson = (tableType: TableType, tableData: Record<string, ObjectData> | undefined): void => {
     const data = tableData ? Object.entries(tableData) : []
     output.addInt(data.length)
     data.forEach(([defKey, objectData]) => {
@@ -187,9 +187,9 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
           }
 
           modifications.push({
-            id            : fieldId,
-            type          : fieldType,
-            value         : fieldValue,
+            id: fieldId,
+            type: fieldType,
+            value: fieldValue,
             levelVariation: levelVariant,
             dataPointer
           })

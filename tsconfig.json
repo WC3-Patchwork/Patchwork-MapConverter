@@ -18,22 +18,46 @@
 		"pretty": true,
 		"incremental": true,
 		"paths": {
-			"@/*": ["./src/*"],
-			"@root/*": ["./*"],
-			"@util/*": ["./src/util/*"],
-			"@conv/*": ["./src/converter/*"],
-			"@logs/*": ["./src/logging/*"],
-			"@enhance/*": ["./src/enhancements/*"],
-			"@translator/*": ["./src/translator/*"],
-			"@wc3trans/*": ["./src/wc3maptranslator/*"],
-			"@mpq/*": ["./src/mpq/*"]
+			"@/*": [
+				"./src/*"
+			],
+			"@root/*": [
+				"./*"
+			],
+			"@util/*": [
+				"./src/util/*"
+			],
+			"@conv/*": [
+				"./src/converter/*"
+			],
+			"@logs/*": [
+				"./src/logging/*"
+			],
+			"@enhance/*": [
+				"./src/enhancements/*"
+			],
+			"@translator/*": [
+				"./src/translator/*"
+			],
+			"@wc3trans/*": [
+				"./src/wc3maptranslator/*"
+			],
+			"@mpq/*": [
+				"./src/mpq/*"
+			]
 		},
 		"target": "ESNext",
-		"lib": ["ESNext"],
-		"types": ["node"],
+		"lib": [
+			"ESNext"
+		],
+		"types": [
+			"node"
+		],
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["./src/**/*.ts"],
+	"include": [
+		"./src/**/*.ts"
+	],
 	"exclude": []
 }

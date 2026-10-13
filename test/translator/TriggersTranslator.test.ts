@@ -113,7 +113,7 @@ const trigger = {
                             }
                         }
                     ]
-                } 
+                }
             },
             {
                 type: ParameterType.PRESET,

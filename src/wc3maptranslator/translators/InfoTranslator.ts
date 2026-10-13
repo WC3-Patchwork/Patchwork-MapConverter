@@ -12,7 +12,7 @@ const log = LoggerFactory.createLogger('InfoTranslator')
 function playerBitmapToPlayerList(playerBitmap: integer): PlayerList {
   const playerList: integer[] = []
   for (let i = 0; i < 24; i++) {
-    if (playerBitmap & (1 << i)){
+    if (playerBitmap & (1 << i)) {
       playerList.push(i)
     }
   }
@@ -151,7 +151,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
   if (formatVersion >= 13) {
     if (formatVersion >= 17) {
       output.addInt(((value) => {
-        switch(value){
+        switch (value) {
           case GameDataSet.DEFAULT:
             return -1; // prefer -1 instead of 0
           case GameDataSet.CUSTOM:
@@ -243,7 +243,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
 
   if (formatVersion >= 30) {
     output.addInt(((value) => {
-      switch(value){
+      switch (value) {
         case GameDataVersion.ROC:
           return 0;
         case GameDataVersion.TFT:
@@ -431,7 +431,7 @@ export function jsonToWar(infoJson: Info, formatVersion: number): Buffer {
               case RandomGroupObjectType.ANY_BUILDING: return 1;
               case RandomGroupObjectType.ANY_ITEM: return 2;
             }
-          })((randomGroupObjectType as RandomGroupObjectType|undefined) ?? RandomGroupDefaults.objectType)
+          })((randomGroupObjectType as RandomGroupObjectType | undefined) ?? RandomGroupDefaults.objectType)
           for (let count = 0; count < objectTypeCounts[randomGroupObjectType]; count++) {
             output.addInt(outputValue);
           }
@@ -728,7 +728,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
   if (formatVersion >= 13) {
     if (formatVersion >= 17) {
       prologueScreenImageId = ((value) => {
-        switch(value){
+        switch (value) {
           case 0:
             return GameDataSet.DEFAULT
           case 1:
@@ -865,7 +865,7 @@ export function warToJson(buffer: Buffer): [Info, integer, integer] {
   let gameDataVersion: GameDataVersion
   if (formatVersion >= 30) {
     gameDataVersion = ((value) => {
-      switch(value){
+      switch (value) {
         case 0:
           return GameDataVersion.ROC;
         case 1:

@@ -62,7 +62,7 @@ function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: i
   let index = 0
   result[index++] = absOffset
   if (startChunkSize > 0) {
-    result[index] = result[index-1] as number + startChunkSize * TILE_SIZE
+    result[index] = result[index - 1] as number + startChunkSize * TILE_SIZE
     index++;
   }
   for (let i = index - 1; i < midChunkCount; i++, index++) {
