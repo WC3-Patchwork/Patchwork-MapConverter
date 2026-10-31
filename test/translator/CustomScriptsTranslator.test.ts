@@ -23,3 +23,15 @@ describe('Custom script data translation', () => {
         expect(readData).to.deep.equal(testData)
     })
 })
+
+const classicOutput = CustomScriptsTranslator.jsonToWar(testData, 1, 0x7FFFFFFF);
+const [classicReadData, classicFormatVersion] = CustomScriptsTranslator.warToJson(classicOutput);
+
+describe('Classic custom script data translation', () => {
+    it('Format versions match', () => {
+        expect(classicFormatVersion).to.equal(1)
+    })
+    it('Custom Script IO matches', () => {
+        expect(classicReadData).to.deep.equal(testData)
+    })
+})

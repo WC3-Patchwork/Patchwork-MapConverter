@@ -22,7 +22,6 @@ import TreeIterator from '../util/TreeIterator'
 import { AsyncTaskContextWrapper } from '../logging/AsyncTaskContextWrapper'
 import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
-import { CustomScriptsTranslatorOutput, jsonToWar } from '../translator/CustomScriptsTranslator'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
 const log = LoggerFactory.createLogger('Json2War')
@@ -266,9 +265,6 @@ export const Json2WarService = {
               .catch(triggersReject)
             ).catch(triggersReject))
         }
-        promises.push(processFile<CustomScriptsTranslatorOutput>(file.path, translatedOutputFile,
-          scripts => translators.CustomScriptsTranslator.jsonToWar(scripts, profile.wctFormatVersion)
-        ))
       } else if (filename.endsWith(`.w3i${EnhancementManager.mapDataExtension}`)) {
         promises.push(processFile<Info>(file.path, translatedOutputFile,
           info => InfoTranslator.jsonToWar(info, profile.w3iFormatVersion)

@@ -41,7 +41,7 @@ export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: in
 
   if (formatVersion < 0x80000003) {
     if (formatVersion < 0x80000000) {
-      output.addInt(json.scripts.length)
+      output.addInt(Math.max(json.scripts.length - 1, 0)) // scripts[0] is the header's script, written above
       for (let i = 1; i < json.scripts.length; i++) {
         saveCustomScript(json.scripts[i] as string)
       }
@@ -104,7 +104,7 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
   let headerComment: string
   if (formatVersion > 0 && formatSubversion > 0) {
     headerComment = input.readString()
-    scripts.push(loadCustomScript())
+    scripts.push(loadCustomScript()) //header script
   } else {
     headerComment = ''
     scripts.push('')
