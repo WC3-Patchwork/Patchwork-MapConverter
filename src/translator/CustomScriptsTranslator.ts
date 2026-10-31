@@ -104,7 +104,7 @@ export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: st
   let headerComment: string
   if (formatVersion > 0 && formatSubversion > 0) {
     headerComment = input.readString()
-    scripts.push(loadCustomScript())
+    scripts.push(loadCustomScript()) //header script
   } else {
     headerComment = ''
     scripts.push('')

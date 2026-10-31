@@ -1,10 +1,5 @@
 import { TargetProfile } from '../Profile'
-import { P1000, P1010, P1020, P1030, P1040 } from './P1.0.0'
-import { P1070, P1100, P1110, P1120, P1130, P1140, P1141, P1150, P1160, P1170, P1180, P1190, P1220, P1230, P1240, P1290, P1300 } from './P1.7.0'
-import { P1310 } from './P1.31.0'
-import { P1320, P1322, P1323, P1324, P1326, P1328, P1329, P13210, P1330, P1350 } from './P1.32.0'
-import { P2000, P2003, P2004 } from './P2.0.0'
-import { P3000, P3001 } from './P3.0.0'
+import { P1000, P1010, P1020, P1030, P1040, P1070, P1100, P1110, P1120, P1130, P1140, P1141, P1150, P1160, P1170, P1180, P1190, P1220, P1230, P1240, P1290, P1300, P1310, P1320, P1322, P1323, P1324, P1326, P1328, P1329, P13210, P1330, P1350, P2000, P2003, P2004, P3000, P3001 } from './ProfileSpecs'
 
 // one key per game patch; the editor numbers are the ones each patch writes into war3map.w3i
 const Profiles: Record<string, TargetProfile> = {
