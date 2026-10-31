@@ -1,5 +1,5 @@
 import { TargetProfile } from '../Profile'
-import { P1000, P1010, P1020, P1030, P1040, P1070, P1100, P1110, P1120, P1130, P1140, P1141, P1150, P1160, P1170, P1180, P1190, P1220, P1230, P1240, P1290, P1300, P1310, P1320, P1322, P1323, P1324, P1326, P1328, P1329, P13210, P1330, P1350, P2000, P2003, P2004, P3000, P3001 } from './ProfileSpecs'
+import { P1000, P1010, P1020, P1030, P1040, P1070, P1100, P1110, P1120, P1130, P1140, P1141, P1150, P1160, P1170, P1180, P1190, P1220, P1230, P1240, P1290, P1300, P1310, P1320, P1322, P1323, P1324, P1326, P1328, P1329, P13210, P1330, P1350, P2000, P2030, P2040, P3000, P3010 } from './ProfileSpecs'
 
 // one key per game patch; the editor numbers are the ones each patch writes into war3map.w3i
 const Profiles: Record<string, TargetProfile> = {
@@ -53,13 +53,13 @@ const Profiles: Record<string, TargetProfile> = {
   "2.0.0": P2000,
   "2.0.1": P2000,
   "2.0.2": P2000,
-  "2.0.3": P2003,
-  "2.0.4": P2004,
-  "2.0": P2004,
+  "2.0.3": P2030,
+  "2.0.4": P2040,
+  "2.0": P2040,
   "3.0.0": P3000,
-  "3.0.1": P3001,
-  "3.0": P3001,
-  latest: P3001
+  "3.0.1": P3010,
+  "3.0": P3010,
+  latest: P3010
 }
 
 export default Profiles

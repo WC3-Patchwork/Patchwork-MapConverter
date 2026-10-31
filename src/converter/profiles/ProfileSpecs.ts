@@ -104,7 +104,7 @@ export const P1350: TargetProfile = { ...P1330, editorVersion: 6115 } // 1.35 an
 export const P2000: TargetProfile = { ...P1350 }
 
 // 2.0.3: map info 33 and terrain 12
-export const P2003: TargetProfile = {
+export const P2030: TargetProfile = {
   editorVersion: 6116,
   impFormatVersion: 1,
   wtgFormatVersion: 7,
@@ -128,7 +128,7 @@ export const P2003: TargetProfile = {
 }
 
 // 2.0.4 (2.0.4.23745, the last build before 3.0)
-export const P2004: TargetProfile = { ...P2003, editorVersion: 6117 }
+export const P2040: TargetProfile = { ...P2030, editorVersion: 6117 }
 
 export const P3000: TargetProfile = {
   editorVersion: 7000,
@@ -154,4 +154,4 @@ export const P3000: TargetProfile = {
 }
 
 // 3.0.1 (3.0.1.24371)
-export const P3001: TargetProfile = { ...P3000, editorVersion: 7003 }
+export const P3010: TargetProfile = { ...P3000, editorVersion: 7003 }
