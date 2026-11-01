@@ -65,7 +65,7 @@ async function processFile<T>(input: string, output: string, translator: ((json:
 async function processObjectDataFile(input: string, output: string, objectType: ObjectType, objectFormatVersion: integer, merge: boolean) {
   if (merge) {
     const objectData = await parseFile<ObjectModificationTable>(input)
-    ObjectDataMerger.appendData(objectData, objectType, output)
+    ObjectDataMerger.appendData(objectData, objectType, input, output)
   } else {
     return processFile<ObjectModificationTable>(input, output, objects => ObjectsTranslator.jsonToWar(objects, objectType, objectFormatVersion))
   }

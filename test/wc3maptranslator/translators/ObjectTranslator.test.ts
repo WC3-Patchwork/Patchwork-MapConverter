@@ -7,15 +7,15 @@ const testData: ObjectModificationTable = {
     original: {
         "Acrs": {
             originalId: "Acrs",
-            modifications: [
-                {
-                    id: 'Crs\0',
+            modifications: {
+                'Crs\0': {
                     type: ModificationType.INTEGER,
                     dataPointer: -1,
-                    levelVariation: -1,
-                    value: 1
+                    values: {
+                        1: 1
+                    }
                 }
-            ]
+            }
         }
     },
     custom: {}

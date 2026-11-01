@@ -1,5 +1,5 @@
 import { LoggerFactory } from '../../logging/LoggerFactory'
-import { type integer } from '../CommonInterfaces'
+import { FourCC, type integer } from '../CommonInterfaces'
 import { HexBuffer } from '../HexBuffer'
 import { W3Buffer } from '../W3Buffer'
 import { type Modification, ModificationType, type ObjectData, type ObjectModificationTable, ObjectType } from '../data/ObjectModificationTable'
@@ -38,58 +38,61 @@ export function jsonToWar(json: ObjectModificationTable, objectType: ObjectType,
         output.addInt(ModificationDefaults.setFlag)
       }
 
-      output.addInt(objectData.modifications.length)
-      for (const modification of objectData.modifications) {
-        output.addChars(modification.id)
+      const objectDataEntries = Object.entries(objectData.modifications)
+      output.addInt(objectDataEntries.flatMap(it => Object.values(it[1].values)).length)
+      for (const [fieldId, modification] of objectDataEntries) {
+        for (const [levelVar, value] of Object.entries(modification.values)) {
+          output.addChars(fieldId)
 
-        const fieldTypeValue = (function (fieldType: ModificationType): integer {
-          switch (fieldType) {
-            case ModificationType.INTEGER:
-              return 0
-            case ModificationType.REAL:
-              return 1
-            case ModificationType.UNREAL:
-              return 2
-            case ModificationType.STRING:
-              return 3
+          const fieldTypeValue = (function (fieldType: ModificationType): integer {
+            switch (fieldType) {
+              case ModificationType.INTEGER:
+                return 0
+              case ModificationType.REAL:
+                return 1
+              case ModificationType.UNREAL:
+                return 2
+              case ModificationType.STRING:
+                return 3
+            }
+          })(modification.type)
+          output.addInt(fieldTypeValue)
+
+          let useExtraData: boolean
+          switch (objectType) {
+            case ObjectType.Abilities:
+            case ObjectType.Upgrades:
+              useExtraData = true
+              break
+            case ObjectType.Doodads:
+              useExtraData = formatVersion >= 2
+              break
+            default:
+              useExtraData = false
+              break
           }
-        })(modification.type)
-        output.addInt(fieldTypeValue)
 
-        let useExtraData: boolean
-        switch (objectType) {
-          case ObjectType.Abilities:
-          case ObjectType.Upgrades:
-            useExtraData = true
-            break
-          case ObjectType.Doodads:
-            useExtraData = formatVersion >= 2
-            break
-          default:
-            useExtraData = false
-            break
-        }
+          if (useExtraData) {
+            output.addInt(levelVar as unknown as integer)
+            output.addInt(modification.dataPointer ?? ModificationDefaults.dataPointer) // E.g DataA1 is 1 because of col A; refer to the xyzData.slk files for Data fields
+          }
 
-        if (useExtraData) {
-          output.addInt(modification.levelVariation ?? ModificationDefaults.levelVariation) // Level or variation
-          output.addInt(modification.dataPointer ?? ModificationDefaults.dataPointer) // E.g DataA1 is 1 because of col A; refer to the xyzData.slk files for Data fields
-        }
+          switch (modification.type) {
+            case ModificationType.INTEGER:
+              output.addInt(value as integer)
+              break
+            case ModificationType.REAL:
+            case ModificationType.UNREAL:
+              output.addFloat(value as number)
+              break
+            case ModificationType.STRING:
+              output.addString(value as string)
+              break
+          }
 
-        switch (modification.type) {
-          case ModificationType.INTEGER:
-            output.addInt(modification.value as integer)
-            break
-          case ModificationType.REAL:
-          case ModificationType.UNREAL:
-            output.addFloat(modification.value as number)
-            break
-          case ModificationType.STRING:
-            output.addString(modification.value as string)
-            break
-        }
-
-        if (formatVersion >= 1) {
-          output.addChars(defKey)
+          if (formatVersion >= 1) {
+            output.addChars(defKey)
+          }
         }
       }
     })
@@ -115,7 +118,7 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
 
     const numTableModifications = input.readInt()
     for (let i = 0; i < numTableModifications; i++) {
-      const modifications: Modification[] = []
+      const modifications: Record<FourCC, Modification> = {}
 
       const originalId = input.readChars(4)
       const customId = input.readChars(4)
@@ -186,13 +189,17 @@ export function warToJson(buffer: Buffer, objectType: ObjectType): [ObjectModifi
             input.readChars(4) // ObjectID, again
           }
 
-          modifications.push({
-            id: fieldId,
-            type: fieldType,
-            value: fieldValue,
-            levelVariation: levelVariant,
-            dataPointer
-          })
+          let fieldMods = modifications[fieldId]
+          if (!fieldMods) {
+            fieldMods = {
+              type: fieldType,
+              dataPointer,
+              values: {}
+            }
+            modifications[fieldId] = fieldMods
+          }
+
+          fieldMods.values[levelVariant] = fieldValue
         }
       }
 
