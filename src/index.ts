@@ -40,14 +40,6 @@ program
   .option('--chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
   .addOption(new Option('--ctf, --chunkified-terrain-folder <chunkifiedTerrainFolder>', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
   .addOption(new Option('--cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
-  .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much 4x4\'s do you wanna offset the main chunk grid').argParser((value) => {
-    const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
-    EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
-    EnhancementManager.chunkSize.sizeY = Number.parseInt(sizeY)
-    EnhancementManager.chunkSize.offsetX = Number.parseInt(offsetX)
-    EnhancementManager.chunkSize.offsetY = Number.parseInt(offsetY)
-    return EnhancementManager.chunkSize
-  }).default(EnhancementManager.chunkSize))
   .hook('preAction', (thisCommand, actionCommand) => {
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
@@ -105,11 +97,6 @@ program
       EnhancementManager.chunkifiedTerrainFolder = options.chunkifiedTerrainFolder as string
     }
     if ((options.chunkFileExtension as string).startsWith('.')) EnhancementManager.chunkFileExtension = options.chunkFileExtension as string
-    if ((options.chunkSize != null)) {
-      EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
-      if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
-      if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
-    }
 
     if (options.prettify === true) EnhancementManager.prettify = true
 
@@ -127,13 +114,29 @@ program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
   .option('--gtp, --generate-target-profile', 'Generate target profile json file for json2war')
+  .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much tilepoints do you wanna offset the main chunk grid').argParser((value) => {
+    const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
+    EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
+    EnhancementManager.chunkSize.sizeY = Number.parseInt(sizeY)
+    EnhancementManager.chunkSize.offsetX = Number.parseInt(offsetX)
+    EnhancementManager.chunkSize.offsetY = Number.parseInt(offsetY)
+    return EnhancementManager.chunkSize
+  }).default(EnhancementManager.chunkSize))
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argOptional())
   .hook('preAction', (thisCommand, actionCommand) => {
     const options = actionCommand.opts()
-    if (options.generateTargetProfile) EnhancementManager.generateTargetProfile = true
-    log.info('Will generate target profile JSON file')
+    if (options.generateTargetProfile) {
+      log.info('Will generate target profile JSON file')
+      EnhancementManager.generateTargetProfile = true
+    }
+
+    if ((options.chunkSize != null)) {
+      EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
+      if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
+      if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
+    }
   })
   .action(async (input: string, output: string, target?: string) => {
     try {
@@ -151,9 +154,17 @@ program
 program
   .command('json2war')
   .description('convert JSON to Warcraft III binaries')
+  .option('--ms, --merge-object-skin-data', 'Merges map object data with their respective object skin data into a single file')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
+  .hook('preAction', (thisCommand, actionCommand) => {
+    const options = actionCommand.opts()
+    if (options.mergeObjectSkinData) {
+      log.info('Will merge object and skin json\'s before exporting to a single combined file')
+      EnhancementManager.mergeObjectSkinData = true
+    }
+  })
   .action(async (input: string, output: string, target: string) => {
     try {
       await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
