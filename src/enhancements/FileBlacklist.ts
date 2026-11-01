@@ -21,7 +21,9 @@ const FileBlacklist = {
 
     // eslint-disable-next-line no-control-regex
     for (const line of blacklistFileContent.split(/\u000D\u000A|[\u000A\u000B\u000C\u000D\u0085\u2028\u2029]/)) { // \R pattern
-      blacklist.push(new RegExp(line))
+      if (line.length > 0) {
+        blacklist.push(new RegExp(line))
+      }
     }
   },
 

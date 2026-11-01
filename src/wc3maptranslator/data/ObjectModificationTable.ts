@@ -18,20 +18,19 @@ enum ObjectType {
 }
 
 interface Modification {
-  id: FourCC
   type: ModificationType
-  value: integer | string
+  values: Record<integer, integer | string> // value per level/variant
 
   // Marked optional because these fields are not needed on any table.
   // They can be specified for: Doodads, Abilities, Upgrades, but if
   // not specified, they default to the value 0.
-  levelVariation?: integer
+  // levelVariation?: integer // level is used as an array index
   dataPointer?: integer
 }
 
 interface ObjectData {
   originalId: FourCC
-  modifications: Modification[]
+  modifications: Record<FourCC, Modification>
 }
 
 interface ObjectModificationTable {
@@ -39,4 +38,4 @@ interface ObjectModificationTable {
   custom?: Record<FourCC, ObjectData>
 }
 
-export { ModificationType, type ObjectData, ObjectType, type Modification, type ObjectModificationTable }
+export { ModificationType as ModificationType, type ObjectData, ObjectType, type Modification, type ObjectModificationTable }
