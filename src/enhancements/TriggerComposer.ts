@@ -257,9 +257,11 @@ const TriggerComposer = {
                 break
             }
             if (script != null && trigger != null) {
+              (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED;
+              (injectedRef as ScriptedTrigger).description = trigger.description;
               (injectedRef as ScriptedTrigger).isEnabled = trigger.isEnabled;
+              (injectedRef as ScriptedTrigger).runOnMapInit = trigger.runOnMapInit;
               (injectedRef as ScriptedTrigger).script = script.script;
-              (injectedRef as ScriptedTrigger).contentType = ContentType.TRIGGER_SCRIPTED
             }
           }
         } else if (contents.length == 0) {
