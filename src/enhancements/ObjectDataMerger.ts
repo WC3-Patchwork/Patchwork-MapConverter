@@ -1,5 +1,5 @@
-import { FourCC, integer } from "@/wc3maptranslator/CommonInterfaces"
-import { Modification, ObjectData, ObjectModificationTable, ObjectType } from "@/wc3maptranslator/data"
+import { FourCC, integer } from "../wc3maptranslator/CommonInterfaces"
+import { Modification, ObjectData, ObjectModificationTable, ObjectType } from "../wc3maptranslator/data"
 
 type ObjectDataMergerOutput = {
     input: string,

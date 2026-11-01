@@ -44,10 +44,6 @@ program
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
 
-    log.debug('command:', actionCommand.name())
-    log.debug('arguments:', actionCommand.args.join(', '))
-    log.debug('options:', JSON.stringify(thisCommand.opts()))
-
     if (options.debug === true) LoggerFactory.setLogLevel(LOG_DEBUG)
     if (options.smartImports === true) EnhancementManager.smartImport = true
     if (options.composeTriggers === true) EnhancementManager.composeTriggers = true
@@ -114,6 +110,7 @@ program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
   .option('--gtp, --generate-target-profile', 'Generate target profile json file for json2war')
+  .addOption(new Option('--rs, --resolve-strings', 'Resolve strings in(to) .wts and other files').default(EnhancementManager.resolveStrings))
   .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much tilepoints do you wanna offset the main chunk grid').argParser((value) => {
     const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
     EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
@@ -132,11 +129,20 @@ program
       EnhancementManager.generateTargetProfile = true
     }
 
+    if (options.resolveStrings === true){
+      log.info('Will resolve strings from .wts file')
+      EnhancementManager.resolveStrings = true
+    } 
+
     if ((options.chunkSize != null)) {
       EnhancementManager.chunkSize = options.chunkSize as Wc3MapTranslator.Data.MapSize
       if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
       if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
     }
+
+    log.debug('command:', actionCommand.name())
+    log.debug('arguments:', actionCommand.args.join(', '))
+    log.debug('options:', JSON.stringify(thisCommand.opts()))
   })
   .action(async (input: string, output: string, target?: string) => {
     try {
@@ -164,6 +170,10 @@ program
       log.info('Will merge object and skin json\'s before exporting to a single combined file')
       EnhancementManager.mergeObjectSkinData = true
     }
+
+    log.debug('command:', actionCommand.name())
+    log.debug('arguments:', actionCommand.args.join(', '))
+    log.debug('options:', JSON.stringify(thisCommand.opts()))
   })
   .action(async (input: string, output: string, target: string) => {
     try {

@@ -6,7 +6,7 @@ import { copyFileWithDirCreation } from './FileCopier'
 import EnhancementManager from '../enhancements/EnhancementManager'
 import { WriteAndCreatePath } from '../util/WriteAndCreatePath'
 import { FileBlacklist } from '../enhancements/FileBlacklist'
-import { type Asset, ObjectType, Terrain, Unit, Camera, Region, MapLight, WidgetGroups } from '../wc3maptranslator/data'
+import { type Asset, ObjectType, Terrain, Unit, Camera, Region } from '../wc3maptranslator/data'
 import { FormatConverters } from './formats/FormatConverters'
 import { MapHeader, translators } from '../translator'
 import { AssetsTranslator, CamerasTranslator, DoodadsTranslator, InfoTranslator, MapLightTranslator, ObjectsTranslator, RegionsTranslator, SoundsTranslator, StringsTranslator, TerrainTranslator, UnitsTranslator, WidgetGroupTranslator } from '../wc3maptranslator/translators'
@@ -22,6 +22,7 @@ import { TriggerComposer } from '../enhancements'
 import { JSONConverter } from './formats/JSONConverter'
 import { AsyncTaskContextWrapper } from '../logging/AsyncTaskContextWrapper'
 import { FormatConverter } from './formats/FormatConverter'
+import { WTStringResolver } from '../enhancements/WTStringResolver'
 
 const log = LoggerFactory.createLogger('War2Json')
 
@@ -75,7 +76,11 @@ function objectHandlerFactory(objectType: ObjectType) {
     const [objects, formatVersion] = ObjectsTranslator.warToJson(buffer, objectType)
     // save highest version object format version
     recordedProfile.objectFormatVersion = recordedProfile.objectFormatVersion < formatVersion ? formatVersion : recordedProfile.objectFormatVersion
-    return objects
+    if (EnhancementManager.resolveStrings) {
+      return WTStringResolver.dereferenceObjectStrings(objects)
+    } else {
+      return objects
+    }
   }
 }
 
@@ -97,6 +102,9 @@ export const War2JsonService = {
         editorVersionReject = reject
       })
     }
+
+    let foundStrings = false
+    const [stringsFilePromise, stringsFileResolve, stringsFileReject] = PromiseSupplier<Record<string, string>>()
 
     let foundTerrain = false
     const [terrainFilePromise, terrainFileResolve, terrainFileReject] = PromiseSupplier<Terrain>()
@@ -121,12 +129,6 @@ export const War2JsonService = {
 
     let foundCustomScripts = false
     const [customScriptFilePromise, customScriptFileResolve, customScriptFileReject] = PromiseSupplier<CustomScriptsTranslatorOutput>()
-
-    let foundMapLights = false
-    const [mapLightsFilePromise, mapLightsFileResolve, mapLightsFileReject] = PromiseSupplier<MapLight>()
-
-    let foundWidgetGroups = false
-    const [widgetGroupsFilePromise, widgetGroupsFileResolve, widgetGroupsFileReject] = PromiseSupplier<WidgetGroups>()
 
     const promises: Promise<unknown>[] = []
 
@@ -228,7 +230,21 @@ export const War2JsonService = {
       } else if (filename.endsWith('.w3h')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, objectHandlerFactory(ObjectType.Buffs)))
       } else if (filename.endsWith('.wts')) {
-        promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer: Buffer) => StringsTranslator.warToJson(buffer)))
+        if (EnhancementManager.resolveStrings) {
+          foundStrings = true
+          promises.push(parseFile(file.path, async (buffer: Buffer) => {
+            const strings = StringsTranslator.warToJson(buffer)
+            WTStringResolver.addStringSource(outputFile + EnhancementManager.mapDataExtension, strings)
+            stringsFileResolve(strings)
+            return strings
+          }))
+        } else {
+          promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer: Buffer) => {
+            const strings = StringsTranslator.warToJson(buffer)
+            stringsFileResolve(strings)
+            return strings
+          }))
+        }
       } else if (filename.endsWith('.wtg')) {
         foundTriggers = true
         promises.push(parseFile(file.path, async (buffer: Buffer) => {
@@ -255,6 +271,9 @@ export const War2JsonService = {
           recordedProfile.w3iFormatVersion = formatVersion
           recordedProfile.editorVersion = editorVersion
           editorVersionResolver?.(editorVersion)
+          if (EnhancementManager.resolveStrings) {
+            return WTStringResolver.dereferenceInfoStrings(info)
+          }
           return info
         }))
       } else if (filename.endsWith('.imp')) {
@@ -267,19 +286,15 @@ export const War2JsonService = {
           return assets
         }))
       } else if (filename.endsWith('.w3l')) {
-        foundMapLights = true
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
           const [mapLights, formatVersion] = MapLightTranslator.warToJson(buffer)
           recordedProfile.w3lFormatVersion = formatVersion
-          mapLightsFileResolve(mapLights);
           return mapLights;
         }))
       } else if (filename.endsWith('.w3grp')) {
-        foundWidgetGroups = true
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
           const [widgetGroups, formatVersion] = WidgetGroupTranslator.warToJson(buffer)
           recordedProfile.w3grpFormatVersion = formatVersion
-          widgetGroupsFileResolve(widgetGroups);
           return widgetGroups;
         }))
       } else {
@@ -311,7 +326,7 @@ export const War2JsonService = {
     const [triggerPromise, triggerResolve, triggerReject] = PromiseSupplier<void>()
     void Promise.allSettled([triggerFilePromise, customScriptFilePromise]).then(async ([triggers, customScripts]) => {
       if (triggers.status === 'fulfilled') {
-        const triggerJson = triggers.value
+        let triggerJson = triggers.value
         if (customScripts.status === 'fulfilled') {
           const csResult = customScripts.value
           // Combine custom scripts into trigger JSON
@@ -325,6 +340,10 @@ export const War2JsonService = {
           (triggerJson.root as MapHeader).description = csResult.headerComment
         }
 
+        if (EnhancementManager.resolveStrings) {
+          WTStringResolver.dereferenceTriggerStrings(triggerJson)
+        }
+
         if (EnhancementManager.composeTriggers) {
           await TriggerComposer.explodeTriggersJsonIntoSource(outputPath, (await triggerFilePromise).root)
             .then(triggerResolve, triggerReject)
@@ -334,6 +353,9 @@ export const War2JsonService = {
         }
       } else {
         if (customScripts.status === 'fulfilled') {
+          if (EnhancementManager.resolveStrings) {
+            WTStringResolver.dereferenceScriptStrings(customScripts.value)
+          }
           await WriteAndCreatePath(path.join(outputPath, `customScripts${EnhancementManager.mapDataExtension}`), (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).stringify(customScripts.value), { encoding: 'utf8' })
             .then(triggerResolve, triggerReject)
         } else {
@@ -345,7 +367,7 @@ export const War2JsonService = {
 
     if (EnhancementManager.chunkifyMapData) {
       const [promise, resolve, reject] = PromiseSupplier<void>()
-      void Promise.allSettled([terrainFilePromise, unitsFilePromise, doodadsFilePromise, regionsFilePromise, camerasFilePromise]).then(async ([terrain, units, doodads, regions, cameras]) => {
+      Promise.allSettled([terrainFilePromise, unitsFilePromise, doodadsFilePromise, regionsFilePromise, camerasFilePromise]).then(async ([terrain, units, doodads, regions, cameras]) => {
         if (terrain.status === 'rejected') {
           return reject('Cannot chunkify if terrain is missing.')
         }
@@ -356,6 +378,14 @@ export const War2JsonService = {
         await TerrainChunkifier.chunkifyTerrain(outputPath, terrain.value, doodadsVal.doodads, doodadsVal.specialDoodads ?? [], unitsVal, regionsVal, camerasVal, EnhancementManager.chunkSize).then(resolve, reject)
       })
       promises.push(promise)
+    }
+
+    if (!EnhancementManager.resolveStrings) {
+      stringsFilePromise.catch(reason => log.warn(reason))
+    }
+
+    if (!foundStrings) {
+      stringsFileReject('Strings file not found.')
     }
 
     if (!foundInfo) {
@@ -394,23 +424,12 @@ export const War2JsonService = {
       customScriptFileReject('Custom scripts file not found.')
     }
 
-    // Optional files
-    mapLightsFilePromise.catch((msg) => {
-      log.warn(msg)
-    })
-    widgetGroupsFilePromise.catch((msg) => {
-      log.warn(msg)
-    })
-
-    if (!foundMapLights) {
-      mapLightsFileReject('Map lights file not found.')
-    }
-
-    if (!foundWidgetGroups) {
-      widgetGroupsFileReject('Widget groups file not found.')
-    }
-
     await Promise.all(promises)
+
+    if (EnhancementManager.resolveStrings) {
+      await WTStringResolver.exportLeftoverStrings()
+    }
+
     if (EnhancementManager.generateTargetProfile) {
       log.info('Writing profile.json...')
       await WriteAndCreatePath(path.join(outputPath, 'profile.json'), JSONConverter.stringify(recordedProfile))

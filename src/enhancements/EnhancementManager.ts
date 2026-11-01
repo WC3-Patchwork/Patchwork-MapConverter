@@ -1,5 +1,6 @@
 const EnhancementManager = {
   mergeObjectSkinData: false,
+  resolveStrings: false,
   smartImport: false,
   importFolder: 'imports',
   sourceFolder: 'src',
