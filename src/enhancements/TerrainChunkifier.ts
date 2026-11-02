@@ -35,7 +35,7 @@ async function writeData(data: unknown, output: string): Promise<void> {
   const asyncLog = log.getSubLogger({ name: `${asyncCounter++}` })
   asyncLog.info('Writing to', output)
   await WriteAndCreatePath(output, (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).stringify(data))
-  log.info('Finished writing', output)
+  asyncLog.info('Finished writing', output)
 }
 
 function calculateChunkSizes(offset: integer, chunkSize: integer, mapSize: integer): [startChunkSize: integer, midChunkSize: integer, midChunkCount: integer, endChunkSize: integer] {
@@ -65,8 +65,8 @@ function calculateChunkCoordinateThresholds(absOffset: number, startChunkSize: i
     result[index] = result[index - 1] as number + startChunkSize * TILE_SIZE
     index++;
   }
-  for (let i = index - 1; i < midChunkCount; i++, index++) {
-    result[index] = result[i] as number + midChunkSize * TILE_SIZE
+  for (let i = 0; i < midChunkCount; i++, index++) {
+    result[index] = result[index - 1] as number + midChunkSize * TILE_SIZE
   }
   if (endChunkSize > 0) {
     result[index] = result[index - 1] as number + endChunkSize * TILE_SIZE
