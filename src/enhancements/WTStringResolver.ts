@@ -1,21 +1,24 @@
 import { ContentType, TriggerContent } from "../translator/data/content/TriggerContent"
 import { CustomScriptsTranslatorOutput } from "../translator/CustomScriptsTranslator"
 import { TriggerTranslatorOutput } from "../translator/TriggersTranslator"
-import { Info, ModificationType, ObjectModificationTable } from "../wc3maptranslator/data"
+import { Info, ModificationType, ObjectData, ObjectModificationTable } from "../wc3maptranslator/data"
 import TreeIterator from "../util/TreeIterator"
 import { GetTriggerContainerChildren } from "../translator/data/TriggerContainer"
 import { CustomScript, GUITrigger, Parameter, ScriptedTrigger, Statement } from "../translator"
-import { integer } from "../wc3maptranslator/CommonInterfaces"
+import { FourCC, integer } from "../wc3maptranslator/CommonInterfaces"
 import { WriteAndCreatePath } from "../util/WriteAndCreatePath"
 import { FormatConverter, FormatConverters } from "../converter"
 import { EnhancementManager } from "."
 import { LoggerFactory } from "../logging/LoggerFactory"
+import PromiseSupplier from "../util/PromiseSupplier"
 
 const log = LoggerFactory.createLogger('WTStringCompiler')
 
 let outputFile: string
-let stringsDictionary: Record<string, string>
+let stringsDictionary: Record<integer, string>
 const stringsCounters: Record<string, integer> = {}
+const [dictionaryLoadedPromise, dictionaryLoad, dictionaryLoadFailed] = PromiseSupplier<void>();
+let dictionaryLoaded = false
 
 const keyPrefix = "TRIGSTR_"
 const keyPrefixSize = keyPrefix.length
@@ -30,7 +33,7 @@ function getUnreferencedStrings(): Record<string, string> {
     }, {} as Record<string, string>)
 }
 
-function dereferenceStringRaw(stringKey: string): string | undefined {
+function dereferenceStringRaw(stringKey: integer): string | undefined {
   const result = stringsDictionary[stringKey]
   if (result != null) {
     if (stringsCounters[stringKey]) {
@@ -44,7 +47,7 @@ function dereferenceStringRaw(stringKey: string): string | undefined {
 
 function dereferenceString(stringKey: string | undefined): string | undefined {
   if (stringKey == null || stringKey == '' || !stringKey.startsWith(keyPrefix)) return
-  return dereferenceStringRaw(stringKey.slice(keyPrefixSize))
+  return dereferenceStringRaw(Number.parseInt(stringKey.slice(keyPrefixSize)))
 }
 
 function processParameter(parameter: Parameter) {
@@ -67,42 +70,52 @@ function processECA(eca: Statement) {
 }
 
 function replacer(substring: string, stringId: string): string {
-    return dereferenceStringRaw(stringId) ?? substring
-  }
+  return dereferenceStringRaw(Number.parseInt(stringId)) ?? substring
+}
 
 function processScript(script: string): string {
   return script.replaceAll(matchKeyPrefix, replacer)
+}
+
+function processObjectModificationTable(table: Record<FourCC, ObjectData>) {
+  for (const objectId in table) {
+    const mods = table[objectId]
+    if (!mods?.modifications) {
+      continue
+    }
+    for (const fieldId in mods?.modifications) {
+      const fieldMod = mods?.modifications[fieldId]
+      if (fieldMod?.type == ModificationType.STRING) {
+        for (const keyLevel in fieldMod.values) {
+          const resolvedValue = dereferenceString(fieldMod.values[keyLevel] as string | undefined)
+          if (resolvedValue != null) {
+            fieldMod.values[keyLevel] = resolvedValue
+          }
+        }
+      }
+    }
+  }
 }
 
 const WTStringResolver = {
   addStringSource: function (leftoverOutputPath: string, strings: Record<string, string>) {
     outputFile = leftoverOutputPath
     stringsDictionary = strings
+    dictionaryLoaded = true
+    dictionaryLoad()
   },
 
-  dereferenceObjectStrings: function (objects: ObjectModificationTable): ObjectModificationTable {
-    for (const objectId in objects.original) {
-      const mods = objects.original[objectId]
-      if (!mods?.modifications) {
-        continue
-      }
-      for (const fieldId in mods?.modifications) {
-        const fieldMod = mods?.modifications[fieldId]
-        if (fieldMod?.type == ModificationType.STRING) {
-          for (const keyLevel in fieldMod.values) {
-            dereferenceString
-            const resolvedValue = dereferenceString(fieldMod.values[keyLevel] as string | undefined)
-            if (resolvedValue != null) {
-              fieldMod.values[keyLevel] = resolvedValue
-            }
-          }
-        }
-      }
+  dereferenceObjectStrings: async function (objects: ObjectModificationTable): Promise<ObjectModificationTable> {
+    await dictionaryLoadedPromise
+    processObjectModificationTable(objects.original)
+    if (objects.custom) {
+      processObjectModificationTable(objects.custom)
     }
     return objects
   },
 
-  dereferenceTriggerStrings: function (triggers: TriggerTranslatorOutput): TriggerTranslatorOutput {
+  dereferenceTriggerStrings: async function (triggers: TriggerTranslatorOutput): Promise<TriggerTranslatorOutput> {
+    await dictionaryLoadedPromise
     for (const [parents, content] of TreeIterator<TriggerContent>(triggers.root, GetTriggerContainerChildren)) {
       switch (content.contentType) {
         case ContentType.HEADER:
@@ -125,15 +138,19 @@ const WTStringResolver = {
           break;
       }
     }
+
     return triggers
   },
 
-  dereferenceScriptStrings: function (scriptFileOutput: CustomScriptsTranslatorOutput): CustomScriptsTranslatorOutput {
+  dereferenceScriptStrings: async function (scriptFileOutput: CustomScriptsTranslatorOutput): Promise<CustomScriptsTranslatorOutput> {
+    await dictionaryLoadedPromise
     scriptFileOutput.scripts.forEach(processScript)
+
     return scriptFileOutput
   },
 
-  dereferenceInfoStrings: function (info: Info): Info {
+  dereferenceInfoStrings: async function (info: Info): Promise<Info> {
+    await dictionaryLoadedPromise
     info.loadingScreen.text = dereferenceString(info.loadingScreen.text) ?? info.loadingScreen.text
     info.loadingScreen.title = dereferenceString(info.loadingScreen.title) ?? info.loadingScreen.title
     info.loadingScreen.subtitle = dereferenceString(info.loadingScreen.subtitle) ?? info.loadingScreen.subtitle
@@ -149,6 +166,9 @@ const WTStringResolver = {
   },
 
   exportLeftoverStrings: async function () {
+    if (!dictionaryLoaded) {
+      dictionaryLoadFailed('Dictionary not loaded')
+    }
     const leftoverStrings = getUnreferencedStrings()
     const leftoverStringCount = Object.entries(leftoverStrings).length
     if (leftoverStringCount > 0) {

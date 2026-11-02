@@ -230,7 +230,7 @@ export const War2JsonService = {
       } else if (filename.endsWith('.w3h')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, objectHandlerFactory(ObjectType.Buffs)))
       } else if (filename.endsWith('.wts')) {
-        if (EnhancementManager.resolveStrings) {
+        if (EnhancementManager.resolveStrings || EnhancementManager.forceResolveStrings) {
           foundStrings = true
           promises.push(parseFile(file.path, async (buffer: Buffer) => {
             const strings = StringsTranslator.warToJson(buffer)
@@ -340,7 +340,7 @@ export const War2JsonService = {
           (triggerJson.root as MapHeader).description = csResult.headerComment
         }
 
-        if (EnhancementManager.resolveStrings) {
+        if (EnhancementManager.forceResolveStrings) {
           WTStringResolver.dereferenceTriggerStrings(triggerJson)
         }
 
@@ -353,7 +353,7 @@ export const War2JsonService = {
         }
       } else {
         if (customScripts.status === 'fulfilled') {
-          if (EnhancementManager.resolveStrings) {
+          if (EnhancementManager.forceResolveStrings) {
             WTStringResolver.dereferenceScriptStrings(customScripts.value)
           }
           await WriteAndCreatePath(path.join(outputPath, `customScripts${EnhancementManager.mapDataExtension}`), (FormatConverters[EnhancementManager.mapDataExtension] as FormatConverter).stringify(customScripts.value), { encoding: 'utf8' })
@@ -380,7 +380,7 @@ export const War2JsonService = {
       promises.push(promise)
     }
 
-    if (!EnhancementManager.resolveStrings) {
+    if (!EnhancementManager.resolveStrings && !EnhancementManager.forceResolveStrings) {
       stringsFilePromise.catch(reason => log.warn(reason))
     }
 
@@ -426,14 +426,15 @@ export const War2JsonService = {
 
     await Promise.all(promises)
 
-    if (EnhancementManager.resolveStrings) {
+    if (EnhancementManager.resolveStrings || EnhancementManager.forceResolveStrings) {
       await WTStringResolver.exportLeftoverStrings()
     }
 
     if (EnhancementManager.generateTargetProfile) {
-      log.info('Writing profile.json...')
-      await WriteAndCreatePath(path.join(outputPath, 'profile.json'), JSONConverter.stringify(recordedProfile))
-      log.info(`Profile generated at ${path.join(outputPath, 'profile.json')}`)
+      log.info(`Writing target profile...`)
+      const profileOutput = path.join(outputPath, EnhancementManager.profileOutputPath)
+      await WriteAndCreatePath(profileOutput, JSONConverter.stringify(recordedProfile))
+      log.info(`Profile generated at ${profileOutput}`)
     }
   }
 }
