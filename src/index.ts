@@ -44,10 +44,6 @@ program
     log = LoggerFactory.createLogger('main')
     const options = thisCommand.opts()
 
-    log.debug('command:', actionCommand.name())
-    log.debug('arguments:', actionCommand.args.join(', '))
-    log.debug('options:', JSON.stringify(thisCommand.opts()))
-
     if (options.debug === true) LoggerFactory.setLogLevel(LOG_DEBUG)
     if (options.smartImports === true) EnhancementManager.smartImport = true
     if (options.composeTriggers === true) EnhancementManager.composeTriggers = true
@@ -108,12 +104,15 @@ program
     if (options.triggerData != null && fs.existsSync(options.triggerData as string)) {
       Enhancements.TriggerDataRegistry.loadTriggerData(options.triggerData as string)
     }
+    log.debug('generic options:', JSON.stringify(thisCommand.opts()))
   })
 
 program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
-  .option('--gtp, --generate-target-profile', 'Generate target profile json file for json2war')
+  .addOption(new Option('--gtp, --generate-target-profile <profileOutputPath>', 'Generate target profile json file for json2war'))
+  .addOption(new Option('--rs, --resolve-strings', 'Resolve strings in(to) .wts and other files'))
+  .addOption(new Option('--frs, --force-string-resolve', 'Resolves strings in triggers and scripts. WARNING: Triggers that were string dereferenced and converted back to binary cause the editor to crash!!!'))
   .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much tilepoints do you wanna offset the main chunk grid').argParser((value) => {
     const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
     EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
@@ -129,7 +128,17 @@ program
     const options = actionCommand.opts()
     if (options.generateTargetProfile) {
       log.info('Will generate target profile JSON file')
-      EnhancementManager.generateTargetProfile = true
+      EnhancementManager.profileOutputPath = options.generateTargetProfile
+    }
+
+    if (options.resolveStrings === true) {
+      log.info('Will resolve strings from .wts file')
+      EnhancementManager.resolveStrings = true
+    }
+
+    if (options.forceResolveStrings === true){
+      log.info('Will resolve strings in triggers')
+      EnhancementManager.forceResolveStrings = true
     }
 
     if ((options.chunkSize != null)) {
@@ -137,6 +146,10 @@ program
       if (EnhancementManager.chunkSize.sizeX <= 0) throw new Error('Chunk sizeX must be a positive integer!')
       if (EnhancementManager.chunkSize.sizeY <= 0) throw new Error('Chunk sizeY must be a positive integer!')
     }
+
+    log.debug('command:', actionCommand.name())
+    log.debug('arguments:', actionCommand.args.join(', '))
+    log.debug('options:', JSON.stringify(thisCommand.opts()))
   })
   .action(async (input: string, output: string, target?: string) => {
     try {
@@ -154,7 +167,7 @@ program
 program
   .command('json2war')
   .description('convert JSON to Warcraft III binaries')
-  .option('--ms, --merge-object-skin-data', 'Merges map object data with their respective object skin data into a single file')
+  .option('--mosd, --merge-object-skin-data', 'Merges map object data with their respective object skin data into a single file')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
   .addArgument(new Argument('<output>', 'output directory path').argRequired())
   .addArgument(new Argument('<target>', 'target profile name or path').argRequired())
@@ -164,6 +177,10 @@ program
       log.info('Will merge object and skin json\'s before exporting to a single combined file')
       EnhancementManager.mergeObjectSkinData = true
     }
+
+    log.debug('command:', actionCommand.name())
+    log.debug('arguments:', actionCommand.args.join(', '))
+    log.debug('options:', JSON.stringify(thisCommand.opts()))
   })
   .action(async (input: string, output: string, target: string) => {
     try {

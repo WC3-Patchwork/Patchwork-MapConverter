@@ -24,7 +24,7 @@ import { TerrainChunkifier } from '../enhancements/TerrainChunkifier'
 import { DoodadsTranslatorOutput } from '../wc3maptranslator/translators/DoodadsTranslator'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
-import { integer } from '@/wc3maptranslator/CommonInterfaces'
+import { integer } from '../wc3maptranslator/CommonInterfaces'
 import { ObjectDataMerger } from '../enhancements'
 const log = LoggerFactory.createLogger('Json2War')
 

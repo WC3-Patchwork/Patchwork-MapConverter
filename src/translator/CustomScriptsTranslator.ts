@@ -70,7 +70,7 @@ export function jsonToWar(json: CustomScriptsTranslatorOutput, formatVersion: in
   return output.getBuffer()
 }
 
-export function warToJson(buffer: Buffer): [{ headerComment: string, scripts: string[] }, integer, integer] {
+export function warToJson(buffer: Buffer): [CustomScriptsTranslatorOutput, integer, integer] {
   const input = new W3Buffer(buffer)
   const formatVersion = input.readUint()
   let formatSubversion: integer

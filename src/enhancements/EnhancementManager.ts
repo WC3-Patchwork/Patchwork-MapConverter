@@ -1,5 +1,7 @@
 const EnhancementManager = {
   mergeObjectSkinData: false,
+  resolveStrings: false,
+  forceResolveStrings: false,
   smartImport: false,
   importFolder: 'imports',
   sourceFolder: 'src',
@@ -15,7 +17,7 @@ const EnhancementManager = {
   containerInfoExtension: '.ini',
   commentExtension: '.txt',
   mapHeaderFilename: 'header',
-  generateTargetProfile: false,
+  profileOutputPath: '',
   chunkifiedTerrainFolder: 'terrain',
   chunkifyMapData: false,
   chunkFileExtension: '.json',

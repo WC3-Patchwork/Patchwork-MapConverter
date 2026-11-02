@@ -12,7 +12,7 @@ import TreeIterator from '../util/TreeIterator'
 import { FileBlacklist } from './FileBlacklist'
 import PromiseSupplier from '../util/PromiseSupplier'
 import { readFile } from 'fs/promises'
-import { FormatConverter } from '@/converter'
+import { FormatConverter } from '../converter'
 
 const log = LoggerFactory.createLogger('TerrainChunkifier')
 const TILE_SIZE = 128
