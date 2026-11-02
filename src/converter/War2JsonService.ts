@@ -430,11 +430,10 @@ export const War2JsonService = {
       await WTStringResolver.exportLeftoverStrings()
     }
 
-    if (EnhancementManager.generateTargetProfile) {
+    if (EnhancementManager.profileOutputPath != '') {
       log.info(`Writing target profile...`)
-      const profileOutput = path.join(outputPath, EnhancementManager.profileOutputPath)
-      await WriteAndCreatePath(profileOutput, JSONConverter.stringify(recordedProfile))
-      log.info(`Profile generated at ${profileOutput}`)
+      await WriteAndCreatePath(EnhancementManager.profileOutputPath, JSONConverter.stringify(recordedProfile))
+      log.info(`Profile generated at ${EnhancementManager.profileOutputPath}`)
     }
   }
 }

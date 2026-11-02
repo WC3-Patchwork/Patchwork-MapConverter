@@ -110,7 +110,7 @@ program
 program
   .command('war2json')
   .description('convert Warcraft III binaries to JSON')
-  .addOption(new Option('--gtp, --generate-target-profile [profileOutputPath]', 'Generate target profile json file for json2war'))
+  .addOption(new Option('--gtp, --generate-target-profile <profileOutputPath>', 'Generate target profile json file for json2war'))
   .addOption(new Option('--rs, --resolve-strings', 'Resolve strings in(to) .wts and other files'))
   .addOption(new Option('--frs, --force-string-resolve', 'Resolves strings in triggers and scripts. WARNING: Triggers that were string dereferenced and converted back to binary cause the editor to crash!!!'))
   .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much tilepoints do you wanna offset the main chunk grid').argParser((value) => {
@@ -128,10 +128,7 @@ program
     const options = actionCommand.opts()
     if (options.generateTargetProfile) {
       log.info('Will generate target profile JSON file')
-      EnhancementManager.generateTargetProfile = true
-      if (options.generateTargetProfile != true) {
-        EnhancementManager.profileOutputPath = options.generateTargetProfile
-      }
+      EnhancementManager.profileOutputPath = options.generateTargetProfile
     }
 
     if (options.resolveStrings === true) {
