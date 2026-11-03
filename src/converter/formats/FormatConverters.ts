@@ -6,5 +6,6 @@ import { YAMLConverter } from './YAMLConverter'
 export const FormatConverters: Record<string, FormatConverter> = {
   '.json': JSONConverter,
   '.toml': TOMLConverter,
-  '.yaml': YAMLConverter
+  '.yaml': YAMLConverter,
+  '.yml': YAMLConverter
 }

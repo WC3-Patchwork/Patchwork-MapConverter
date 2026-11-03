@@ -146,7 +146,7 @@ async function exportTriggers(triggersJson: MapHeader, output: string, profile: 
   })
 }
 
-export const Json2WarService = {
+export const Text2WarService = {
   async convert(inputPath: string, outputPath: string, profile: TargetProfile): Promise<void> {
     log.info(`Converting Warcraft III json data in '${inputPath}' and outputting to '${outputPath}'`)
 

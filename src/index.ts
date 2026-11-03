@@ -29,14 +29,14 @@ program
   .addOption(new Option('--mde, --map-data-extension <extension>', 'File extension given/read (depending on operation) for map data files (w3u, w3d, etc..)').default(EnhancementManager.mapDataExtension))
   .option('-p, --prettify', 'Output textual format should be prettified if format converter supports it.')
   .option('--ct, --compose-triggers', 'unpack/compile triggers into/from binary/fs+json representation, following options apply only if this is enabled:')
-  .addOption(new Option('--sf, --sourceFolder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
+  .addOption(new Option('--sf, --source-folder <sourceFolder>', 'Triggers\' source folder to export to/read from trigger related files').default(EnhancementManager.sourceFolder))
   .addOption(new Option('--cse, --custom-script-extension <extension>', 'What file extension will be given to all custom scripts').default(EnhancementManager.scriptExtension))
   .addOption(new Option('--dis, --disabled-extension <extension>', 'What suffix will file\'s extension get when custom script is disabled').default(EnhancementManager.disabledExtension))
   .addOption(new Option('--ge, --gui-extension <extension>', 'What file extension will be given to GUI elements (Triggers and Variables)').default(EnhancementManager.guiExtension))
-  .addOption(new Option('--cie, --container-info-extension <extension', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
+  .addOption(new Option('--cie, --container-info-extension <extension>', 'What file extension will be given to trigger category/library/header for metadata').default(EnhancementManager.containerInfoExtension))
   .addOption(new Option('--ce, --comment-extension <extension>', 'What file extension will be given to comments').default(EnhancementManager.commentExtension))
   .addOption(new Option('--mh, --map-header <filename>', 'What\'s the map header\'s filename').default(EnhancementManager.mapHeaderFilename))
-  .addOption(new Option('--tf, --triggers-filename', 'Filename for triggers file which contains both GUI triggers and custom scripts, Does not work with compose-triggers.').default(EnhancementManager.triggersFilename))
+  .addOption(new Option('--tf, --triggers-filename <filename>', 'Filename for triggers file which contains both GUI triggers and custom scripts, Does not work with compose-triggers.').default(EnhancementManager.triggersFilename))
   .option('--chunk, --chunkify', 'Aggregates terrain, preplaced objects, and regions data into multiple chunk files')
   .addOption(new Option('--ctf, --chunkified-terrain-folder <chunkifiedTerrainFolder>', 'In which folder are terrain chunks gonne be exported into.').default(EnhancementManager.chunkifiedTerrainFolder))
   .addOption(new Option('--cfe, --chunk-file-extension <extension>', 'What file extension will chunk files have?').default(EnhancementManager.chunkFileExtension))
@@ -108,11 +108,11 @@ program
   })
 
 program
-  .command('war2json')
+  .command('war2text')
   .description('convert Warcraft III binaries to JSON')
   .addOption(new Option('--gtp, --generate-target-profile <profileOutputPath>', 'Generate target profile json file for json2war'))
   .addOption(new Option('--rs, --resolve-strings', 'Resolve strings in(to) .wts and other files'))
-  .addOption(new Option('--frs, --force-string-resolve', 'Resolves strings in triggers and scripts. WARNING: Triggers that were string dereferenced and converted back to binary cause the editor to crash!!!'))
+  .addOption(new Option('--frs, --force-resolve-strings', 'Resolves strings in triggers and scripts. WARNING: Triggers that were string dereferenced and converted back to binary cause the editor to crash!!!'))
   .addOption(new Option('--cs, --chunk-size <sizeX,sizeY,offsetX,offsetY>', 'How many 4x4\'s does fit under a single chunk file, offset is by how much tilepoints do you wanna offset the main chunk grid').argParser((value) => {
     const [sizeX, sizeY, offsetX, offsetY] = value.split(',') as [string, string, string, string]
     EnhancementManager.chunkSize.sizeX = Number.parseInt(sizeX)
@@ -157,7 +157,7 @@ program
       if (target) {
         profile = await Converters.ProfileLoader.LoadTargetProfile(target)
       }
-      await Converters.War2JsonService.convert(input, output, profile)
+      await Converters.War2TextService.convert(input, output, profile)
       log.info('Finished converting map folder to textual representations!')
     } catch (exception) {
       log.fatal(exception)
@@ -165,7 +165,7 @@ program
   })
 
 program
-  .command('json2war')
+  .command('text2war')
   .description('convert JSON to Warcraft III binaries')
   .option('--mosd, --merge-object-skin-data', 'Merges map object data with their respective object skin data into a single file')
   .addArgument(new Argument('<input>', 'input directory path').argRequired())
@@ -184,7 +184,7 @@ program
   })
   .action(async (input: string, output: string, target: string) => {
     try {
-      await Converters.Json2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
+      await Converters.Text2WarService.convert(input, output, await Converters.ProfileLoader.LoadTargetProfile(target))
       log.info('Finished converting textual representations to map folder!')
     } catch (exception) {
       log.fatal(exception)
