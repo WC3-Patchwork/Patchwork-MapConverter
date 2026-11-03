@@ -132,4 +132,4 @@ Here are the following options for `text2war` subcommand:
 - 3.0 - (same as 3.0.1)
 - latest - (same as 3.0.1)
 
-What each patch's World Editor writes into each map file, and what each patch's game data (SLK) has, is in [docs/game-versions.md](docs/game-versions.md).
+A history of each patch's editor changes to the map files' formats, and what each patch's game data (SLK) has, can be found in [docs/game-versions.md](docs/game-versions.md).
