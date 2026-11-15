@@ -70,6 +70,9 @@ export function jsonToWar(campaignInfoJson: CampaignInfo, formatVersion: number)
       output.addFloat(campaignInfoJson?.fog?.newLinearEnd ?? CampaignInfoDefaults.fog.linearEnd)
       output.addFloat(campaignInfoJson?.fog?.maxOpacity ?? CampaignInfoDefaults.fog.maxOpacity)
       output.addInt(+(campaignInfoJson?.fog?.drawFogOverSky ?? CampaignInfoDefaults.fog.drawOverSky))
+    }
+
+    if (formatVersion >= 2){
       output.addInt(((value) => {
         switch (value) {
           case BackgroundScreenVersion.DEFAULT: return 0
@@ -139,7 +142,6 @@ export function warToJson(buffer: Buffer): [CampaignInfo, integer, integer] {
   let fogLinearEnd: number
   let fogMaxOpacity: number
   let fogDrawOverSky: boolean
-  let backgroundScreenVersion: BackgroundScreenVersion
   if (formatVersion >= 1) {
     fogType = ((type) => {
       switch (type) {
@@ -173,14 +175,6 @@ export function warToJson(buffer: Buffer): [CampaignInfo, integer, integer] {
       fogLinearEnd = input.readFloat()
       fogMaxOpacity = input.readFloat()
       fogDrawOverSky = !!(input.readInt())
-      backgroundScreenVersion = ((value) => {
-        switch (value) {
-          case 0: return BackgroundScreenVersion.DEFAULT
-          case 1: return BackgroundScreenVersion.CLASSIC
-          case 2: return BackgroundScreenVersion.REFORGED
-          default: return CampaignInfoDefaults.backgroundScreenVersion
-        }
-      })(input.readInt());
     } else {
       fogHeightStart = CampaignInfoDefaults.fog.heightStart
       fogHeightEnd = CampaignInfoDefaults.fog.heightEnd
@@ -188,7 +182,6 @@ export function warToJson(buffer: Buffer): [CampaignInfo, integer, integer] {
       fogLinearEnd = CampaignInfoDefaults.fog.linearEnd
       fogMaxOpacity = CampaignInfoDefaults.fog.maxOpacity
       fogDrawOverSky = CampaignInfoDefaults.fog.drawOverSky
-      backgroundScreenVersion = CampaignInfoDefaults.backgroundScreenVersion
     }
   } else {
     fogType = CampaignInfoDefaults.fog.type
@@ -203,6 +196,19 @@ export function warToJson(buffer: Buffer): [CampaignInfo, integer, integer] {
     fogLinearEnd = CampaignInfoDefaults.fog.linearEnd
     fogMaxOpacity = CampaignInfoDefaults.fog.maxOpacity
     fogDrawOverSky = CampaignInfoDefaults.fog.drawOverSky
+  }
+
+  let backgroundScreenVersion: BackgroundScreenVersion
+  if (formatVersion >= 2){
+    backgroundScreenVersion = ((value) => {
+        switch (value) {
+          case 0: return BackgroundScreenVersion.DEFAULT
+          case 1: return BackgroundScreenVersion.CLASSIC
+          case 2: return BackgroundScreenVersion.REFORGED
+          default: return CampaignInfoDefaults.backgroundScreenVersion
+        }
+      })(input.readInt());
+  } else {
     backgroundScreenVersion = CampaignInfoDefaults.backgroundScreenVersion
   }
 
