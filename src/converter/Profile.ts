@@ -9,6 +9,7 @@ interface TargetProfile {
   wctFormatVersion: integer
   wctFormatSubversion: integer
   w3iFormatVersion: integer
+  w3fFormatVersion: integer | undefined
   objectFormatVersion: integer
   w3eFormatVersion: integer
   unitsDooFormatVersion: integer

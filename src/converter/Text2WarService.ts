@@ -26,6 +26,7 @@ import PromiseSupplier from '../util/PromiseSupplier'
 import { FormatConverter } from './formats/FormatConverter'
 import { integer } from '../wc3maptranslator/CommonInterfaces'
 import { ObjectDataMerger } from '../enhancements'
+import { CampaignInfo } from '@/translator/data/campaign/CampaignInfo'
 const log = LoggerFactory.createLogger('Json2War')
 
 async function parseFileNoAsyncContext<T>(input: string): Promise<T> {
@@ -241,6 +242,10 @@ export const Text2WarService = {
       } else if (filename.endsWith(`.w3s${EnhancementManager.mapDataExtension}`)) {
         promises.push(processFile<Sound[]>(file.path, translatedOutputFile,
           sounds => SoundsTranslator.jsonToWar(sounds, profile.w3sFormatVersion)
+        ))
+      } else if (filename.endsWith(`.w3f${EnhancementManager.mapDataExtension}`)) {
+        promises.push(processFile<CampaignInfo>(file.path, translatedOutputFile,
+          campaignInfo => translators.CampaignInfoTranslator.jsonToWar(campaignInfo, profile.w3fFormatVersion!!)
         ))
       } else if (filename.endsWith(`.w3u${EnhancementManager.mapDataExtension}`)) {
         objectDataPromises.push(processObjectDataFile(file.path, translatedOutputFile, ObjectType.Units, profile.objectFormatVersion, EnhancementManager.mergeObjectSkinData))

@@ -45,6 +45,7 @@ const recordedProfile: TargetProfile = {
   wctFormatVersion: 0,
   wctFormatSubversion: 0,
   w3iFormatVersion: 0,
+  w3fFormatVersion: undefined,
   w3lFormatVersion: undefined,
   w3grpFormatVersion: undefined
 }
@@ -214,6 +215,13 @@ export const War2TextService = {
           const [sounds, formatVersion] = SoundsTranslator.warToJson(buffer)
           recordedProfile.w3sFormatVersion = formatVersion
           return sounds
+        }))
+      } else if (filename.endsWith('.w3f')) {
+        promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, async (buffer) => {
+          const [campaignInfo, formatVersion, editorVersion] = translators.CampaignInfoTranslator.warToJson(buffer)
+          recordedProfile.w3fFormatVersion = formatVersion
+          //recordedProfile.editorVersion = editorVersion
+          return campaignInfo
         }))
       } else if (filename.endsWith('.w3u')) {
         promises.push(processFile(file.path, outputFile + EnhancementManager.mapDataExtension, objectHandlerFactory(ObjectType.Units)))

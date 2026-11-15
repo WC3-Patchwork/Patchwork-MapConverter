@@ -1,5 +1,6 @@
 import * as CustomScriptsTranslator from './CustomScriptsTranslator'
 import * as TriggersTranslator from './TriggersTranslator'
+import * as CampaignInfoTranslator from './CampaignInfoTranslator'
 import { type TriggerContainer } from './data/TriggerContainer'
 import { type MapHeader } from './data/MapHeader'
 import { type CustomScript } from './data/content/CustomScript'
@@ -19,6 +20,6 @@ import { ContentTypeEnumConverter } from './util/ContentTypeEnumConverter'
 import { ParameterTypeEnumConverter } from './util/ParameterTypeEnumConverter'
 import { StatementTypeEnumConverter } from './util/StatementTypeEnumConverter'
 
-const translators = { CustomScriptsTranslator, TriggersTranslator }
+const translators = { CustomScriptsTranslator, TriggersTranslator, CampaignInfoTranslator }
 export { translators, ContentTypeEnumConverter, ParameterTypeEnumConverter, StatementTypeEnumConverter }
 export type { TriggerContainer, MapHeader, CustomScript, GlobalVariable, GUITrigger, ScriptContent, ScriptedTrigger, TriggerComment, TriggerContent, Parameter, ParameterType, Describable, Enableable, Statement, StatementType }
