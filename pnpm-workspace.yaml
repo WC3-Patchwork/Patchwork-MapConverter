@@ -1,5 +1,5 @@
 allowBuilds:
+  '@jamiephan/stormlib': false
   esbuild: true
-  koffi: true
 
 minimumReleaseAge: 10080
