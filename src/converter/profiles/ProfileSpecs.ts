@@ -21,7 +21,8 @@ export const P1000: TargetProfile = {
   w3cFormatVersion: 0,
   w3sFormatVersion: 1,
   w3lFormatVersion: undefined,
-  w3grpFormatVersion: undefined
+  w3grpFormatVersion: undefined,
+  w3fFormatVersion: 0
 }
 
 export const P1010: TargetProfile = { ...P1000, editorVersion: 4482 }
@@ -51,7 +52,8 @@ export const P1070: TargetProfile = {
   w3cFormatVersion: 0,
   w3sFormatVersion: 1,
   w3lFormatVersion: undefined,
-  w3grpFormatVersion: undefined
+  w3grpFormatVersion: undefined,
+  w3fFormatVersion: 1
 }
 
 export const P1100: TargetProfile = { ...P1070, editorVersion: 6034 }
@@ -124,7 +126,8 @@ export const P2030: TargetProfile = {
   w3cFormatVersion: 0,
   w3sFormatVersion: 3,
   w3lFormatVersion: undefined,
-  w3grpFormatVersion: undefined
+  w3grpFormatVersion: undefined,
+  w3fFormatVersion: 2
 }
 
 // 2.0.4 (2.0.4.23745, the last build before 3.0)
@@ -150,7 +153,8 @@ export const P3000: TargetProfile = {
   w3cFormatVersion: 3,
   w3sFormatVersion: 3,
   w3lFormatVersion: 3,
-  w3grpFormatVersion: 0
+  w3grpFormatVersion: 0,
+  w3fFormatVersion: 3
 }
 
 // 3.0.1 (3.0.1.24371)
